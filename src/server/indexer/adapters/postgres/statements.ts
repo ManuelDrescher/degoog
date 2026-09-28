@@ -19,7 +19,7 @@ export const writePgRows = async (
   withFold = false,
 ): Promise<void> => {
   for (const row of rows) {
-    const [urlRow] = await tx<{ id: number }[]>`
+    const [urlRow] = await tx<{ id: number; title: string; snippet: string; url: string }[]>`
       INSERT INTO ${tx(schema)}.urls (
         url_norm, url, source_engine, title, snippet,
         thumbnail, image_url, is_gif, duration, extras_json,
@@ -39,8 +39,18 @@ export const writePgRows = async (
         is_gif = COALESCE(urls.is_gif, EXCLUDED.is_gif),
         duration = COALESCE(urls.duration, EXCLUDED.duration),
         extras_json = COALESCE(urls.extras_json, EXCLUDED.extras_json)
-      RETURNING id
+      RETURNING id, title, snippet, url
     `;
+    if (
+      withFold &&
+      (urlRow.title !== row.title || urlRow.snippet !== row.snippet || urlRow.url !== row.url)
+    ) {
+      await tx`
+        UPDATE ${tx(schema)}.urls
+        SET search_fold = to_tsvector('simple', ${foldSource(urlRow)})
+        WHERE id = ${urlRow.id}
+      `;
+    }
     await tx`
       INSERT INTO ${tx(schema)}.query_hits
         (query_norm, engine_type, url_id, best_position, pos_sum, hit_count,

@@ -126,6 +126,17 @@ describe.skipIf(!PG_URL)("postgres accent-insensitive search on an existing inst
     expect(kept).toEqual({ title: "Café de Flore", first_seen: "1000" });
   });
 
+  test("a shorter title seen later keeps the stored text searchable without accents", async () => {
+    const url = "https://example.org/laduree";
+    await adapter.writeBatch(TYPE, [row(url, "Pâtisserie Ladurée macarons parisiens")], 4000, 10);
+    await adapter.writeBatch(TYPE, [row(url, "Ladurée", "", "laduree")], 5000, 10);
+    const [stored] = await sql!<{ title: string }[]>`
+      SELECT title FROM ${sql!(TYPE)}.urls WHERE url = ${url}
+    `;
+    expect(stored.title).toBe("Pâtisserie Ladurée macarons parisiens");
+    expect(urlsOf(await adapter.queryFuzzy(TYPE, "patisserie", 30))).toContain(url);
+  });
+
   test("a second boot is a no-op", async () => {
     const again = new PgAdapter(PG_URL!);
     await again.boot();

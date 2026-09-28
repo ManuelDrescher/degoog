@@ -4,7 +4,7 @@ import { getAdapter } from "../db/factory";
 import { getIndexerConfig } from "../config/load";
 import { normalizeQuery, rowToResult } from "./mapper";
 import { logger } from "../../utils/logger";
-import { hasUnspacedScript, splitTerms, termHit } from "../shared/terms";
+import { MAX_SUBSTRING_NEEDLES, hasUnspacedScript, splitTerms, termHit } from "../shared/terms";
 
 export const queryIndex = async (
   query: string,
@@ -38,9 +38,13 @@ export const queryIndex = async (
             return terms.filter((t) => termHit(text, t)).length >= minHits;
           });
       fuzzy = keep(await adapter.queryFuzzy(engineType, queryNorm, cap, offset)).slice(0, remaining);
-      const needles = terms
-        .flatMap((t) => (t.unspaced ? t.token.split(" ") : []))
-        .filter(hasUnspacedScript);
+      const needles = [
+        ...new Set(
+          terms
+            .flatMap((t) => (t.unspaced ? t.token.split(" ") : []))
+            .filter(hasUnspacedScript),
+        ),
+      ].slice(0, MAX_SUBSTRING_NEEDLES);
       if (fuzzy.length < remaining && needles.length > 0) {
         const infix = keep(
           await adapter.querySubstring(engineType, queryNorm, needles, cap, offset),

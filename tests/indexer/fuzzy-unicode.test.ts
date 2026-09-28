@@ -1,6 +1,5 @@
 import { describe, test, expect, beforeEach, afterAll } from "bun:test";
 import { mkdirSync } from "fs";
-import { Database } from "bun:sqlite";
 import { tmpdir } from "os";
 import { join } from "path";
 import postgres from "postgres";
@@ -12,6 +11,7 @@ process.env.DEGOOG_INDEXER_DB = join(SHARED, "index.db");
 process.env.DEGOOG_SERVER_SETTINGS_FILE = join(SHARED, "server-settings.json");
 
 import { buildFtsQuery } from "../../src/server/indexer/adapters/sqlite/fts";
+import { SQLITE_SCHEMA_DDL } from "../../src/server/indexer/adapters/sqlite/schema";
 import { buildTsQuery } from "../../src/server/indexer/adapters/postgres/tsquery";
 import { splitTerms, stripAccents, termHit } from "../../src/server/indexer/shared/terms";
 import { clearAll } from "../../src/server/indexer/store/admin";
@@ -150,16 +150,16 @@ describe("sqlite fuzzy recall across scripts", () => {
     });
   }
 
+  test("a query with many unspaced words still answers", async () => {
+    const many = Array.from({ length: 40 }, (_, i) => `搜索${i}`).join(" ");
+    const out = await queryIndex(`${many} 中文`, TYPE);
+    expect(Array.isArray(out)).toBe(true);
+  });
+
   test("the fts table is untouched, no reindex needed", () => {
-    const db = new Database(join(SHARED, `index-${TYPE}.db`), { readonly: true });
-    try {
-      const row = db
-        .prepare("SELECT sql FROM sqlite_master WHERE name = 'urls_fts'")
-        .get() as { sql: string };
-      expect(row.sql).not.toContain("tokenize");
-    } finally {
-      db.close();
-    }
+    const fts = SQLITE_SCHEMA_DDL.find((ddl) => ddl.includes("USING fts5"));
+    expect(fts).toBeDefined();
+    expect(fts).not.toContain("tokenize");
   });
 });
 

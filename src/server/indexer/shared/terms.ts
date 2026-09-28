@@ -1,6 +1,7 @@
 const MIN_PREFIX_LEN = 3;
 export const FUZZY_CANDIDATE_CAP = 10000;
 export const SUBSTRING_SCAN_WINDOW = 50000;
+export const MAX_SUBSTRING_NEEDLES = 8;
 const SEPARATORS = /[^\p{L}\p{N}\p{M}-]+/gu;
 const EDGE_DASHES = /(^|\s)-+|-+(\s|$)/g;
 const WORD_CHAR = /[\p{L}\p{N}]/u;
