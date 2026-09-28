@@ -400,26 +400,34 @@ export async function initStoreTab(
     render();
   });
 
+  const isVisible = (): boolean =>
+    !!container.closest(".settings-tab-panel")?.classList.contains("active");
+
   const noticeIfVisible = (): void => {
-    if (container.closest(".settings-tab-panel")?.classList.contains("active"))
-      void maybeShowRestartNotice(getToken);
+    if (isVisible()) void maybeShowRestartNotice(getToken);
   };
   window.addEventListener("settings-tab-changed", noticeIfVisible);
   noticeIfVisible();
 
+  let remoteRefreshed = false;
+  const refreshRemoteIfVisible = async (): Promise<void> => {
+    if (remoteRefreshed || !isVisible()) return;
+    remoteRefreshed = true;
+    await fetch(`${getBase()}/api/store/repos/refresh`, {
+      method: "POST",
+      headers: jsonHeaders(getToken),
+      body: JSON.stringify({}),
+    }).catch(() => {});
+    await loadRepos();
+    await loadItems();
+    await loadReposStatus();
+    render();
+  };
+
   try {
     await refreshAndRender();
-    void (async () => {
-      await fetch(`${getBase()}/api/store/repos/refresh`, {
-        method: "POST",
-        headers: jsonHeaders(getToken),
-        body: JSON.stringify({}),
-      }).catch(() => {});
-      await loadRepos();
-      await loadItems();
-      await loadReposStatus();
-      render();
-    })();
+    window.addEventListener("settings-tab-changed", () => void refreshRemoteIfVisible());
+    void refreshRemoteIfVisible();
   } catch {
     const wrap = container.querySelector<HTMLElement>(".store-repo-list-wrap");
     if (wrap) renderNodes(<StoreEmpty message="Failed to load store." />, wrap);
