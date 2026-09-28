@@ -4,6 +4,7 @@ import { discoverTypes } from "../db/lifecycle";
 import { getIndexerConfig } from "../config/load";
 import { createMutex, type RunExclusive } from "../../utils/cache/mutex";
 import { logger } from "../../utils/logger";
+import { clearTypeCache } from "../../extensions/engines/search-types";
 
 const FLUSH_INTERVAL_MS = 3_000;
 const PRUNE_INTERVAL_MS = 5 * 60_000;
@@ -56,7 +57,9 @@ const flushType = (type: string, rows: IndexRow[]): Promise<void> =>
   mutexFor(type)(async () => {
     try {
       const cfg = await getIndexerConfig();
+      const isNewType = !discoverTypes().includes(type);
       await getAdapter().writeBatch(type, rows, Date.now(), cfg.rankingWindow);
+      if (isNewType) clearTypeCache();
     } catch (err) {
       const kept = _requeue(type, rows);
       logger.warn(

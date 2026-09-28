@@ -17,11 +17,12 @@ import {
   LIST_ALL_SQL,
   COUNT_SEARCH_SQL,
   COUNT_ALL_SQL,
+  substringSql,
 } from "./statements";
 import { EXPORT_SELECT_SQL } from "../../shared/export-select";
 import { createRowImporter, urlParams } from "./import-rows";
 import { buildFtsQuery, escapeLike } from "./fts";
-import { FUZZY_CANDIDATE_CAP } from "../../shared/terms";
+import { FUZZY_CANDIDATE_CAP, SUBSTRING_SCAN_WINDOW } from "../../shared/terms";
 import { pruneOrphans, runSqlitePrune } from "./prune";
 import { migrateHits } from "./migrate-hits";
 import { ExportHolds, setAutoCheck } from "./export-holds";
@@ -191,6 +192,31 @@ export class SqliteAdapter implements IndexerAdapter {
       ) as UrlRow[];
     } catch (err) {
       logger.warn("indexer", `queryFuzzy failed for type=${type}`, err);
+      return [];
+    }
+  }
+
+  async querySubstring(
+    type: string,
+    queryNorm: string,
+    needles: string[],
+    limit: number,
+    offset = 0,
+  ): Promise<UrlRow[]> {
+    if (needles.length === 0) return [];
+    try {
+      return this._db(type)
+        .query(substringSql(needles.length))
+        .all(
+          SUBSTRING_SCAN_WINDOW,
+          ...needles.flatMap((n) => [n, n]),
+          type,
+          queryNorm,
+          limit,
+          offset,
+        ) as UrlRow[];
+    } catch (err) {
+      logger.warn("indexer", `querySubstring failed for type=${type}`, err);
       return [];
     }
   }

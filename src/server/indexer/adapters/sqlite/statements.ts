@@ -112,6 +112,25 @@ export const FUZZY_SQL = `
   LIMIT ? OFFSET ?
 `;
 
+export const substringSql = (needleCount: number): string => `
+  WITH scan AS (
+    SELECT id FROM urls ORDER BY id DESC LIMIT ?
+  )
+  SELECT u.url, u.source_engine, u.title, u.snippet, u.thumbnail,
+         u.image_url, u.is_gif, u.duration, u.extras_json
+  FROM scan s
+  JOIN urls u ON u.id = s.id
+  WHERE ${Array.from({ length: needleCount }, () => "(instr(lower(u.title), ?) > 0 OR instr(lower(u.snippet), ?) > 0)").join(" AND ")}
+    AND EXISTS (
+      SELECT 1 FROM query_hits h
+      WHERE h.url_id = u.id
+        AND h.engine_type = ?
+        AND h.query_norm != ?
+    )
+  ORDER BY u.last_seen DESC
+  LIMIT ? OFFSET ?
+`;
+
 const LIST_SELECT = `
   SELECT h.id, h.query_norm, h.engine_type, u.url, u.title, u.snippet, h.last_seen,
          (h.pos_sum * 1.0 / h.hit_count) AS score

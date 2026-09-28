@@ -59,6 +59,13 @@ export interface IndexerAdapter {
 
   queryExact(type: string, queryNorm: string, limit: number, offset?: number): Promise<UrlRow[]>;
   queryFuzzy(type: string, queryNorm: string, limit: number, offset?: number): Promise<UrlRow[]>;
+  querySubstring(
+    type: string,
+    queryNorm: string,
+    needles: string[],
+    limit: number,
+    offset?: number,
+  ): Promise<UrlRow[]>;
 
   getTypeCounts(type: string): Promise<TypeCounts>;
   totalDbSize(types: string[]): Promise<number>;
