@@ -24,6 +24,7 @@ export function formatRelativeTime(iso: string): string {
 export function repoImageSrc(repo: RepoInfo): string {
   const img = repo.repoImage;
   if (!img) return "";
-  if (/^https?:\/\//i.test(img)) return img;
+  if (img.startsWith(`${getBase()}/api/proxy/`)) return img;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(img) || img.startsWith("//")) return "";
   return `${getBase()}/api/store/repos/${encodeURIComponent(repo.localPath)}/asset?path=${encodeURIComponent(img)}`;
 }

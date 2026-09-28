@@ -102,6 +102,18 @@ describe("store read routes", () => {
     expect(body.repos[0].url).toBe(REPO_URL);
   });
 
+  test("remote repo images are handed out as signed proxy URLs", async () => {
+    const { initServerKey } = await import("../../src/server/utils/security/server-key");
+    await initServerKey();
+    const reposFile = join(tempDir, "repos.json");
+    const data = JSON.parse(await Bun.file(reposFile).text());
+    data.repos[0].repoImage = "https://avatars.githubusercontent.com/u/1";
+    writeFileSync(reposFile, JSON.stringify(data));
+    const body = await (await get("/api/store/repos")).json();
+    expect(body.repos[0].repoImage).toStartWith("/api/proxy/image?url=");
+    expect(body.repos[0].repoImage).toContain(encodeURIComponent("https://avatars.githubusercontent.com/u/1"));
+  });
+
   test("items lists the catalogue across all repos", async () => {
     const body = await (await get("/api/store/items")).json();
     expect(body.items.map((i: { path: string }) => i.path)).toEqual([

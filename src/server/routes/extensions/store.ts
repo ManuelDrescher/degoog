@@ -28,6 +28,8 @@ import {
 import { ExtensionStoreType } from "../../types/extension";
 import { logger } from "../../utils/logger";
 import { settingsAuth } from "../_guards";
+import { buildSignedProxyUrl } from "../../utils/net/proxy-sign";
+import type { RepoInfo } from "../../types/store";
 
 const router = new Hono();
 
@@ -95,9 +97,14 @@ function getStoreItemPath(type: ExtensionStoreType, item: string): string {
   }
 }
 
+const _withProxiedImage = (repo: RepoInfo): RepoInfo =>
+  repo.repoImage && /^https?:\/\//i.test(repo.repoImage)
+    ? { ...repo, repoImage: buildSignedProxyUrl(repo.repoImage) }
+    : repo;
+
 router.get("/api/store/repos", settingsAuth(), async (c) => {
   const repos = await getRepos();
-  return c.json({ repos });
+  return c.json({ repos: repos.map(_withProxiedImage) });
 });
 
 router.get("/api/store/repos/:repoSlug/asset", settingsAuth(), async (c) => {
