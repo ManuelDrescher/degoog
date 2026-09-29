@@ -31,6 +31,7 @@ describe("a failed flush keeps its rows", () => {
     mock.module(FACTORY_MOD, () => ({
       ...factoryReal,
       getAdapter: () => ({
+        discoverTypes: () => [],
         writeBatch: async (_type: string, rows: IndexRow[]) => {
           if (failNextWrite) throw new Error("disk went away");
           written.push(...rows);

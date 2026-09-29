@@ -3,9 +3,12 @@ import type { TransactionSql } from "postgres";
 import type { IndexerHitRow } from "../../../../shared/indexer";
 import type { ExportRow, UrlRow } from "../../types/adapter";
 import type { IndexRow } from "../../recorders/default";
-import { FUZZY_CANDIDATE_CAP } from "../../shared/terms";
+import { FUZZY_CANDIDATE_CAP, SUBSTRING_SCAN_WINDOW, stripAccents } from "../../shared/terms";
 
 export type PgSql = ReturnType<typeof postgres>;
+
+export const foldSource = (row: { title: string; snippet: string; url: string }): string =>
+  stripAccents(`${row.title ?? ""} ${row.snippet ?? ""} ${row.url ?? ""}`);
 
 export const writePgRows = async (
   tx: TransactionSql,
@@ -13,20 +16,22 @@ export const writePgRows = async (
   rows: IndexRow[],
   now: number,
   window: number,
+  withFold = false,
 ): Promise<void> => {
   for (const row of rows) {
-    const [urlRow] = await tx<{ id: number }[]>`
+    const [urlRow] = await tx<{ id: number; title: string; snippet: string; url: string }[]>`
       INSERT INTO ${tx(schema)}.urls (
         url_norm, url, source_engine, title, snippet,
         thumbnail, image_url, is_gif, duration, extras_json,
-        first_seen, last_seen
+        first_seen, last_seen${withFold ? tx`, search_fold` : tx``}
       ) VALUES (
         ${row.url_norm}, ${row.url}, ${row.source_engine}, ${row.title}, ${row.snippet},
         ${row.thumbnail}, ${row.image_url}, ${row.is_gif}, ${row.duration}, ${row.extras_json},
-        ${now}, ${now}
+        ${now}, ${now}${withFold ? tx`, to_tsvector('simple', ${foldSource(row)})` : tx``}
       )
       ON CONFLICT (url_norm) DO UPDATE SET
-        last_seen = EXCLUDED.last_seen,
+        last_seen = EXCLUDED.last_seen,${withFold ? tx`
+        search_fold = EXCLUDED.search_fold,` : tx``}
         title = CASE WHEN length(urls.title) >= length(EXCLUDED.title) THEN urls.title ELSE EXCLUDED.title END,
         snippet = CASE WHEN length(urls.snippet) >= length(EXCLUDED.snippet) THEN urls.snippet ELSE EXCLUDED.snippet END,
         thumbnail = COALESCE(urls.thumbnail, EXCLUDED.thumbnail),
@@ -34,8 +39,18 @@ export const writePgRows = async (
         is_gif = COALESCE(urls.is_gif, EXCLUDED.is_gif),
         duration = COALESCE(urls.duration, EXCLUDED.duration),
         extras_json = COALESCE(urls.extras_json, EXCLUDED.extras_json)
-      RETURNING id
+      RETURNING id, title, snippet, url
     `;
+    if (
+      withFold &&
+      (urlRow.title !== row.title || urlRow.snippet !== row.snippet || urlRow.url !== row.url)
+    ) {
+      await tx`
+        UPDATE ${tx(schema)}.urls
+        SET search_fold = to_tsvector('simple', ${foldSource(urlRow)})
+        WHERE id = ${urlRow.id}
+      `;
+    }
     await tx`
       INSERT INTO ${tx(schema)}.query_hits
         (query_norm, engine_type, url_id, best_position, pos_sum, hit_count,
@@ -96,14 +111,24 @@ export const selectFuzzy = (
   pgExpr: string,
   limit: number,
   offset: number,
+  foldExpr: string | null = null,
 ) =>
   sql<UrlRow[]>`
     WITH recent AS (
       SELECT u.url, u.source_engine, u.title, u.snippet, u.thumbnail,
              u.image_url, u.is_gif, u.duration, u.extras_json,
-             u.search_vec, u.last_seen
+             ${foldExpr === null
+               ? sql`ts_rank(u.search_vec, to_tsquery('simple', ${pgExpr}))`
+               : sql`GREATEST(
+                   ts_rank(u.search_vec, to_tsquery('simple', ${pgExpr})),
+                   ts_rank(COALESCE(u.search_fold, ''::tsvector), to_tsquery('simple', ${foldExpr}))
+                 )`} AS rank_score,
+             u.last_seen
       FROM ${sql(schema)}.urls u
-      WHERE u.search_vec @@ to_tsquery('simple', ${pgExpr})
+      WHERE ${foldExpr === null
+        ? sql`u.search_vec @@ to_tsquery('simple', ${pgExpr})`
+        : sql`(u.search_vec @@ to_tsquery('simple', ${pgExpr})
+               OR u.search_fold @@ to_tsquery('simple', ${foldExpr}))`}
         AND EXISTS (
           SELECT 1 FROM ${sql(schema)}.query_hits h
           WHERE h.url_id = u.id
@@ -116,10 +141,43 @@ export const selectFuzzy = (
     SELECT url, source_engine, title, snippet, thumbnail,
            image_url, is_gif, duration, extras_json
     FROM recent
-    ORDER BY ts_rank(search_vec, to_tsquery('simple', ${pgExpr})) DESC,
-             last_seen DESC
+    ORDER BY rank_score DESC, last_seen DESC
     LIMIT ${limit} OFFSET ${offset}
   `;
+
+export const selectSubstring = (
+  sql: PgSql,
+  schema: string,
+  type: string,
+  queryNorm: string,
+  needles: string[],
+  limit: number,
+  offset: number,
+) => {
+  const contains = needles
+    .map((n) => sql`(strpos(lower(u.title), ${n}) > 0 OR strpos(lower(u.snippet), ${n}) > 0)`)
+    .reduce((acc, clause) => sql`${acc} OR ${clause}`);
+  return sql<UrlRow[]>`
+    WITH scan AS (
+      SELECT id FROM ${sql(schema)}.urls
+      ORDER BY id DESC
+      LIMIT ${SUBSTRING_SCAN_WINDOW}
+    )
+    SELECT u.url, u.source_engine, u.title, u.snippet, u.thumbnail,
+           u.image_url, u.is_gif, u.duration, u.extras_json
+    FROM scan s
+    JOIN ${sql(schema)}.urls u ON u.id = s.id
+    WHERE (${contains})
+      AND EXISTS (
+        SELECT 1 FROM ${sql(schema)}.query_hits h
+        WHERE h.url_id = u.id
+          AND h.engine_type = ${type}
+          AND h.query_norm != ${queryNorm}
+      )
+    ORDER BY u.last_seen DESC
+    LIMIT ${limit} OFFSET ${offset}
+  `;
+};
 
 export const countType = async (sql: PgSql, schema: string) => {
   const [hits] = await sql<{ c: number }[]>`

@@ -4,10 +4,13 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { clearServerSettingsCache } from "../../src/server/utils/settings/server-settings";
 import { getInstalledSearchTypes } from "../../src/server/extensions/engines/catalog";
-import { initEngines } from "../../src/server/extensions/engines/loader";
-import { clearTypeCache } from "../../src/server/extensions/engines/search-types";
+import { allEngineEntries, initEngines } from "../../src/server/extensions/engines/loader";
+import { clearTypeCache, resolveEngineTypes } from "../../src/server/extensions/engines/search-types";
 import { setSettings } from "../../src/server/utils/settings/plugin-settings";
-import { type } from "../../src/server/extensions/engines/builtins/degoog";
+import { DEGOOG_ENGINE_ID, type } from "../../src/server/extensions/engines/builtins/degoog";
+import { recordResults } from "../../src/server/indexer/store/record";
+import { flushQueue } from "../../src/server/indexer/queue/queue";
+import type { PluginEntry } from "../../src/server/extensions/engines/entries";
 
 const withTempEngineEnv = async <T>(fn: (dir: string) => Promise<T>): Promise<T> => {
   const dir = mkdtempSync(join(tmpdir(), "degoog-ghost-tabs-"));
@@ -93,6 +96,25 @@ describe("degoog indexer engine type()", () => {
 
       await initEngines(true);
       expect(await type()).toEqual(["Privacy"]);
+    });
+  });
+});
+
+describe("degoog indexer engine picks up new index types", () => {
+  test("the first write for a type makes it searchable without waiting for the type cache", async () => {
+    await withTempEngineEnv(async () => {
+      writeEngine(process.env.DEGOOG_ENGINES_DIR!, "tosdr", "Privacy");
+      await initEngines(true);
+
+      const entry = allEngineEntries().find((e) => e.id === DEGOOG_ENGINE_ID) as PluginEntry;
+      expect(await resolveEngineTypes(entry)).toEqual([]);
+
+      await recordResults("first query", "Privacy", [
+        { title: "A page", url: "https://example.org/a", snippet: "", source: "tosdr" },
+      ]);
+      await flushQueue();
+
+      expect(await resolveEngineTypes(entry)).toEqual(["Privacy"]);
     });
   });
 });

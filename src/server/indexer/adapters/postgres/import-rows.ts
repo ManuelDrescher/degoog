@@ -1,4 +1,4 @@
-import type { PgSql } from "./statements";
+import { foldSource, type PgSql } from "./statements";
 import type { ExportRow } from "../../types/adapter";
 import { rankFields } from "../../shared/rank-fields";
 
@@ -9,6 +9,7 @@ export const importPgRows = async (
   schema: string,
   type: string,
   rows: ExportRow[],
+  withFold = false,
 ): Promise<{ urls: number; hits: number }> => {
   let urlsInserted = 0;
   let hitsInserted = 0;
@@ -21,11 +22,11 @@ export const importPgRows = async (
           INSERT INTO ${tx(schema)}.urls (
             url_norm, url, source_engine, title, snippet,
             thumbnail, image_url, is_gif, duration, extras_json,
-            first_seen, last_seen
+            first_seen, last_seen${withFold ? tx`, search_fold` : tx``}
           ) VALUES (
             ${row.url_norm}, ${row.url}, ${row.source_engine}, ${row.title}, ${row.snippet},
             ${row.thumbnail}, ${row.image_url}, ${row.is_gif}, ${row.duration}, ${row.extras_json},
-            ${row.first_seen}, ${row.last_seen}
+            ${row.first_seen}, ${row.last_seen}${withFold ? tx`, to_tsvector('simple', ${foldSource(row)})` : tx``}
           )
           ON CONFLICT (url_norm) DO NOTHING
           RETURNING id

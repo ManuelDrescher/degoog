@@ -9,12 +9,18 @@ import type {
 import type { IndexRow } from "../../recorders/default";
 import type { IndexerConfig } from "../../types/config";
 import { safeSlug } from "../../shared/safe-type";
-import { canPrefix, splitTerms } from "../../shared/terms";
 import { logger } from "../../../utils/logger";
 import { initPgSchema } from "./schema";
+import { buildTsQuery } from "./tsquery";
+import { stripAccents } from "../../shared/terms";
 import { runPgPrune } from "./prune";
 import type { PgConnectionConfig } from "../../db/pg-config";
-import { ensureHitsColumns, ensureHitsIndex } from "./maintenance";
+import {
+  ensureFoldColumn,
+  ensureFoldIndex,
+  ensureHitsColumns,
+  ensureHitsIndex,
+} from "./maintenance";
 import { importPgRows } from "./import-rows";
 import {
   countHits,
@@ -24,17 +30,20 @@ import {
   selectExact,
   selectFuzzy,
   selectSample,
+  selectSubstring,
   sumSchemaSize,
   writePgRows,
 } from "./statements";
 
-const POOL_OPTIONS = { max: 10, idle_timeout: 30, connect_timeout: 10 };
+const POOL_OPTIONS = { max: 10, idle_timeout: 30, connect_timeout: 10, prepare: false };
 
 type PgConnectionInput = string | PgConnectionConfig;
 
 export class PgAdapter implements IndexerAdapter {
   private readonly _sql: ReturnType<typeof postgres>;
   private readonly _types = new Set<string>();
+  private readonly _foldColumn = new Set<string>();
+  private readonly _foldReady = new Set<string>();
 
   constructor(connection: PgConnectionInput) {
     this._sql =
@@ -67,6 +76,7 @@ export class PgAdapter implements IndexerAdapter {
             err,
           );
         }
+        await this._prepareFold(schema);
       }
     } catch (err) {
       logger.error("indexer", "postgres adapter boot failed", err);
@@ -83,6 +93,32 @@ export class PgAdapter implements IndexerAdapter {
     await ensureHitsColumns(this._sql, schema);
 
     this._types.add(schema);
+    await this._prepareFold(schema);
+  }
+
+  private async _prepareFold(schema: string): Promise<void> {
+    try {
+      if (!(await ensureFoldColumn(this._sql, schema))) return;
+      this._foldColumn.add(schema);
+    } catch (err) {
+      logger.warn(
+        "indexer",
+        `accent-insensitive column unavailable for schema=${schema}, will retry on next boot`,
+        err,
+      );
+      return;
+    }
+    void ensureFoldIndex(this._sql, schema)
+      .then((ready) => {
+        if (ready && this._foldColumn.has(schema)) this._foldReady.add(schema);
+      })
+      .catch((err) =>
+        logger.warn(
+          "indexer",
+          `accent-insensitive index build failed for schema=${schema}, will retry on next boot`,
+          err,
+        ),
+      );
   }
 
   discoverTypes(): string[] {
@@ -102,7 +138,8 @@ export class PgAdapter implements IndexerAdapter {
   async writeBatch(type: string, rows: IndexRow[], now: number, window: number): Promise<void> {
     const schema = safeSlug(type);
     await this.open(type);
-    await this._sql.begin(async (tx) => writePgRows(tx, schema, rows, now, window));
+    const withFold = this._foldColumn.has(schema);
+    await this._sql.begin(async (tx) => writePgRows(tx, schema, rows, now, window, withFold));
   }
 
   async importRows(
@@ -111,7 +148,7 @@ export class PgAdapter implements IndexerAdapter {
   ): Promise<{ urls: number; hits: number }> {
     const schema = safeSlug(type);
     await this.open(type);
-    return importPgRows(this._sql, schema, type, rows);
+    return importPgRows(this._sql, schema, type, rows, this._foldColumn.has(schema));
   }
 
   async queryExact(
@@ -136,14 +173,30 @@ export class PgAdapter implements IndexerAdapter {
     offset = 0,
   ): Promise<UrlRow[]> {
     const schema = safeSlug(type);
-    const pgExpr = splitTerms(queryNorm)
-      .map((t) => (canPrefix(t) ? `${t.token}:*` : t.token))
-      .join(" & ");
+    const pgExpr = buildTsQuery(queryNorm);
     if (!pgExpr) return [];
+    const foldExpr = this._foldReady.has(schema) ? buildTsQuery(stripAccents(queryNorm)) : null;
     try {
-      return await selectFuzzy(this._sql, schema, type, queryNorm, pgExpr, limit, offset);
+      return await selectFuzzy(this._sql, schema, type, queryNorm, pgExpr, limit, offset, foldExpr || null);
     } catch (err) {
       logger.warn("indexer", `queryFuzzy failed for type=${type}`, err);
+      return [];
+    }
+  }
+
+  async querySubstring(
+    type: string,
+    queryNorm: string,
+    needles: string[],
+    limit: number,
+    offset = 0,
+  ): Promise<UrlRow[]> {
+    if (needles.length === 0) return [];
+    const schema = safeSlug(type);
+    try {
+      return await selectSubstring(this._sql, schema, type, queryNorm, needles, limit, offset);
+    } catch (err) {
+      logger.warn("indexer", `querySubstring failed for type=${type}`, err);
       return [];
     }
   }
@@ -255,6 +308,8 @@ export class PgAdapter implements IndexerAdapter {
     const schema = safeSlug(type);
     await this._sql`DROP SCHEMA IF EXISTS ${this._sql(schema)} CASCADE`;
     this._types.delete(schema);
+    this._foldColumn.delete(schema);
+    this._foldReady.delete(schema);
   }
 
   async pruneType(type: string, cfg: IndexerConfig): Promise<void> {

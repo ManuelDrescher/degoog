@@ -1,8 +1,10 @@
 import { canPrefix, splitTerms } from "../../shared/terms";
 
+const quoteFts = (token: string): string => `"${token.replace(/"/g, '""')}"`;
+
 export const buildFtsQuery = (queryNorm: string): string =>
   splitTerms(queryNorm)
-    .map((t) => (canPrefix(t) ? `"${t.token}"*` : `"${t.token}"`))
+    .map((t) => (canPrefix(t) ? `${quoteFts(t.token)}*` : quoteFts(t.token)))
     .join(" AND ");
 
 export const escapeLike = (s: string): string =>
