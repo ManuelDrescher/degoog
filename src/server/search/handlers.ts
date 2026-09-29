@@ -2,7 +2,7 @@ import { search, searchSingleEngine } from "./index";
 import { scoreResults } from "./scoring";
 import type { SearchParams } from "../types/search";
 import { signResultThumbnails } from "../utils/net/proxy-sign";
-import { applyDomainRules } from "./domain-rules";
+import { applyMergedDomainRules, rewriteEngineRuns } from "./domain-rules";
 import { resolveSearchOverrides } from "./overrides";
 import { recordIndexBasis } from "./indexing";
 import { getInstanceSettings } from "../utils/settings/server-settings";
@@ -49,12 +49,12 @@ export async function handleSearch(params: SearchParams) {
 
   const settings = await getInstanceSettings();
 
-  const displayResults = await applyDomainRules(response.results);
+  const displayResults = await applyMergedDomainRules(response.results);
   const indexedUrls = await recordIndexBasis(
     asBoolean(settings.degoogIndexerEnabled),
     query,
     type,
-    await applyDomainRules(indexBasis),
+    await applyMergedDomainRules(indexBasis),
     { lang: resolvedLang, timeFilter: resolvedTime, dateFrom, dateTo, imageFilter },
   );
 
@@ -140,17 +140,19 @@ export async function handleRetry(
   );
   const knownRuns = [...(await readActiveRuns(others, scope)), ...liveRuns];
 
-  const merged = scoreResults([
-    ...knownRuns.map(({ engine, run }) => ({
-      results: run.results,
-      multiplier: engine.score,
-    })),
-    { results: newResults, multiplier: retried?.score ?? 1 },
-  ]);
+  const merged = scoreResults(
+    await rewriteEngineRuns([
+      ...knownRuns.map(({ engine, run }) => ({
+        results: run.results,
+        multiplier: engine.score,
+      })),
+      { results: newResults, multiplier: retried?.score ?? 1 },
+    ]),
+  );
   const engineTimings = [...knownRuns.map(({ run }) => run.timing), timing];
 
   const settings = await getInstanceSettings();
-  const displayMerged = await applyDomainRules(merged);
+  const displayMerged = await applyMergedDomainRules(merged);
   const indexedUrls = await recordIndexBasis(
     asBoolean(settings.degoogIndexerEnabled),
     query,

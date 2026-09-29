@@ -3,7 +3,7 @@ import { search } from "../../search";
 import type { SearchType } from "../../types/search";
 import { _applyRateLimit, parseEngineConfig } from "../../utils/search";
 import { guardApiKey } from "../../utils/security/api-key-guard";
-import { applyDomainRules } from "../../search/domain-rules";
+import { applyMergedDomainRules } from "../../search/domain-rules";
 import { logger } from "../../utils/logger";
 import { publicBodyLimit } from "../_guards";
 
@@ -21,7 +21,7 @@ const _feelLucky = async (
   const engines = parseEngineConfig(params);
   const type = "web" as SearchType;
   const response = await search(query, engines, type, 1);
-  const luckyResults = await applyDomainRules(response.results);
+  const luckyResults = await applyMergedDomainRules(response.results);
   if (luckyResults.length > 0) return c.redirect(luckyResults[0].url);
   return c.json({ error: "No results found" }, 404);
 };

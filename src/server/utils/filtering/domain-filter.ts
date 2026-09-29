@@ -109,9 +109,9 @@ const getParsed = async (): Promise<ParsedLists> => {
   return _parsed;
 };
 
-export const filterBlockedDomains = async (
-  results: ScoredResult[],
-): Promise<ScoredResult[]> => {
+export const filterBlockedDomains = async <T extends { url: string }>(
+  results: T[],
+): Promise<T[]> => {
   const settings = await getInstanceSettings();
   if (!asBoolean(settings.domainBlockEnabled)) return results;
 
@@ -129,9 +129,9 @@ export const filterBlockedDomains = async (
   });
 };
 
-export const applyDomainReplacements = async (
-  results: ScoredResult[],
-): Promise<ScoredResult[]> => {
+export const applyDomainReplacements = async <T extends { url: string }>(
+  results: T[],
+): Promise<T[]> => {
   const settings = await getInstanceSettings();
   if (!asBoolean(settings.domainReplaceEnabled)) return results;
 

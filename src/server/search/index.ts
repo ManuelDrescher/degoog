@@ -37,6 +37,7 @@ import { reportEngineRun } from "../utils/extension-support/run-observers";
 import { createSearchEngineContext } from "./engine-context";
 import { getEngineTimeout } from "./engine-timeout";
 import { scoreResults } from "./scoring";
+import { rewriteEngineRuns } from "./domain-rules";
 
 const _withTimeout = <T>(
   promise: Promise<T>,
@@ -262,11 +263,13 @@ export const search = async (
     ),
   );
 
-  const allResults = runs.map((run, i) => ({
-    results: run.results,
-    multiplier: rawActiveEngines[i].score,
-    name: run.timing.name,
-  }));
+  const allResults = await rewriteEngineRuns(
+    runs.map((run, i) => ({
+      results: run.results,
+      multiplier: rawActiveEngines[i].score,
+      name: run.timing.name,
+    })),
+  );
   const engineTimings: EngineTiming[] = runs.map((run) => run.timing);
 
   const scored = scoreResults(allResults);

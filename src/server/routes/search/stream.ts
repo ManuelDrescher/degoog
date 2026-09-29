@@ -15,7 +15,7 @@ import { _applyRateLimit, isValidQuery } from "../../utils/search";
 import { resolveSearchOverrides } from "../../search/overrides";
 import { recordIndexBasis } from "../../search/indexing";
 import { guardApiKey } from "../../utils/security/api-key-guard";
-import { applyDomainRules } from "../../search/domain-rules";
+import { applyMergedDomainRules, rewriteEngineRuns } from "../../search/domain-rules";
 import { signResultThumbnails } from "../../utils/net/proxy-sign";
 import { parseSearchRequest } from "./parsers";
 import { getInstanceSettings } from "../../utils/settings/server-settings";
@@ -95,7 +95,7 @@ router.get("/api/search/stream", async (c) => {
 
       const merged = async (): Promise<ScoredResult[]> =>
         signResultThumbnails(
-          tagIndexRelation(await applyDomainRules(scoreResults(allRawResults))),
+          tagIndexRelation(await applyMergedDomainRules(scoreResults(allRawResults))),
         );
 
       const enginePromises = rawActiveEngines.map(
@@ -129,7 +129,9 @@ router.get("/api/search/stream", async (c) => {
             lastPages = pages;
 
             if (timing.resultCount > 0) {
-              allRawResults.push({ results, multiplier: score, name: engineName });
+              allRawResults.push(
+                ...(await rewriteEngineRuns([{ results, multiplier: score, name: engineName }])),
+              );
               allTimings.push(timing);
               allPages.push(pages);
               _send("engine-result", {
@@ -170,7 +172,7 @@ router.get("/api/search/stream", async (c) => {
         const totalTime = Math.round(performance.now() - start);
 
         const indexerSettings = await getInstanceSettings();
-        const indexBasis = await applyDomainRules(
+        const indexBasis = await applyMergedDomainRules(
           scoreResults(allRawResults.filter((e) => e.name !== DEGOOG_ENGINE_NAME)),
         );
         const indexedUrls = await recordIndexBasis(
