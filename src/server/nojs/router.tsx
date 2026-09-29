@@ -5,7 +5,11 @@ import {
   matchBangCommand,
   type BangMatch,
 } from "../extensions/commands/registry";
-import { getDefaultEngineConfig, getEngineSearchType } from "../extensions/engines/catalog";
+import {
+  getDefaultEngineConfig,
+  getEngineSearchType,
+  singleEngineConfig,
+} from "../extensions/engines/catalog";
 import { build404 } from "../routes/pages/pages";
 import { handleRetry, handleSearch } from "../search/handlers";
 import { handleTabSearch } from "../search/tab-search";
@@ -152,7 +156,7 @@ const _runSearch = async (
         bang.query,
         query,
         resolveBuiltinSearchType(resolvedType) || WEB_TAB_ID,
-        { [bang.engineId]: true },
+        singleEngineConfig(bang.engineId),
       ),
     );
     return _outcome(response, false);

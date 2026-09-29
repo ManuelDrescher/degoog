@@ -34,7 +34,7 @@ import {
   abortStreamingSearch,
   performStreamingSearch,
 } from "../streaming/streaming-search";
-import { buildSearchBody, buildSearchUrl } from "../../net/url";
+import { buildCommandUrl, buildSearchBody, buildSearchUrl } from "../../net/url";
 import { searchAuthHeaders, appendSearchAuthParams } from "../../net/request";
 import { getBase } from "../../net/base-url";
 import { onWindowEvent } from "../../dom/window-event";
@@ -211,7 +211,7 @@ async function _performSearchWithBang(
   const resultsList = document.getElementById("results-list");
   try {
     const [cmdRes, searchRes] = await Promise.all([
-      fetch(`${getBase()}/api/command?q=${encodeURIComponent(bangQuery)}`),
+      fetch(appendSearchAuthParams(buildCommandUrl(bangQuery, type, 1))),
       fetch(appendSearchAuthParams(searchUrl)),
     ]);
     const searchData = (await searchRes.json()) as SearchResponse;
@@ -315,13 +315,9 @@ async function _performBangCommand(
   }
 
   try {
-    const apiParams = new URLSearchParams({ q: query });
-    apiParams.set("type", _type);
-    if (page > 1) apiParams.set("page", String(page));
-    if (state.currentTimeFilter && state.currentTimeFilter !== "any") {
-      apiParams.set("time", state.currentTimeFilter);
-    }
-    const res = await fetch(`${getBase()}/api/command?${apiParams.toString()}`);
+    const res = await fetch(
+      appendSearchAuthParams(buildCommandUrl(query, _type, page)),
+    );
     if (!res.ok) throw new Error("not found");
     const data = (await res.json()) as {
       type: string;

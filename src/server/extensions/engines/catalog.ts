@@ -86,6 +86,11 @@ const isEngineEnabled = (
   return indexerOn && id === DEGOOG_ENGINE_ID;
 };
 
+export const singleEngineConfig = (engineId: string): EngineConfig => ({
+  [engineId]: true,
+  [DEGOOG_ENGINE_ID]: engineId === DEGOOG_ENGINE_ID,
+});
+
 export const listEngines = async (): Promise<EngineCatalogEntry[]> => {
   const origins = await storeOrigins();
   return Promise.all(

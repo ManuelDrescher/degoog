@@ -78,6 +78,13 @@ export const buildSearchUrl = (
 ): string =>
   `${getBase()}/api/search?${buildSearchParams(query, engines, type, page).toString()}`;
 
+export const buildCommandUrl = (
+  query: string,
+  type: string,
+  page: number,
+): string =>
+  `${getBase()}/api/command?${buildSearchParams(query, {}, type, page).toString()}`;
+
 export const buildSearchBody = (
   query: string,
   engines: Record<string, boolean>,

@@ -955,7 +955,7 @@ describe("nojs bang commands", () => {
     const html = await text("/nojs/search?q=!fake%20kittens");
     expect(searchCalls).toHaveLength(1);
     expect(searchCalls[0].query).toBe("kittens");
-    expect(searchCalls[0].engines).toEqual({ "fake-engine": true });
+    expect(searchCalls[0].engines).toEqual({ "fake-engine": true, "degoog-engine": false });
     expect(html).toContain("First result");
   });
 

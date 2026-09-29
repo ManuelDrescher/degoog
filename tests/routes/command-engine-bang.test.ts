@@ -1,0 +1,187 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
+import type { SearchEngine } from "../../src/server/types/extension";
+import { ImgNsfw, type TimeFilter } from "../../src/server/types/search";
+import { clearServerSettingsCache } from "../../src/server/utils/settings/server-settings";
+import { writeDomainList } from "../../src/server/utils/filtering/domain-lists";
+import { initServerKey } from "../../src/server/utils/security/server-key";
+import {
+  INVALIDATE_SCOPE,
+  publishInvalidate,
+} from "../../src/server/utils/cache/cache-valkey";
+
+const REGISTRY_MOD = "../../src/server/extensions/commands/registry";
+const CATALOG_MOD = "../../src/server/extensions/engines/catalog";
+const ENGINE_SETTINGS_MOD = "../../src/server/extensions/engines/engine-settings";
+const registryReal = { ...(await import(REGISTRY_MOD)) };
+const catalogReal = { ...(await import(CATALOG_MOD)) };
+const engineSettingsReal = { ...(await import(ENGINE_SETTINGS_MOD)) };
+const { DEGOOG_ENGINE_ID } = await import(
+  "../../src/server/extensions/engines/builtins/degoog"
+);
+
+const ENV_KEYS = [
+  "DEGOOG_DATA_DIR",
+  "DEGOOG_SERVER_SETTINGS_FILE",
+  "DEGOOG_PLUGIN_SETTINGS_FILE",
+  "DEGOOG_SEARCH_LISTS_FILE",
+];
+const savedEnv = new Map(ENV_KEYS.map((k) => [k, process.env[k]]));
+let tempDir = "";
+let queryCounter = 0;
+type EngineContext = Parameters<SearchEngine["executeSearch"]>[3];
+
+let seen: { query: string; time: TimeFilter; context?: EngineContext }[] = [];
+
+const ENGINE_ID = "fake-images";
+
+const fakeEngine: SearchEngine = {
+  name: "Fake Images",
+  executeSearch: async (query, _page, time, context) => {
+    seen.push({ query, time: time ?? "any", context });
+    return [
+      {
+        title: "<b>dog</b>",
+        url: "https://www.reddit.com/r/dogs?utm_source=bing",
+        snippet: "",
+        source: "Fake Images",
+        thumbnail: "https://tse1.mm.bing.net/th?id=dog",
+        imageUrl: "https://cdn.example.com/dog.jpg",
+      },
+      {
+        title: "nope",
+        url: "https://blocked.example.com/x",
+        snippet: "",
+        source: "Fake Images",
+        thumbnail: "https://tse1.mm.bing.net/th?id=nope",
+      },
+    ];
+  },
+};
+
+let router: { request: (req: Request | string) => Response | Promise<Response> };
+
+const writeSettings = async (extra: Record<string, unknown> = {}): Promise<void> => {
+  writeFileSync(
+    process.env.DEGOOG_SERVER_SETTINGS_FILE!,
+    JSON.stringify({
+      wizard: true,
+      instanceId: "test",
+      settings: { domainReplaceEnabled: true, domainBlockEnabled: true, ...extra },
+    }),
+  );
+  clearServerSettingsCache();
+  await publishInvalidate(INVALIDATE_SCOPE.SERVER_SETTINGS);
+};
+
+const bang = (params: Record<string, string> = {}): Promise<Response> | Response =>
+  router.request(
+    `http://localhost/api/command?${new URLSearchParams({
+      q: `dog${++queryCounter} !fake`,
+      ...params,
+    }).toString()}`,
+  );
+
+beforeAll(async () => {
+  tempDir = mkdtempSync(join(tmpdir(), "degoog-command-bang-"));
+  process.env.DEGOOG_DATA_DIR = tempDir;
+  process.env.DEGOOG_SERVER_SETTINGS_FILE = join(tempDir, "server-settings.json");
+  process.env.DEGOOG_PLUGIN_SETTINGS_FILE = join(tempDir, "plugin-settings.json");
+  process.env.DEGOOG_SEARCH_LISTS_FILE = join(tempDir, "search-lists.json");
+  writeFileSync(process.env.DEGOOG_PLUGIN_SETTINGS_FILE, "{}");
+  await writeSettings();
+  await initServerKey();
+  await writeDomainList("domainReplaceList", "reddit.com -> redlib.example.com");
+  await writeDomainList("domainBlockList", "blocked.example.com");
+
+  const active = [{ id: ENGINE_ID, instance: fakeEngine, score: 1 }];
+  mock.module(REGISTRY_MOD, () => ({
+    ...registryReal,
+    matchBangCommand: (q: string) => ({
+      type: "engine",
+      engineId: ENGINE_ID,
+      query: q.replace(/\s*!\S+$/, ""),
+    }),
+  }));
+  mock.module(CATALOG_MOD, () => ({
+    ...catalogReal,
+    getEngineSearchType: async () => "images",
+    getEnginesForCustomType: async () => active,
+    getActiveWebEngines: async () => active,
+    getEngineMap: () => ({ [ENGINE_ID]: fakeEngine }),
+    getEngineIdByInstance: (instance: SearchEngine) =>
+      instance === fakeEngine ? ENGINE_ID : undefined,
+    getEngineSettingsView: async () => ({}),
+    getEngineDefaultTransport: () => undefined,
+  }));
+  mock.module(ENGINE_SETTINGS_MOD, () => ({
+    ...engineSettingsReal,
+    engineFullSchema: () => [],
+  }));
+  router = (await import("../../src/server/routes/extensions/commands")).default;
+});
+
+beforeEach(async () => {
+  seen = [];
+  await writeSettings();
+});
+
+afterAll(() => {
+  mock.module(REGISTRY_MOD, () => registryReal);
+  mock.module(CATALOG_MOD, () => catalogReal);
+  mock.module(ENGINE_SETTINGS_MOD, () => engineSettingsReal);
+  for (const [k, v] of savedEnv) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+  clearServerSettingsCache();
+  rmSync(tempDir, { recursive: true, force: true });
+});
+
+describe("GET /api/command engine bang", () => {
+  test("runs through the same result pipeline as a normal search", async () => {
+    const res = await bang({ type: "images" });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.type).toBe("engine");
+    expect(body.engineId).toBe(ENGINE_ID);
+    expect(body.primaryType).toBe("images");
+    expect(body.results).toHaveLength(1);
+    const [r] = body.results;
+    expect(r.thumbnail).toStartWith("/api/proxy/image?url=");
+    expect(r.imageUrl).toStartWith("/api/proxy/image?url=");
+    expect(new URL(r.url).hostname).toBe("redlib.example.com");
+    expect(r.url).not.toContain("utm_source");
+    expect(r.title).toBe("dog");
+  });
+
+  test("forwards language, time and image filters to the engine", async () => {
+    const res = await bang({ type: "images", lang: "de", time: "week", safeMode: ImgNsfw.ON });
+    expect(res.status).toBe(200);
+    expect(seen).toHaveLength(1);
+    expect(seen[0].time).toBe("week");
+    expect(seen[0].context?.lang).toBe("de");
+    expect(seen[0].context?.imageFilter?.nsfw).toBe(ImgNsfw.ON);
+  });
+
+  test("enforces the search API key like /api/search", async () => {
+    await writeSettings({ apiKeySearchEnabled: true });
+    const res = await bang({ type: "images" });
+    expect(res.status).toBe(401);
+    expect(seen).toHaveLength(0);
+  });
+});
+
+describe("singleEngineConfig", () => {
+  test("keeps the index engine out of other engines' bangs", () => {
+    expect(catalogReal.singleEngineConfig("brave")).toEqual({
+      brave: true,
+      [DEGOOG_ENGINE_ID]: false,
+    });
+    expect(catalogReal.singleEngineConfig(DEGOOG_ENGINE_ID)).toEqual({
+      [DEGOOG_ENGINE_ID]: true,
+    });
+  });
+});

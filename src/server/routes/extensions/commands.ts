@@ -3,13 +3,19 @@ import {
   getCommandsApiResponse,
   matchBangCommand,
 } from "../../extensions/commands/registry";
-import { getEngineSearchType } from "../../extensions/engines/catalog";
-import { searchSingleEngine } from "../../search";
-import type { SearchType, TimeFilter } from "../../types/search";
+import {
+  getEngineSearchType,
+  singleEngineConfig,
+} from "../../extensions/engines/catalog";
+import { handleSearch } from "../../search/handlers";
+import type { SearchType } from "../../types/search";
 import { getLocale } from "../../utils/hono";
 import { logger } from "../../utils/logger";
 import { isDisabled } from "../../utils/settings/plugin-settings";
 import { buildSignedProxyUrl } from "../../utils/net/proxy-sign";
+import { _applyRateLimit } from "../../utils/search";
+import { guardApiKey } from "../../utils/security/api-key-guard";
+import { parseSearchRequest } from "../search/parsers";
 import { getClientIp } from "../../utils/net/request";
 import { applyFilter, syncVortexSignal } from "../../utils/extension-support/translation-circuit";
 
@@ -32,49 +38,37 @@ router.get("/api/command", async (c) => {
     }
   }
 
-  const page = Math.max(
-    1,
-    Math.min(10, Math.floor(Number(c.req.query("page"))) || 1),
-  );
-  const timeFilter = (c.req.query("time") || "any") as TimeFilter;
-
   if (match.type === "engine") {
     if (!match.query.trim())
       return c.json(
         { error: "Missing search query after engine shortcut" },
         400,
       );
+    const limitRes = await _applyRateLimit(c);
+    if (limitRes) return limitRes;
+    const authRes = await guardApiKey(c, "apiKeySearchEnabled");
+    if (authRes) return authRes;
     const requestedType = c.req.query("type")?.trim() || undefined;
     const resolvedType =
       (await getEngineSearchType(match.engineId, requestedType)) ?? "web";
-    const { results, timing, pages } = await searchSingleEngine(
-      match.engineId,
-      match.query,
-      page,
-      timeFilter,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      resolvedType as SearchType,
-    );
+    const response = await handleSearch({
+      ...parseSearchRequest(c),
+      query: match.query,
+      engines: singleEngineConfig(match.engineId),
+      searchType: resolvedType as SearchType,
+    });
     return c.json({
+      ...response,
       type: "engine",
       engineId: match.engineId,
-      primaryType: resolvedType,
-      results: results.map((r, i) => ({
-        ...r,
-        score: Math.max(10 - i, 1),
-        sources: [r.source],
-      })),
-      query: match.query,
-      totalTime: timing.time,
-      engineTimings: [timing],
-      relatedSearches: [],
-      totalPages: pages,
+      primaryType: response.type,
     });
   }
+
+  const page = Math.max(
+    1,
+    Math.min(10, Math.floor(Number(c.req.query("page"))) || 1),
+  );
 
   const clientIp = getClientIp(c);
 
