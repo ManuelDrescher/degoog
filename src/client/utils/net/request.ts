@@ -10,12 +10,12 @@ export const jsonHeaders = (getToken: () => string | null): Record<string, strin
   return base;
 };
 
-const _w = window as Window & {
+type SearchAuthWindow = Window & {
   __DEGOOG_SEARCH_AUTH__?: { n: string; s: string };
 };
 
 export const getSearchAuth = (): { n: string; s: string } | null =>
-  _w.__DEGOOG_SEARCH_AUTH__ ?? null;
+  (window as SearchAuthWindow).__DEGOOG_SEARCH_AUTH__ ?? null;
 
 export const searchAuthHeaders = (): Record<string, string> => {
   const auth = getSearchAuth();

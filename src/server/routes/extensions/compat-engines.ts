@@ -1,6 +1,6 @@
 import { Hono, type Context } from "hono";
 import { readObjectBody } from "../../utils/hono";
-import { canBalrogPass, gandalf } from "../settings/settings-auth";
+import { gandalfAtTheGate } from "../settings/settings-auth";
 import {
   compatLayer,
   isLayerOn,
@@ -21,7 +21,7 @@ interface Resolved {
 }
 
 const _guard = async (c: Context): Promise<Response | Resolved> => {
-  if (!(await gandalf(canBalrogPass(c))))
+  if (!(await gandalfAtTheGate(c)))
     return c.json({ error: "You shall not pass!" }, 401);
   const layer = compatLayer(c.req.param("layer") ?? "");
   if (!layer) return c.json({ error: "Unknown compatibility layer" }, 404);

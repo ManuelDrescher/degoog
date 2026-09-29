@@ -166,6 +166,27 @@ describe("GET /api/command engine bang", () => {
     expect(seen[0].context?.imageFilter?.nsfw).toBe(ImgNsfw.ON);
   });
 
+  test("POST keeps the query out of the URL and runs the same pipeline", async () => {
+    const res = await router.request(
+      new Request("http://localhost/api/command", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: `dog${++queryCounter} !fake`,
+          type: "images",
+          lang: "it",
+          safeMode: ImgNsfw.ON,
+        }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results[0].thumbnail).toStartWith("/api/proxy/image?url=");
+    expect(new URL(body.results[0].url).hostname).toBe("redlib.example.com");
+    expect(seen[0].context?.lang).toBe("it");
+    expect(seen[0].context?.imageFilter?.nsfw).toBe(ImgNsfw.ON);
+  });
+
   test("enforces the search API key like /api/search", async () => {
     await writeSettings({ apiKeySearchEnabled: true });
     const res = await bang({ type: "images" });

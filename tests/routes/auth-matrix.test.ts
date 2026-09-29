@@ -19,6 +19,7 @@ const MODULES = [
   "pages",
   "plugin-assets",
   "plugin-routes",
+  "privacy-policy",
   "proxy",
   "rate-limit",
   "search",
@@ -58,6 +59,10 @@ const PUBLIC_MUTATIONS = new Set([
   "POST /api/suggest",
   "POST /api/slots",
   "POST /api/slots/glance",
+  "POST /api/tab-search",
+  "POST /api/command",
+  "POST /api/lucky",
+  "POST /api/uovadipasqua/match",
   "POST /nojs/search",
 ]);
 

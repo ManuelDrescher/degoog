@@ -16,6 +16,7 @@ const MODULES = [
   "pages",
   "plugin-assets",
   "plugin-routes",
+  "privacy-policy",
   "proxy",
   "rate-limit",
   "search",

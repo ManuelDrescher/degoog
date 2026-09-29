@@ -1,8 +1,10 @@
-import { afterEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeAll, describe, expect, mock, test } from "bun:test";
 import type { SearchEngine, SearchResultTab } from "../../src/server/types/extension";
 import type { SearchResult } from "../../src/shared/search-types";
 
 const ENGINES_MOD = "../../src/server/extensions/engines/catalog";
+const ENGINE_SETTINGS_MOD = "../../src/server/extensions/engines/engine-settings";
+const LOADER_MOD = "../../src/server/extensions/engines/loader";
 const SETTINGS_MOD = "../../src/server/utils/settings/plugin-settings";
 const TABS_MOD = "../../src/server/extensions/search-result-tabs/registry";
 const SERVER_SETTINGS_MOD = "../../src/server/utils/settings/server-settings";
@@ -11,6 +13,10 @@ const enginesReal = { ...(await import(ENGINES_MOD)) };
 const settingsReal = { ...(await import(SETTINGS_MOD)) };
 const tabsReal = { ...(await import(TABS_MOD)) };
 const serverSettingsReal = { ...(await import(SERVER_SETTINGS_MOD)) };
+const engineSettingsReal = { ...(await import(ENGINE_SETTINGS_MOD)) };
+const loaderReal = { ...(await import(LOADER_MOD)) };
+const { clear: clearCaches } = await import("../../src/server/utils/cache/cache");
+const { initServerKey } = await import("../../src/server/utils/security/server-key");
 
 const FALLBACK_TAB_PAGES = 10;
 
@@ -20,6 +26,7 @@ type Harness = {
   engines?: EngineEntry[];
   tab?: SearchResultTab | null;
   disabled?: string[];
+  settings?: Record<string, unknown>;
 };
 
 type TabSearchBody = {
@@ -31,6 +38,7 @@ type TabSearchBody = {
 };
 
 let requestedEngineTypes: string[] = [];
+let requestedConfigs: (Record<string, boolean> | undefined)[] = [];
 let disabledLookups: string[] = [];
 
 const makeResult = (source: string, n: number): SearchResult => ({
@@ -69,19 +77,40 @@ const makeBrokenEngine = (name: string): EngineEntry => ({
   },
 });
 
-const harness = ({ engines = [], tab = null, disabled = [] }: Harness) => {
+const harness = ({ engines = [], tab = null, disabled = [], settings = {} }: Harness) => {
   requestedEngineTypes = [];
+  requestedConfigs = [];
   disabledLookups = [];
   mock.module(SERVER_SETTINGS_MOD, () => ({
     ...serverSettingsReal,
-    getInstanceSettings: async () => ({}),
+    getInstanceSettings: async () => settings,
   }));
   mock.module(ENGINES_MOD, () => ({
     ...enginesReal,
-    getEnginesForCustomType: async (engineType: string) => {
+    getEnginesForCustomType: async (
+      engineType: string,
+      config?: Record<string, boolean>,
+    ) => {
       requestedEngineTypes.push(engineType);
-      return engines;
+      requestedConfigs.push(config);
+      return engines.filter((e) => config?.[e.id] !== false);
     },
+    getEngineMap: () =>
+      Object.fromEntries(engines.map((e) => [e.id, e.instance])),
+    getEngineIdByInstance: (instance: SearchEngine) =>
+      engines.find((e) => e.instance === instance)?.id,
+    getEngineSettingsView: async () => ({}),
+    getEngineDefaultTransport: () => undefined,
+    getDefaultEngineConfig: () =>
+      Object.fromEntries(engines.map((e) => [e.id, true])),
+  }));
+  mock.module(ENGINE_SETTINGS_MOD, () => ({
+    ...engineSettingsReal,
+    engineFullSchema: () => [],
+  }));
+  mock.module(LOADER_MOD, () => ({
+    ...loaderReal,
+    listEngineIds: () => engines.map((e) => e.id),
   }));
   mock.module(TABS_MOD, () => ({
     ...tabsReal,
@@ -110,7 +139,14 @@ const call = async (
 const body = async (res: Response): Promise<TabSearchBody> =>
   (await res.json()) as TabSearchBody;
 
-afterEach(() => {
+beforeAll(async () => {
+  await initServerKey();
+});
+
+afterEach(async () => {
+  await clearCaches();
+  mock.module(ENGINE_SETTINGS_MOD, () => engineSettingsReal);
+  mock.module(LOADER_MOD, () => loaderReal);
   mock.module(ENGINES_MOD, () => enginesReal);
   mock.module(SETTINGS_MOD, () => settingsReal);
   mock.module(TABS_MOD, () => tabsReal);
@@ -138,7 +174,7 @@ describe("GET /api/tab-search validation", () => {
 });
 
 describe("GET /api/tab-search engine fan-out", () => {
-  test("merges every engine declaring the type and scores by running index", async () => {
+  test("merges every engine declaring the type like page one does and scores by position", async () => {
     harness({
       engines: [
         makeEngine("Alpha", makeResults("Alpha", 2)),
@@ -154,14 +190,14 @@ describe("GET /api/tab-search engine fan-out", () => {
     expect(json.page).toBe(3);
     expect(json.results.map((r) => r.title)).toEqual([
       "Alpha 1",
-      "Alpha 2",
       "Beta 1",
+      "Alpha 2",
     ]);
     expect(json.results.map((r) => r.score)).toEqual([100, 99, 98]);
     expect(json.results.map((r) => r.sources)).toEqual([
       ["Alpha"],
-      ["Alpha"],
       ["Beta"],
+      ["Alpha"],
     ]);
     expect(json.engineTimings.map((t) => t.name)).toEqual(["Alpha", "Beta"]);
     expect(json.engineTimings.map((t) => t.resultCount)).toEqual([2, 1]);
@@ -432,5 +468,128 @@ describe("GET /api/tab-search client ip", () => {
       if (previous === undefined) delete process.env.DEGOOG_DISTRUST_PROXY;
       else process.env.DEGOOG_DISTRUST_PROXY = previous;
     }
+  });
+});
+
+describe("/api/tab-search privacy parity with normal search", () => {
+  type Seen = { query: string; time?: string; lang?: string; nsfw?: string };
+
+  const trackingEngine = (seen: Seen[]): EngineEntry => ({
+    id: "tracker-engine",
+    instance: {
+      name: "Tracker",
+      executeSearch: async (query, _page, time, context) => {
+        seen.push({
+          query,
+          time,
+          lang: context?.lang,
+          nsfw: context?.imageFilter?.nsfw,
+        });
+        return [
+          {
+            title: "<b>cats</b>",
+            url: "https://news.test/a?utm_source=x&fbclid=y&id=1",
+            snippet: "",
+            source: "Tracker",
+            thumbnail: "https://tse1.mm.bing.net/th?id=cats",
+          },
+        ];
+      },
+    },
+  });
+
+  test("runs the shared pipeline: ClearURLs, stripHtml, proxied thumbnails and sealed results", async () => {
+    const seen: Seen[] = [];
+    harness({ engines: [trackingEngine(seen)] });
+    const json = await body(await call("?tab=engine:news&q=parity1"));
+    const [r] = json.results as (SearchResult & { seal?: string })[];
+    expect(r.url).toBe("https://news.test/a?id=1");
+    expect(r.title).toBe("cats");
+    expect(r.thumbnail).toStartWith("/api/proxy/image?url=");
+    expect(typeof r.seal).toBe("string");
+  });
+
+  test("forwards language, time and safe mode to the engine", async () => {
+    const seen: Seen[] = [];
+    harness({ engines: [trackingEngine(seen)] });
+    await call("?tab=engine:images&q=parity2&lang=de&time=week&safeMode=on");
+    expect(seen).toEqual([
+      { query: "parity2", time: "week", lang: "de", nsfw: "on" },
+    ]);
+  });
+
+  test("never sends the query to an engine the visitor switched off", async () => {
+    const seen: Seen[] = [];
+    harness({ engines: [trackingEngine(seen)] });
+    const json = await body(
+      await call("?tab=engine:news&q=parity3&tracker-engine=false"),
+    );
+    expect(requestedConfigs[0]?.["tracker-engine"]).toBe(false);
+    expect(seen).toEqual([]);
+    expect(json.results).toEqual([]);
+  });
+
+  test("POST keeps the query out of the URL and honours the engine list", async () => {
+    const seen: Seen[] = [];
+    harness({ engines: [trackingEngine(seen)] });
+    const res = await call("", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tab: "engine:news",
+        query: "parity4",
+        engines: ["tracker-engine"],
+        lang: "fr",
+        page: 2,
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect((await body(res)).page).toBe(2);
+    expect(seen).toEqual([
+      { query: "parity4", time: "any", lang: "fr", nsfw: undefined },
+    ]);
+  });
+
+  test.each([["GET"], ["POST"]])(
+    "%s enforces the search API key like /api/search",
+    async (method) => {
+      const seen: Seen[] = [];
+      harness({
+        engines: [trackingEngine(seen)],
+        settings: { apiKeySearchEnabled: true },
+      });
+      const res =
+        method === "GET"
+          ? await call("?tab=engine:web&q=parity5")
+          : await call("", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ tab: "engine:web", query: "parity5" }),
+            });
+      expect(res.status).toBe(401);
+      expect(seen).toEqual([]);
+    },
+  );
+
+  test("plugin tab results get ClearURLs and stripHtml too", async () => {
+    harness({
+      tab: {
+        id: "solo-tab",
+        name: "Solo",
+        executeSearch: async () => ({
+          results: [
+            {
+              title: "<i>solo</i>",
+              url: "https://solo.test/x?utm_medium=y&k=1",
+              snippet: "",
+              source: "Solo",
+            },
+          ],
+        }),
+      },
+    });
+    const [r] = (await body(await call("?tab=solo-tab&q=parity6"))).results;
+    expect(r.url).toBe("https://solo.test/x?k=1");
+    expect(r.title).toBe("solo");
   });
 });

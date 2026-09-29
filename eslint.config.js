@@ -5,6 +5,7 @@ const INNER_HTML_ALLOWED = [
   "src/shared/ui/components/overlay/shell.ts",
   "src/client/modules/media/media.tsx",
   "src/client/modules/modals/docs-modal/docs.tsx",
+  "src/client/modules/modals/privacy-modal/privacy-modal.tsx",
   "src/client/modules/renderer/media/render-media.tsx",
   "src/client/modules/renderer/render-page.ts",
   "src/client/modules/renderer/render-slots.ts",

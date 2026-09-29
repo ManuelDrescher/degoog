@@ -4,7 +4,7 @@ import { state } from "../../state";
 import { getBase } from "../../utils/net/base-url";
 import { isImageSearchType, type ScoredResult } from "../../../shared/search-types";
 import { getEngines } from "../../utils/search/engines";
-import { buildCommandUrl, buildSearchBody, buildSearchUrl } from "../../utils/net/url";
+import { buildSearchBody, buildSearchUrl, fetchCommand } from "../../utils/net/url";
 import { searchAuthHeaders, appendSearchAuthParams } from "../../utils/net/request";
 
 let mediaObserver: IntersectionObserver | null = null;
@@ -69,9 +69,7 @@ export async function loadMoreMedia(type: string): Promise<void> {
   let res: Response;
   try {
     if (bangQuery) {
-      res = await fetch(
-        appendSearchAuthParams(buildCommandUrl(bangQuery, type, nextPage)),
-      );
+      res = await fetchCommand(bangQuery, type, nextPage);
     } else {
       const engines = await getEngines();
       res = state.postMethodEnabled

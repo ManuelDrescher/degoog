@@ -158,12 +158,24 @@ export function canBalrogPass(c: Context): string | undefined {
   return getTokenFromCookie(c) ?? fromHeader;
 }
 
+const CROSS_SITE = "cross-site";
+
+const _isCrossSite = (c: Context): boolean =>
+  c.req.header("sec-fetch-site") === CROSS_SITE;
+
+export async function gandalfAtTheGate(c: Context): Promise<boolean> {
+  if (_isCrossSite(c)) {
+    logger.debug("settings-auth", `cross-site request refused on ${c.req.path}`);
+    return false;
+  }
+  return gandalf(canBalrogPass(c));
+}
+
 export async function guardSettingsRoute(
   c: Context,
   route: string,
 ): Promise<Response | null> {
-  const token = canBalrogPass(c);
-  const valid = await gandalf(token);
+  const valid = await gandalfAtTheGate(c);
   if (!valid) {
     logger.debug("settings-auth", `401 on ${route}`);
     return c.json({ error: "You shall not pass!" }, 401);

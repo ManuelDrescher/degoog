@@ -1,3 +1,4 @@
+import { proxyMarkdownImages } from "../../utils/net/proxy-sign";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { canBalrogPass, gandalf } from "../settings/settings-auth";
@@ -419,7 +420,7 @@ router.get("/api/extensions/:id/readme", settingsAuth(), async (c) => {
   if (!exists || !readmePath) return c.json({ error: "Not found" }, 404);
   try {
     const markdown = await readFile(readmePath, "utf-8");
-    return c.json({ markdown });
+    return c.json({ markdown: proxyMarkdownImages(markdown) });
   } catch {
     return c.json({ error: "Not found" }, 404);
   }

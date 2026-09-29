@@ -4,6 +4,7 @@ const ROUTE_MODULE_PATHS: Record<string, string> = {
   extensions: "extensions/extensions",
   honeypot: "security/honeypot",
   pages: "pages/pages",
+  "privacy-policy": "settings/privacy-policy",
   "plugin-assets": "extensions/plugin-assets",
   "plugin-routes": "extensions/plugin-routes",
   "rate-limit": "security/rate-limit",

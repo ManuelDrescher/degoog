@@ -19,6 +19,7 @@ export interface ScoredResult extends SearchResult {
   sources: string[];
   insecure?: boolean;
   idx?: IndexRelation;
+  seal?: string;
 }
 
 export interface EngineTiming {

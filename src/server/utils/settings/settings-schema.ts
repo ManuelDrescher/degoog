@@ -16,6 +16,8 @@ export const SETTINGS_SCHEMA = {
   proxyUrls:                    { kind: "lines",   default: "" },
   imageProxyAllowLocal:         { kind: "boolean", default: false },
   imageProxyAllowList:          { kind: "lines",   default: "" },
+  blockClientLeaks:             { kind: "boolean", default: false },
+  privacyPolicy:                { kind: "string",  default: "" },
   rateLimitEnabled:             { kind: "boolean", default: false },
   rateLimitBurstWindow:         { kind: "number",  default: "60" },
   rateLimitBurstMax:            { kind: "number",  default: "30" },

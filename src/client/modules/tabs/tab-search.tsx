@@ -32,6 +32,9 @@ import { clearSlotPanels } from "../renderer/render-slots";
 import { buildResultContext, renderResults } from "../renderer/render";
 import { renderImgEngines } from "../filters/image-filters";
 import { getBase } from "../../utils/net/base-url";
+import { buildSearchBody, buildSearchParams } from "../../utils/net/url";
+import { appendSearchAuthParams, searchAuthHeaders } from "../../utils/net/request";
+import { getEngines } from "../../utils/search/engines";
 
 export async function performTabSearch(
   query: string,
@@ -50,12 +53,16 @@ export async function performTabSearch(
   const isInit = state.isInitialLoad;
   state.isInitialLoad = false;
 
+  const engineType = tabId.startsWith("engine:")
+    ? tabId.replace("engine:", "")
+    : "";
+  const streamingConfig = engineType ? await fetchStreamingConfig() : null;
   if (
-    tabId.startsWith("engine:") &&
+    streamingConfig?.enabled &&
     page === 1 &&
-    (await fetchStreamingConfig())
+    !state.postMethodEnabled &&
+    !streamingConfig.disabledTypes.includes(engineType)
   ) {
-    const engineType = tabId.replace("engine:", "");
     abortStreamingSearch();
     return performStreamingSearch(
       query,
@@ -65,6 +72,7 @@ export async function performTabSearch(
   }
 
   state.currentQuery = query;
+  state.currentBangQuery = "";
   state.currentType = `tab:${tabId}`;
   state.currentPage = page;
   destroyMediaObserver();
@@ -134,12 +142,21 @@ export async function performTabSearch(
   }
 
   try {
-    const params = new URLSearchParams({
-      tab: tabId,
-      q: query,
-      page: String(page),
-    });
-    const res = await fetch(`${getBase()}/api/tab-search?${params.toString()}`);
+    const engines = await getEngines();
+    const res = state.postMethodEnabled
+      ? await fetch(`${getBase()}/api/tab-search`, {
+          method: "POST",
+          body: JSON.stringify({
+            ...buildSearchBody(query, engines, tabType, page),
+            tab: tabId,
+            page,
+          }),
+          headers: {
+            "Content-Type": "application/json",
+            ...searchAuthHeaders(),
+          },
+        })
+      : await fetch(appendSearchAuthParams(_tabSearchUrl(query, engines, tabType, tabId, page)));
     const data = (await res.json()) as {
       results: ScoredResult[];
       totalPages?: number;
@@ -209,6 +226,20 @@ export async function performTabSearch(
     }
   })();
 }
+
+const _tabSearchUrl = (
+  query: string,
+  engines: Record<string, boolean>,
+  tabType: string,
+  tabId: string,
+  page: number,
+): string => {
+  const params = buildSearchParams(query, engines, tabType, page);
+  params.delete("type");
+  params.set("tab", tabId);
+  params.set("page", String(page));
+  return `${getBase()}/api/tab-search?${params.toString()}`;
+};
 
 function _renderTabResults(
   results: ScoredResult[],

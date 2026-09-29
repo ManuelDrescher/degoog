@@ -205,7 +205,6 @@ const _fetchExtract = async (
       signal: controller.signal,
       headers: { "User-Agent": getRandomUserAgent(), Accept: "text/html" },
     });
-    clearTimeout(timer);
     if (!res?.ok) return null;
     const ct = res.headers.get("content-type") ?? "";
     if (!ct.includes("text/html")) return null;
@@ -221,8 +220,9 @@ const _fetchExtract = async (
     return extracted;
   } catch (err) {
     logger.debug("at-a-glance", "extract fetch failed", err);
-    clearTimeout(timer);
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 };
 

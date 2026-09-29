@@ -1,4 +1,5 @@
 import { render } from "../../../shared/ui/tribute/dom";
+import { initLeakWatch } from "../../utils/app/leak-watch";
 import { AuthGate } from "./auth-gate";
 import { AuthMisconfigured } from "./auth-misconfigured";
 import { ErrorNotice } from "./error-notice";
@@ -312,6 +313,7 @@ async function _initPublicSettings(): Promise<void> {
 }
 
 async function _init(): Promise<void> {
+  initLeakWatch();
   _initSettingsBackLink();
   if (window.__DEGOOG_PUBLIC_INSTANCE__) {
     void _initPublicSettings();

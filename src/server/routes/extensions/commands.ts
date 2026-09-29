@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import {
   getCommandsApiResponse,
   matchBangCommand,
@@ -8,14 +8,15 @@ import {
   singleEngineConfig,
 } from "../../extensions/engines/catalog";
 import { handleSearch } from "../../search/handlers";
-import type { SearchType } from "../../types/search";
-import { getLocale } from "../../utils/hono";
+import type { SearchBody, SearchParams, SearchType } from "../../types/search";
+import { getLocale, readObjectBody } from "../../utils/hono";
 import { logger } from "../../utils/logger";
 import { isDisabled } from "../../utils/settings/plugin-settings";
 import { buildSignedProxyUrl } from "../../utils/net/proxy-sign";
 import { _applyRateLimit } from "../../utils/search";
 import { guardApiKey } from "../../utils/security/api-key-guard";
-import { parseSearchRequest } from "../search/parsers";
+import { parseSearchBody, parseSearchRequest } from "../search/parsers";
+import { publicBodyLimit } from "../_guards";
 import { getClientIp } from "../../utils/net/request";
 import { applyFilter, syncVortexSignal } from "../../utils/extension-support/translation-circuit";
 
@@ -25,8 +26,17 @@ router.get("/api/commands", async (c) => {
   return c.json(await getCommandsApiResponse());
 });
 
-router.get("/api/command", async (c) => {
-  const q = c.req.query("q");
+type CommandRequest = {
+  q: string | undefined;
+  type: string | undefined;
+  page: unknown;
+  search: Omit<SearchParams, "query">;
+};
+
+const _runCommand = async (
+  c: Context,
+  { q, type, page: rawPage, search }: CommandRequest,
+): Promise<Response> => {
   if (!q) return c.json({ error: "Missing query parameter 'q'" }, 400);
 
   const match = matchBangCommand(q);
@@ -48,11 +58,11 @@ router.get("/api/command", async (c) => {
     if (limitRes) return limitRes;
     const authRes = await guardApiKey(c, "apiKeySearchEnabled");
     if (authRes) return authRes;
-    const requestedType = c.req.query("type")?.trim() || undefined;
+    const requestedType = type?.trim() || undefined;
     const resolvedType =
       (await getEngineSearchType(match.engineId, requestedType)) ?? "web";
     const response = await handleSearch({
-      ...parseSearchRequest(c),
+      ...search,
       query: match.query,
       engines: singleEngineConfig(match.engineId),
       searchType: resolvedType as SearchType,
@@ -65,9 +75,14 @@ router.get("/api/command", async (c) => {
     });
   }
 
+  if (match.command.respectRateLimiting) {
+    const limitRes = await _applyRateLimit(c);
+    if (limitRes) return limitRes;
+  }
+
   const page = Math.max(
     1,
-    Math.min(10, Math.floor(Number(c.req.query("page"))) || 1),
+    Math.min(10, Math.floor(Number(rawPage)) || 1),
   );
 
   const clientIp = getClientIp(c);
@@ -98,6 +113,27 @@ router.get("/api/command", async (c) => {
     action: result.action,
     page,
     totalPages: result.totalPages ?? 1,
+  });
+};
+
+router.get("/api/command", async (c) => {
+  const { origQ: _origQ, ...search } = parseSearchRequest(c);
+  return _runCommand(c, {
+    q: c.req.query("q"),
+    type: c.req.query("type"),
+    page: c.req.query("page"),
+    search,
+  });
+});
+
+router.post("/api/command", publicBodyLimit, async (c) => {
+  const body = await readObjectBody<SearchBody>(c);
+  if (!body) return c.json({ error: "Invalid JSON" }, 400);
+  return _runCommand(c, {
+    q: body.query,
+    type: body.type,
+    page: body.page,
+    search: parseSearchBody(body),
   });
 });
 

@@ -34,7 +34,7 @@ import {
   abortStreamingSearch,
   performStreamingSearch,
 } from "../streaming/streaming-search";
-import { buildCommandUrl, buildSearchBody, buildSearchUrl } from "../../net/url";
+import { buildSearchBody, buildSearchUrl, fetchCommand, fetchSearch } from "../../net/url";
 import { searchAuthHeaders, appendSearchAuthParams } from "../../net/request";
 import { getBase } from "../../net/base-url";
 import { onWindowEvent } from "../../dom/window-event";
@@ -83,6 +83,11 @@ export async function performSearch(
   const isInit = state.isInitialLoad;
   state.isInitialLoad = false;
 
+  if (query.trim().startsWith("!") || /\s!\S+$/.test(query.trim())) {
+    state.currentQuery = query;
+    return _performBangCommand(query, resolvedType, page || 1, isInit);
+  }
+
   const prefixMatch = query.trim().match(/^(\w+):(.+)$/);
   if (prefixMatch && !query.trim().startsWith("http")) {
     const prefix = prefixMatch[1].toLowerCase();
@@ -100,11 +105,6 @@ export async function performSearch(
   if (resolvedType.startsWith("tab:")) {
     const { performTabSearch } = await import("../../../modules/tabs/tab-search");
     return performTabSearch(query, resolvedType.slice(4), page);
-  }
-
-  if (query.trim().startsWith("!") || /\s!\S+$/.test(query.trim())) {
-    state.currentQuery = query;
-    return _performBangCommand(query, resolvedType, page || 1, isInit);
   }
 
   const commands = await _fetchCommands();
@@ -148,7 +148,13 @@ export async function performSearch(
   pushSearchHistory(query, resolvedType, resolvedPage, isInit);
 
   if (naturalBangQuery) {
-    return _performSearchWithBang(naturalBangQuery, url, query, resolvedType);
+    return _performSearchWithBang(
+      naturalBangQuery,
+      query,
+      engines,
+      resolvedType,
+      resolvedPage,
+    );
   }
 
   const resultsMeta = document.getElementById("results-meta");
@@ -202,17 +208,18 @@ export async function performSearch(
 
 async function _performSearchWithBang(
   bangQuery: string,
-  searchUrl: string,
   query: string,
+  engines: Record<string, boolean>,
   type: string,
+  page: number,
 ): Promise<void> {
   const glanceEl = document.getElementById("at-a-glance");
   const resultsMeta = document.getElementById("results-meta");
   const resultsList = document.getElementById("results-list");
   try {
     const [cmdRes, searchRes] = await Promise.all([
-      fetch(appendSearchAuthParams(buildCommandUrl(bangQuery, type, 1))),
-      fetch(appendSearchAuthParams(searchUrl)),
+      fetchCommand(bangQuery, type, 1),
+      fetchSearch(query, engines, type, page),
     ]);
     const searchData = (await searchRes.json()) as SearchResponse;
     const isMediaType = isImageSearchType(type);
@@ -252,6 +259,12 @@ async function _performSearchWithBang(
       );
   }
 }
+
+export const performBangSearch = (
+  query: string,
+  type: string,
+  page: number,
+): Promise<void> => _performBangCommand(query, type, page);
 
 async function _performBangCommand(
   query: string,
@@ -315,9 +328,7 @@ async function _performBangCommand(
   }
 
   try {
-    const res = await fetch(
-      appendSearchAuthParams(buildCommandUrl(query, _type, page)),
-    );
+    const res = await fetchCommand(query, _type, page);
     if (!res.ok) throw new Error("not found");
     const data = (await res.json()) as {
       type: string;

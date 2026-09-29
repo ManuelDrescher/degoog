@@ -10,6 +10,7 @@ import type { SettingField } from "../../../../../shared/setting-field";
 import type { AsyncTtlCache } from "../../../../utils/cache/cache";
 import { getSettings } from "../../../../utils/settings/plugin-settings";
 import { logger } from "../../../../utils/logger";
+import { outgoingFetch } from "../../../../utils/net/outgoing";
 const WIKI_NAMESPACE = "ext:wikipedia:page";
 const WIKI_TTL_MS = 60 * 60 * 1000;
 
@@ -72,7 +73,7 @@ async function _fetchWikidataThumb(
       props: "claims",
       format: "json",
     });
-    const res = await fetch(
+    const res = await outgoingFetch(
       `https://www.wikidata.org/w/api.php?${params.toString()}`,
       { signal, headers: { "User-Agent": USER_AGENT } },
     );
@@ -88,10 +89,15 @@ async function _fetchWikidataThumb(
       claims["P18"]?.[0]?.mainsnak?.datavalue?.value;
     if (!filename) return undefined;
     const encoded = encodeURIComponent(filename.replace(/ /g, "_"));
-    const resolved = await fetch(
-      `https://commons.wikimedia.org/wiki/Special:FilePath/${encoded}`,
-      { method: "HEAD", redirect: "follow", signal, headers: { "User-Agent": USER_AGENT } },
-    ).then((r) => r.url).catch(() => null);
+    const filePath = `https://commons.wikimedia.org/wiki/Special:FilePath/${encoded}`;
+    const resolved = await outgoingFetch(filePath, {
+      method: "HEAD",
+      redirect: "follow",
+      signal,
+      headers: { "User-Agent": USER_AGENT },
+    })
+      .then((r) => (r.ok ? r.url || filePath : null))
+      .catch(() => null);
     if (!resolved) return undefined;
     return { source: resolved, isLogo: true };
   } catch {
@@ -119,7 +125,7 @@ async function _fetchWikipedia(
       inprop: "url",
       format: "json",
     });
-    const res = await fetch(
+    const res = await outgoingFetch(
       `https://${host}/w/api.php?${params.toString()}`,
       {
         signal: controller.signal,

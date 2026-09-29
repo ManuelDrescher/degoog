@@ -25,7 +25,7 @@ const HTML_CONTENT_TYPE = "text/html; charset=UTF-8";
 
 const router = new Hono();
 
-router.use("*", async (c, next) => {
+router.use("/teapot/*", async (c, next) => {
   const limitRes = await _applyRateLimit(c);
   if (limitRes) return limitRes;
   await next();

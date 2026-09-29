@@ -1,6 +1,11 @@
 import { describe, test, expect, beforeAll } from "bun:test";
 import { initServerKey } from "../../../src/server/utils/security/server-key";
-import { signResultThumbnails } from "../../../src/server/utils/net/proxy-sign";
+import {
+  isSealedResult,
+  proxyMarkdownImages,
+  signResultThumbnails,
+  verifyProxyUrl,
+} from "../../../src/server/utils/net/proxy-sign";
 import type { ScoredResult } from "../../../src/shared/search-types";
 
 const result = (thumbnail: string): ScoredResult =>
@@ -26,5 +31,61 @@ describe("proxy-sign thumbnails", () => {
     const own = "/api/proxy/image?url=https%3A%2F%2Fexample.org%2Fa.png&sig=abc";
     const [signed] = signResultThumbnails([result(own)]);
     expect(signed.thumbnail).toBe(own);
+  });
+});
+
+describe("proxy-sign own proxy detection", () => {
+  test.each([
+    ["/api/proxy/../store/update-all/stream"],
+    ["/api/proxy/%2e%2e/store/repos/refresh/stream"],
+    ["/api/proxy/image/../../settings"],
+    ["/api/proxy/whatever?url=x"],
+  ])("%s is not trusted as the instance's own proxy", (thumb) => {
+    const [signed] = signResultThumbnails([result(thumb)]);
+    expect(signed.thumbnail).toStartWith("/api/proxy/image?url=");
+    expect(signed.thumbnail).toContain(encodeURIComponent(thumb));
+  });
+
+  test("own favicon proxy URLs are left alone", () => {
+    const own = "/api/proxy/favicon?domain=example.org";
+    const [signed] = signResultThumbnails([result(own)]);
+    expect(signed.thumbnail).toBe(own);
+  });
+});
+
+describe("proxy-sign result seals", () => {
+  test("every signed result carries a seal that verifies for its url", () => {
+    const [sealed] = signResultThumbnails([result("https://cdn.example/a.png")]);
+    expect(isSealedResult(sealed)).toBe(true);
+  });
+
+  test("a seal does not survive a swapped url or go missing", () => {
+    const [sealed] = signResultThumbnails([result("https://cdn.example/a.png")]);
+    expect(isSealedResult({ ...sealed, url: "https://attacker.example/" })).toBe(false);
+    expect(isSealedResult({ ...sealed, seal: undefined })).toBe(false);
+    expect(isSealedResult(null)).toBe(false);
+  });
+
+  test("a seal is not a valid image proxy signature for the same url", () => {
+    const [sealed] = signResultThumbnails([result("https://cdn.example/a.png")]);
+    expect(verifyProxyUrl(sealed.url, sealed.seal ?? "")).toBe(false);
+  });
+});
+
+describe("proxy-sign markdown images", () => {
+  test("remote markdown and html images go through the proxy, links and local paths do not", () => {
+    const md = [
+      "![badge](https://img.shields.io/badge/x-y-green \"t\")",
+      '<img alt="a" src="https://cdn.example/a.png">',
+      "[a link](https://example.org/page)",
+      "![local](./screenshot.png)",
+    ].join("\n");
+    const out = proxyMarkdownImages(md).split("\n");
+    expect(out[0]).toStartWith("![badge](/api/proxy/image?url=");
+    expect(out[0]).toContain(encodeURIComponent("https://img.shields.io/badge/x-y-green"));
+    expect(out[0]).toEndWith(' "t")');
+    expect(out[1]).toContain('src="/api/proxy/image?url=');
+    expect(out[2]).toBe("[a link](https://example.org/page)");
+    expect(out[3]).toBe("![local](./screenshot.png)");
   });
 });

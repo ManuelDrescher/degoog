@@ -2,6 +2,7 @@ import type { SearchBody } from "../../../server/types/search";
 import type { ImageFilter } from "../../types/search";
 import { state } from "../../state";
 import { getBase } from "./base-url";
+import { appendSearchAuthParams, searchAuthHeaders } from "./request";
 import { isImageSearchType } from "../../../shared/search-types";
 import { faviconHostname } from "../../../shared/utils/url";
 
@@ -78,13 +79,6 @@ export const buildSearchUrl = (
 ): string =>
   `${getBase()}/api/search?${buildSearchParams(query, engines, type, page).toString()}`;
 
-export const buildCommandUrl = (
-  query: string,
-  type: string,
-  page: number,
-): string =>
-  `${getBase()}/api/command?${buildSearchParams(query, {}, type, page).toString()}`;
-
 export const buildSearchBody = (
   query: string,
   engines: Record<string, boolean>,
@@ -114,3 +108,33 @@ export const buildSearchBody = (
 
   return body;
 };
+
+const _postSearchJson = (path: string, body: SearchBody): Promise<Response> =>
+  fetch(`${getBase()}${path}`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json", ...searchAuthHeaders() },
+  });
+
+export const fetchSearch = (
+  query: string,
+  engines: Record<string, boolean>,
+  type: string,
+  page: number,
+): Promise<Response> =>
+  state.postMethodEnabled
+    ? _postSearchJson("/api/search", buildSearchBody(query, engines, type, page))
+    : fetch(appendSearchAuthParams(buildSearchUrl(query, engines, type, page)));
+
+export const fetchCommand = (
+  query: string,
+  type: string,
+  page: number,
+): Promise<Response> =>
+  state.postMethodEnabled
+    ? _postSearchJson("/api/command", buildSearchBody(query, {}, type, page))
+    : fetch(
+        appendSearchAuthParams(
+          `${getBase()}/api/command?${buildSearchParams(query, {}, type, page).toString()}`,
+        ),
+      );

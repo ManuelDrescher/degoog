@@ -2,6 +2,7 @@ import { CommandGlance } from "./command-glance";
 import { appendSlotPanels } from "../../modules/renderer/render-slots";
 import { state } from "../../state";
 import { getBase } from "../net/base-url";
+import { searchAuthHeaders } from "../net/request";
 import { clear, render } from "../../../shared/ui/tribute/dom";
 import { SlotPanel as SlotPanelView } from "../../../shared/ui/components/search/slot-panel";
 import {
@@ -94,7 +95,7 @@ export async function fetchGlancePanels(
   try {
     const res = await fetch(`${getBase()}/api/slots/glance`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...searchAuthHeaders() },
       body: _slotRequestBody(query, results),
       signal,
     });
@@ -133,7 +134,7 @@ export async function fetchSlotPanels(
   try {
     const res = await fetch(`${getBase()}/api/slots`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...searchAuthHeaders() },
       body: _slotRequestBody(query, results),
       signal,
     });

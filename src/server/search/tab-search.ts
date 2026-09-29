@@ -1,19 +1,20 @@
-import { getEnginesForCustomType } from "../extensions/engines/catalog";
 import { getSearchResultTabById } from "../extensions/search-result-tabs/registry";
-import { createSearchEngineContext } from "./engine-context";
 import type { EngineTiming, ScoredResult } from "../../shared/search-types";
+import type { SearchParams, SearchType } from "../types/search";
 import { applyDomainRules } from "./domain-rules";
 import { signResultThumbnails } from "../utils/net/proxy-sign";
 import { logger } from "../utils/logger";
 import { isDisabled } from "../utils/settings/plugin-settings";
-import { agreedPageTotal, makePageCounter } from "./page-counter";
+import { handleSearch } from "./handlers";
+import { scoreResults } from "./scoring";
 
 const FALLBACK_TAB_PAGES = 10;
 
-type TabSearchParams = {
+export type TabSearchRequest = Omit<SearchParams, "query" | "searchType">;
+
+type TabSearchParams = TabSearchRequest & {
   tabId: string;
   query: string;
-  page: number;
   clientIp: string | undefined;
 };
 
@@ -25,11 +26,40 @@ type TabSearchResult = {
   totalTime: number;
 };
 
+type TabRun = {
+  results: ScoredResult[];
+  engineTimings: EngineTiming[];
+  totalPages?: number;
+};
+
+const _runEngineType = async (
+  engineType: string,
+  query: string,
+  request: TabSearchRequest,
+): Promise<TabRun> => {
+  const response = await handleSearch({
+    ...request,
+    query,
+    searchType: engineType as SearchType,
+  });
+  return {
+    results: response.results,
+    engineTimings: response.engineTimings,
+    totalPages:
+      response.results.length > 0
+        ? (response.totalPages ?? FALLBACK_TAB_PAGES)
+        : undefined,
+  };
+};
+
+const _positionScores = (results: ScoredResult[]): ScoredResult[] =>
+  results.map((r, i) => ({ ...r, score: Math.max(100 - i, 1) }));
+
 export async function handleTabSearch({
   tabId,
   query,
-  page,
   clientIp,
+  ...request
 }: TabSearchParams): Promise<TabSearchResult | null> {
   let engineType: string | undefined;
   const tab = getSearchResultTabById(tabId);
@@ -47,71 +77,18 @@ export async function handleTabSearch({
   }
 
   const startTime = performance.now();
-  const engineTimings: EngineTiming[] = [];
-  const allResults: ScoredResult[] = [];
-  let totalPages = 1;
-
-  if (engineType) {
-    const engines = await getEnginesForCustomType(engineType);
-    const outcomes = await Promise.all(
-      engines.map(async ({ id, instance: e }) => {
-        const start = performance.now();
-        const pageCounter = makePageCounter();
-        const engineContext = createSearchEngineContext(id, {
-          pageCounter,
-        });
-        try {
-          const value = await e.executeSearch(
-            query.trim(),
-            page,
-            undefined,
-            engineContext,
-          );
-          return {
-            name: e.name,
-            time: Math.round(performance.now() - start),
-            resultCount: value.length,
-            results: value,
-            pages: pageCounter.total(),
-          };
-        } catch (err) {
-          logger.warn("tab-search", `${e.name} engine failed`, err);
-          return {
-            name: e.name,
-            time: Math.round(performance.now() - start),
-            resultCount: 0,
-            results: [] as ScoredResult[],
-            pages: undefined,
-          };
-        }
-      }),
-    );
-    for (const o of outcomes) {
-      engineTimings.push({
-        name: o.name,
-        time: o.time,
-        resultCount: o.resultCount,
-      });
-      let idx = allResults.length;
-      for (const r of o.results) {
-        allResults.push({
-          ...r,
-          score: Math.max(100 - idx, 1),
-          sources: [r.source],
-        });
-        idx++;
-      }
-    }
-    if (allResults.length > 0) {
-      totalPages =
-        agreedPageTotal(outcomes.map((o) => o.pages)) ?? FALLBACK_TAB_PAGES;
-    }
-  }
+  const trimmed = query.trim();
+  const engineRun: TabRun = engineType
+    ? await _runEngineType(engineType, trimmed, request)
+    : { results: [], engineTimings: [] };
+  const engineTimings = [...engineRun.engineTimings];
+  let tabResults: ScoredResult[] = [];
+  let totalPages = engineRun.totalPages ?? 1;
 
   if (tab?.executeSearch && !tabDisabled) {
     const tabStart = performance.now();
     try {
-      const result = await tab.executeSearch(query.trim(), page, {
+      const result = await tab.executeSearch(trimmed, request.page, {
         clientIp,
       });
       const tabElapsed = Math.round(performance.now() - tabStart);
@@ -121,15 +98,9 @@ export async function handleTabSearch({
         time: tabElapsed,
         resultCount: result.results.length,
       });
-      const offset = allResults.length;
-      for (let i = 0; i < result.results.length; i++) {
-        const r = result.results[i];
-        allResults.push({
-          ...r,
-          score: Math.max(100 - offset - i, 1),
-          sources: [r.source],
-        });
-      }
+      tabResults = signResultThumbnails(
+        await applyDomainRules(scoreResults([{ results: result.results }])),
+      );
       if (result.totalPages && result.totalPages > totalPages)
         totalPages = result.totalPages;
     } catch (err) {
@@ -142,14 +113,11 @@ export async function handleTabSearch({
     }
   }
 
-  const totalTime = Math.round(performance.now() - startTime);
-  const finalResults = signResultThumbnails(await applyDomainRules(allResults));
-
   return {
-    results: finalResults,
+    results: _positionScores([...engineRun.results, ...tabResults]),
     totalPages,
-    page,
+    page: request.page,
     engineTimings,
-    totalTime,
+    totalTime: Math.round(performance.now() - startTime),
   };
 }

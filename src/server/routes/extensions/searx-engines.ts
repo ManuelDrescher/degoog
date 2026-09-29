@@ -1,6 +1,6 @@
 import { Hono, type Context } from "hono";
 import { readObjectBody } from "../../utils/hono";
-import { canBalrogPass, gandalf } from "../settings/settings-auth";
+import { gandalfAtTheGate } from "../settings/settings-auth";
 import {
   installSearx,
   listSearxItems,
@@ -18,7 +18,7 @@ const NS = "searx-engines";
 const router = new Hono();
 
 const _guard = async (c: Context): Promise<Response | null> => {
-  if (!(await gandalf(canBalrogPass(c))))
+  if (!(await gandalfAtTheGate(c)))
     return c.json({ error: "You shall not pass!" }, 401);
   if (!(await isSearxCompatOn()))
     return c.json({ error: "SearX compatibility layer is disabled" }, 404);

@@ -161,3 +161,20 @@ describe("ssrf isSafeHost", () => {
     ).toBe(false);
   });
 });
+
+describe("isSafeHost when DNS cannot answer", () => {
+  test("a host this server cannot resolve is refused", async () => {
+    expect(await isSafeHost("nothing-here.invalid")).toBe(false);
+  });
+
+  test("tor and i2p hosts still work, since only the outgoing proxy can resolve them", async () => {
+    expect(await isSafeHost("duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion")).toBe(true);
+    expect(await isSafeHost("example.i2p")).toBe(true);
+  });
+
+  test("an admin who allowed local images keeps unresolvable hosts that match their list", async () => {
+    const access = { enabled: true, patterns: ["^jellyfin\\.lan$"] };
+    expect(await isSafeHost("jellyfin.lan", access)).toBe(true);
+    expect(await isSafeHost("other.lan", access)).toBe(false);
+  });
+});

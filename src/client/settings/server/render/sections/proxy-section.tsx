@@ -46,6 +46,21 @@ export const ProxySection = (): JSX.Element => (
           ></textarea>
         </fieldset>
       </div>
+      <ServerToggle id="settings-block-client-leaks" label="settings-page.server.block-client-leaks" aria="settings-page.server.block-client-leaks-aria" />
+      <SectionDesc k="settings-page.server.block-client-leaks-desc" />
+      <div class={WRAP}>
+        <fieldset class={FIELDSET_INNER}>
+          <ServerLabel htmlFor="settings-privacy-policy" k="settings-page.server.privacy-policy-label" />
+          <SectionDesc k="settings-page.server.privacy-policy-desc" />
+          <textarea
+            id="settings-privacy-policy"
+            data-save-key="privacyPolicy"
+            class={TEXTAREA}
+            rows={8}
+            placeholder={t("settings-page.server.privacy-policy-placeholder")}
+          ></textarea>
+        </fieldset>
+      </div>
     </fieldset>
   </ServerSection>
 );

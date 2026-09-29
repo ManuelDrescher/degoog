@@ -7,6 +7,8 @@ import {
 } from "../../extensions/uovadipasqua/registry";
 import { logger } from "../../utils/logger";
 import { routeSuffix } from "../../utils/net/route-path";
+import { readObjectBody } from "../../utils/hono";
+import { publicBodyLimit } from "../_guards";
 
 const router = new Hono();
 
@@ -19,6 +21,12 @@ router.get("/api/uovadipasqua/match", (c) => {
   const query = c.req.query("q") ?? "";
   const matches = matchUovadipasqua(query);
   return c.json({ matches });
+});
+
+router.post("/api/uovadipasqua/match", publicBodyLimit, async (c) => {
+  const body = await readObjectBody<{ query?: unknown }>(c);
+  const query = typeof body?.query === "string" ? body.query : "";
+  return c.json({ matches: matchUovadipasqua(query) });
 });
 
 const CONTENT_TYPES: Record<string, string> = {

@@ -10,6 +10,7 @@ import { renderImgEngines } from "../../../modules/filters/image-filters";
 import { renderSidebar } from "../../../modules/renderer/sidebar/render-sidebar";
 import { renderResults } from "../../../modules/renderer/render";
 import { performSearch } from "./search-actions-perform";
+import { buildSearchBody, buildSearchParams } from "../../net/url";
 import { searchAuthHeaders, appendSearchAuthParams } from "../../net/request";
 import { infiniteScrollOn } from "../streaming/streaming-config";
 import { mergeEngineTimings, mergeScoredResults } from "../engine-stats/engine-stats";
@@ -21,39 +22,16 @@ export async function retryEngine(
   if (!state.currentQuery || !state.currentData) return;
 
   const engines = await getEngines();
-  const params = new URLSearchParams({
-    q: state.currentQuery,
-    engine: engineName,
-  });
-  for (const [key, val] of Object.entries(engines)) {
-    params.set(key, String(val));
-  }
-  if (state.currentType && state.currentType !== "web") {
-    params.set("type", state.currentType);
-  }
-  if (page > 1) {
-    params.set("page", String(page));
-  }
-  if (state.currentTimeFilter && state.currentTimeFilter !== "any") {
-    params.set("time", state.currentTimeFilter);
-  }
+  const params = buildSearchParams(state.currentQuery, engines, state.currentType, page);
+  params.set("engine", engineName);
 
   try {
     const res = state.postMethodEnabled
       ? await fetch(`${getBase()}/api/search/retry`, {
           method: "POST",
           body: JSON.stringify({
-            query: state.currentQuery,
+            ...buildSearchBody(state.currentQuery, engines, state.currentType, page),
             engine: engineName,
-            engines: Object.entries(engines)
-              .filter(([, v]) => v)
-              .map(([k]) => k),
-            type: state.currentType !== "web" ? state.currentType : undefined,
-            page: page > 1 ? page : undefined,
-            time:
-              state.currentTimeFilter !== "any"
-                ? state.currentTimeFilter
-                : undefined,
           }),
           headers: { "Content-Type": "application/json", ...searchAuthHeaders() },
         })

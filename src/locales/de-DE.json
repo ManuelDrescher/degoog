@@ -228,7 +228,7 @@
       "languages-toggle": "Suchsprachen ändern",
       "languages-toggle-aria": "Suchsprachen ändern",
       "languages-codes-label": "Sprachcodes (einer pro Zeile)",
-      "proxy-heading": "Proxy",
+      "proxy-heading": "Proxy & Datenschutz",
       "proxy-desc": "Verwende Proxys für serverseitige Suchanfragen. Eine URL pro Zeile; die Anfragen rotieren durch die Liste.",
       "proxy-enable": "Proxy für die Suche verwenden",
       "proxy-enable-aria": "Proxy für die Suche verwenden",

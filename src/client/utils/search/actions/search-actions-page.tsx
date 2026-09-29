@@ -21,6 +21,10 @@ import { declaredPages, setResultsMeta } from "../search-helpers";
 
 export async function goToPage(pageNum: number): Promise<void> {
   if (pageNum === state.currentPage) return;
+  if (state.currentBangQuery) {
+    const { performBangSearch } = await import("./search-actions-perform");
+    return performBangSearch(state.currentBangQuery, state.currentType, pageNum);
+  }
 
   window.scrollTo({ top: 0, behavior: "auto" });
   teardownInfinite();

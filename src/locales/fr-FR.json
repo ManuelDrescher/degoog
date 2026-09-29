@@ -215,7 +215,7 @@
       "languages-toggle": "Modifier les langues de recherche",
       "languages-toggle-aria": "Modifier les langues de recherche",
       "languages-codes-label": "Codes langue (un par ligne)",
-      "proxy-heading": "Proxy",
+      "proxy-heading": "Proxy et confidentialité",
       "proxy-desc": "Envoyez les recherches côté serveur par ces proxies. Une URL par ligne. Les requêtes tournent sur la liste.",
       "proxy-enable": "Utiliser un proxy pour la recherche",
       "proxy-enable-aria": "Utiliser un proxy pour la recherche",

@@ -4,6 +4,7 @@ exports[`every mounted router exposes the routes it did before commands route li
 [
   "GET /api/command",
   "GET /api/commands",
+  "POST /api/command",
 ]
 `;
 
@@ -198,6 +199,12 @@ exports[`every mounted router exposes the routes it did before plugin-routes rou
 ]
 `;
 
+exports[`every mounted router exposes the routes it did before privacy-policy route list is unchanged 1`] = `
+[
+  "GET /api/privacy-policy",
+]
+`;
+
 exports[`every mounted router exposes the routes it did before proxy route list is unchanged 1`] = `
 [
   "GET /api/proxy/favicon",
@@ -218,8 +225,10 @@ exports[`every mounted router exposes the routes it did before search route list
   "GET /api/search-tabs",
   "GET /api/search/retry",
   "GET /api/tab-search",
+  "POST /api/lucky",
   "POST /api/search",
   "POST /api/search/retry",
+  "POST /api/tab-search",
 ]
 `;
 
@@ -258,6 +267,7 @@ exports[`every mounted router exposes the routes it did before settings route li
   "GET /api/settings/shortcuts/scaffold",
   "GET /api/settings/streaming",
   "GET /api/settings/tab-order",
+  "GET /api/settings/update-check",
   "POST /api/settings/api-key/regenerate",
   "POST /api/settings/default-engines",
   "POST /api/settings/domain-action",
@@ -347,7 +357,7 @@ exports[`every mounted router exposes the routes it did before sw route list is 
 
 exports[`every mounted router exposes the routes it did before teapot route list is unchanged 1`] = `
 [
-  "ALL /*",
+  "ALL /teapot/*",
   "BREW /teapot",
   "BREW /teapot/:variety",
   "GET /teapot",
@@ -376,6 +386,7 @@ exports[`every mounted router exposes the routes it did before uovadipasqua rout
   "GET /api/uovadipasqua/client-storage",
   "GET /api/uovadipasqua/match",
   "GET /uovadipasqua/:id/:asset",
+  "POST /api/uovadipasqua/match",
 ]
 `;
 
@@ -397,7 +408,7 @@ exports[`the admin path is operator-defined, not hardcoded DEGOOG_SETTINGS_PATH 
 
 exports[`route shape invariants the mounted surface totals stay put 1`] = `
 {
-  "totalHandlers": 299,
-  "unique": 247,
+  "totalHandlers": 310,
+  "unique": 253,
 }
 `;

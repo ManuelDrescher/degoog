@@ -1,13 +1,13 @@
 import type { MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { canBalrogPass, gandalf } from "./settings/settings-auth";
+import { gandalfAtTheGate } from "./settings/settings-auth";
 import { logger } from "../utils/logger";
 import { asString } from "../utils/settings/plugin-settings";
 import { getInstanceSettings } from "../utils/settings/server-settings";
 
 export const settingsAuth = (route?: string): MiddlewareHandler =>
   async (c, next) => {
-    if (!(await gandalf(canBalrogPass(c)))) {
+    if (!(await gandalfAtTheGate(c))) {
       if (route) logger.debug("settings-auth", `401 on ${route}`);
       return c.json({ error: "You shall not pass!" }, 401);
     }

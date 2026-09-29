@@ -215,6 +215,7 @@ export interface BangCommand {
   isConfigured?(): Promise<boolean>;
   hideWhenUnconfigured?: boolean;
   supportsNojs?: boolean;
+  respectRateLimiting?: boolean;
   init?(context: PluginContext): void | Promise<void>;
   execute(args: string, context?: CommandContext): Promise<CommandResult>;
   t?: Translate;

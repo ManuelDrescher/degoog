@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import { getCookie } from "hono/cookie";
+import { LEAKS_ALLOWED_COOKIE } from "../shared/leak-guard";
 import { serveStatic, upgradeWebSocket, websocket } from "hono/bun";
 import { lstatSync, unlinkSync } from "fs";
 import net from "net";
@@ -29,6 +31,11 @@ import { openBifrost } from "./extensions/store/reload-sync";
 import { openPalantir } from "./extensions/settings-sync";
 import { getInstanceId, getInstanceSettings } from "./utils/settings/server-settings";
 import { asBoolean } from "./utils/settings/plugin-settings";
+import {
+  blockClientLeaksOn,
+  contentPolicyHeaders,
+  CSP_HEADER,
+} from "./utils/security/content-policy";
 import { runMigrations } from "./migrations";
 import { closeAllDbs } from "./indexer/db/lifecycle";
 import { startQueue, stopQueue } from "./indexer/queue/queue";
@@ -50,10 +57,7 @@ const app = new Hono();
 
 app.use(trimSlash());
 
-const NOJS_CSP =
-  "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'";
 const NOJS_HEADER_PREFIX = `${BASE_PATH}/nojs`;
-const BASELINE_CSP = "object-src 'none'; base-uri 'none'; frame-ancestors 'self'";
 
 app.use("*", async (c, next) => {
   await next();
@@ -61,11 +65,14 @@ app.use("*", async (c, next) => {
   c.res.headers.set("X-Content-Type-Options", "nosniff");
   c.res.headers.set("X-Frame-Options", "SAMEORIGIN");
   const path = c.req.path;
-  if (path === NOJS_HEADER_PREFIX || path.startsWith(`${NOJS_HEADER_PREFIX}/`)) {
-    c.res.headers.set("Content-Security-Policy", NOJS_CSP);
-  } else if (!c.res.headers.has("Content-Security-Policy")) {
-    c.res.headers.set("Content-Security-Policy", BASELINE_CSP);
-  }
+  const nojs = path === NOJS_HEADER_PREFIX || path.startsWith(`${NOJS_HEADER_PREFIX}/`);
+  if (!nojs && c.res.headers.has(CSP_HEADER)) return;
+  const policy = contentPolicyHeaders({
+    nojs,
+    html: (c.res.headers.get("content-type") ?? "").includes("text/html"),
+    blockLeaks: getCookie(c, LEAKS_ALLOWED_COOKIE) !== "1" && (await blockClientLeaksOn()),
+  });
+  for (const [name, value] of Object.entries(policy)) c.res.headers.set(name, value);
 });
 
 app.use(`${BASE_PATH}/public/*.js`, async (c, next) => {

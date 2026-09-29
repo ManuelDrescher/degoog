@@ -5,6 +5,8 @@ export type ServerSettingsData = {
   proxyUrls?: string;
   imageProxyAllowLocal?: BoolSetting;
   imageProxyAllowList?: string;
+  blockClientLeaks?: BoolSetting;
+  privacyPolicy?: string;
   rateLimitEnabled?: BoolSetting;
   rateLimitBurstWindow?: string;
   rateLimitBurstMax?: string;

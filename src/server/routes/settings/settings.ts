@@ -4,6 +4,7 @@ import domainAction from "./general/domain-action";
 import security from "./general/security";
 import proxyTest from "./general/proxy-test";
 import shortcuts from "./general/shortcuts";
+import updateCheck from "./general/update-check";
 
 const router = new Hono();
 
@@ -12,5 +13,6 @@ router.route("/", domainAction);
 router.route("/", security);
 router.route("/", proxyTest);
 router.route("/", shortcuts);
+router.route("/", updateCheck);
 
 export default router;

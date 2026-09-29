@@ -57,7 +57,7 @@ function _handleActionClick(e: MouseEvent): void {
       if (form && inputId === "results-search-input") {
         void performSearch(input.value);
       } else if (form && inputId === "search-input") {
-        form.submit();
+        form.requestSubmit();
       }
     }
     return;

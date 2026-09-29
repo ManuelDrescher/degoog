@@ -103,6 +103,7 @@ export async function performStreamingSearch(
   abortStreamingSearch();
 
   state.currentQuery = query;
+  state.currentBangQuery = "";
   state.currentType = type;
   state.currentPage = 1;
   state.lastPage = null;

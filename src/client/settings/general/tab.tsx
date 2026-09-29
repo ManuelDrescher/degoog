@@ -13,17 +13,25 @@ import { SYNC_KEYS } from "../../../shared/sync";
 import { applyTheme } from "../../utils/app/theme";
 import { confirmModal } from "../../modules/modals/confirm-modal/confirm";
 import { isUpdateAvailable } from "../../../shared/utils/version";
+import { getBase } from "../../utils/net/base-url";
+import { jsonHeaders } from "../../utils/net/request";
+import { getStoredToken } from "../../utils/settings/settings-token";
 
 const t = window.scopedT("core");
 
-async function getNewestRelease(): Promise<string> {
-  const tags = await fetch(
-    "https://api.github.com/repos/degoog-org/degoog/tags",
-  );
-  if (tags) {
-    const json = await tags.json();
-    const value = json?.[0]?.name;
-    if (value) return value;
+const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+
+async function getNewestRelease(fresh = false): Promise<string> {
+  try {
+    const res = await fetch(`${getBase()}/api/settings/update-check${fresh ? "?fresh=1" : ""}`, {
+      headers: jsonHeaders(getStoredToken),
+    });
+    if (res.ok) {
+      const { newest } = (await res.json()) as { newest?: string };
+      if (newest) return newest;
+    }
+  } catch (err) {
+    console.debug("[settings] update check failed", err);
   }
   return "Unknown";
 }
@@ -144,7 +152,7 @@ async function initVersionChecker(): Promise<void> {
   if (latest) latestDate = new Date(latest);
   const now = new Date();
 
-  if (+now - +latestDate > 24 * 60 * 60 * 1000) {
+  if (+now - +latestDate > UPDATE_CHECK_INTERVAL_MS) {
     latestDate = new Date();
     localStorage.setItem("last-update-check", latestDate.toUTCString());
     const newCheck = await getNewestRelease();
@@ -167,7 +175,7 @@ async function initVersionChecker(): Promise<void> {
     newestVersionEl.textContent = latestVersion;
 
   checkNowBtn?.addEventListener("click", async () => {
-    const newest = await getNewestRelease();
+    const newest = await getNewestRelease(true);
     if (newestVersionEl) newestVersionEl.textContent = newest;
     localStorage.setItem("last-update-check-version", newest);
     const newLatest = new Date();

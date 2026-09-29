@@ -4,6 +4,7 @@ exports[`what an unauthenticated caller gets from every route commands unauthent
 [
   "GET /api/command -> 400",
   "GET /api/commands -> 200",
+  "POST /api/command -> 400",
 ]
 `;
 
@@ -88,6 +89,12 @@ exports[`what an unauthenticated caller gets from every route plugin-routes unau
 ]
 `;
 
+exports[`what an unauthenticated caller gets from every route privacy-policy unauthenticated responses are unchanged (nojs pinned off) 1`] = `
+[
+  "GET /api/privacy-policy -> 200",
+]
+`;
+
 exports[`what an unauthenticated caller gets from every route proxy unauthenticated responses are unchanged (nojs pinned off) 1`] = `
 [
   "GET /api/proxy/favicon -> 400",
@@ -108,8 +115,10 @@ exports[`what an unauthenticated caller gets from every route search unauthentic
   "GET /api/search-tabs -> 200",
   "GET /api/search/retry -> 400",
   "GET /api/tab-search -> 400",
+  "POST /api/lucky -> 400",
   "POST /api/search -> 400",
   "POST /api/search/retry -> 400",
+  "POST /api/tab-search -> 400",
 ]
 `;
 
@@ -148,6 +157,7 @@ exports[`what an unauthenticated caller gets from every route settings unauthent
   "GET /api/settings/shortcuts/scaffold -> 401",
   "GET /api/settings/streaming -> 200",
   "GET /api/settings/tab-order -> 200",
+  "GET /api/settings/update-check -> 401",
   "POST /api/settings/api-key/regenerate -> 401",
   "POST /api/settings/default-engines -> 401",
   "POST /api/settings/domain-action -> 401",
@@ -249,6 +259,7 @@ exports[`what an unauthenticated caller gets from every route uovadipasqua unaut
   "GET /api/uovadipasqua/client-storage -> 200",
   "GET /api/uovadipasqua/match -> 200",
   "GET /uovadipasqua/:id/:asset -> 404",
+  "POST /api/uovadipasqua/match -> 200",
 ]
 `;
 

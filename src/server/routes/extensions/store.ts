@@ -28,7 +28,7 @@ import {
 import { ExtensionStoreType } from "../../types/extension";
 import { logger } from "../../utils/logger";
 import { settingsAuth } from "../_guards";
-import { buildSignedProxyUrl } from "../../utils/net/proxy-sign";
+import { buildSignedProxyUrl, proxyMarkdownImages } from "../../utils/net/proxy-sign";
 import type { RepoInfo } from "../../types/store";
 
 const router = new Hono();
@@ -178,9 +178,12 @@ router.post("/api/store/repos/refresh", settingsAuth(), async (c) => {
   }
 });
 
+const _withProxiedDescription = <T extends { description?: string }>(item: T): T =>
+  item.description ? { ...item, description: proxyMarkdownImages(item.description) } : item;
+
 router.get("/api/store/items", settingsAuth(), async (c) => {
   const items = await listRepoItems();
-  return c.json({ items });
+  return c.json({ items: items.map(_withProxiedDescription) });
 });
 
 router.get("/api/store/items/:repoSlug", settingsAuth(), async (c) => {
@@ -189,7 +192,7 @@ router.get("/api/store/items/:repoSlug", settingsAuth(), async (c) => {
   const repo = repos.find((r) => r.localPath === repoSlug);
   if (!repo) return c.json({ error: "Repository not found" }, 404);
   const items = await listRepoItems(repo.url);
-  return c.json({ items });
+  return c.json({ items: items.map(_withProxiedDescription) });
 });
 
 const itemAction =

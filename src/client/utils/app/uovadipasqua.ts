@@ -1,5 +1,6 @@
 import type { UovadipasquaClientStorageBinding } from "../../../server/types/extension";
 import { getBase } from "../net/base-url";
+import { state } from "../../state";
 
 interface UovadipasquaMatchPayload {
   id: string;
@@ -122,9 +123,15 @@ export async function triggerUovadipasqua(query: string): Promise<void> {
   const trimmed = query.trim();
   if (!trimmed) return;
   try {
-    const res = await fetch(
-      `${getBase()}/api/uovadipasqua/match?q=${encodeURIComponent(trimmed)}`,
-    );
+    const res = state.postMethodEnabled
+      ? await fetch(`${getBase()}/api/uovadipasqua/match`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: trimmed }),
+        })
+      : await fetch(
+          `${getBase()}/api/uovadipasqua/match?q=${encodeURIComponent(trimmed)}`,
+        );
     if (!res.ok) return;
     const data = (await res.json()) as { matches: UovadipasquaMatchPayload[] };
     for (const match of data.matches) {

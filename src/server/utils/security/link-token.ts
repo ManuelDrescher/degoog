@@ -10,13 +10,17 @@ const TS_HEX_LEN = 16;
 const SIG_HEX_LEN = 32;
 const TOKEN_LEN = TS_HEX_LEN + SIG_HEX_LEN;
 const TOKEN_RE = new RegExp(`^[0-9a-f]{${TOKEN_LEN}}$`);
+const TOKEN_SIGN_PREFIX = "link:";
+
+const _signTs = (ts: string): string =>
+  signData(`${TOKEN_SIGN_PREFIX}${ts}`).slice(0, SIG_HEX_LEN);
 
 const _pings = new Map<string, number>();
 const _strikes = new Map<string, number>();
 
 export const mintToken = (): string => {
   const ts = Date.now().toString(16).padStart(TS_HEX_LEN, "0");
-  const sig = signData(ts).slice(0, SIG_HEX_LEN);
+  const sig = _signTs(ts);
   return `${ts}${sig}`;
 };
 
@@ -26,7 +30,7 @@ export const verifyToken = (token: string): boolean => {
   const sig = token.slice(TS_HEX_LEN);
   const age = Date.now() - parseInt(ts, 16);
   if (age < 0 || age > TOKEN_TTL_MS) return false;
-  const expected = signData(ts).slice(0, SIG_HEX_LEN);
+  const expected = _signTs(ts);
   try {
     const a = Buffer.from(sig, "hex");
     const b = Buffer.from(expected, "hex");

@@ -14,8 +14,15 @@ import { _applyRateLimit } from "../../utils/search";
 import { runSlotPlugins, slotContext, slotPosition, toSlotPanel } from "../../extensions/slots/run";
 import { slotShowsOn } from "../../utils/extension-support/slot-types";
 import { publicBodyLimit } from "../_guards";
+import { guardApiKey } from "../../utils/security/api-key-guard";
+import { isSealedResult } from "../../utils/net/proxy-sign";
 
 const router = new Hono();
+
+type SlotBody = { query?: string; type?: string; results?: ScoredResult[] };
+
+const _sealedResults = (body: SlotBody): ScoredResult[] | undefined =>
+  Array.isArray(body.results) ? body.results.filter(isSealedResult) : undefined;
 
 const _requestedType = (raw: unknown): string =>
   typeof raw === "string" && raw.trim() ? raw.trim() : DEFAULT_SEARCH_TYPE;
@@ -23,7 +30,9 @@ const _requestedType = (raw: unknown): string =>
 router.post("/api/slots", publicBodyLimit, async (c) => {
   const limitRes = await _applyRateLimit(c);
   if (limitRes) return limitRes;
-  const body = await readObjectBody<{ query?: string; type?: string; results?: ScoredResult[] }>(c);
+  const authRes = await guardApiKey(c, "apiKeySearchEnabled");
+  if (authRes) return authRes;
+  const body = await readObjectBody<SlotBody>(c);
   if (!body) return c.json({ error: "Invalid JSON" }, 400);
   if (!body.query || !body.query.trim()) return c.json({ panels: [] });
   const clientIp = getClientIp(c);
@@ -34,7 +43,7 @@ router.post("/api/slots", publicBodyLimit, async (c) => {
   const panels = await runSlotPlugins(
     body.query.trim(),
     clientIp,
-    withResults ? body.results : undefined,
+    withResults ? _sealedResults(body) : undefined,
     {
       excludePosition: SlotPanelPosition.AtAGlance,
       locale: getLocale(c),
@@ -47,7 +56,9 @@ router.post("/api/slots", publicBodyLimit, async (c) => {
 router.post("/api/slots/glance", publicBodyLimit, async (c) => {
   const limitRes = await _applyRateLimit(c);
   if (limitRes) return limitRes;
-  const body = await readObjectBody<{ query?: string; type?: string; results?: ScoredResult[] }>(c);
+  const authRes = await guardApiKey(c, "apiKeySearchEnabled");
+  if (authRes) return authRes;
+  const body = await readObjectBody<SlotBody>(c);
   if (!body) return c.json({ error: "Invalid JSON" }, 400);
   if (!body.query || !body.query.trim()) {
     return c.json({ error: "Missing query or results" }, 400);
@@ -57,6 +68,7 @@ router.post("/api/slots/glance", publicBodyLimit, async (c) => {
     return c.json({ error: "Missing query or results" }, 400);
   }
   const clientIp = getClientIp(c);
+  const results = withResults ? _sealedResults(body) : undefined;
   const locale = getLocale(c);
   const searchType = _requestedType(body.type);
   const panels: SlotPanel[] = [];
@@ -81,11 +93,7 @@ router.post("/api/slots/glance", publicBodyLimit, async (c) => {
         pending = true;
         continue;
       }
-      const context = slotContext(
-        clientIp ?? undefined,
-        withResults ? body.results : undefined,
-        locale,
-      );
+      const context = slotContext(clientIp ?? undefined, results, locale);
       const t0 = performance.now();
       const out = await plugin.execute(body.query!.trim(), context);
       logger.debug(

@@ -165,10 +165,16 @@ const _runSearch = async (
   const tabId = stripTabTypePrefix(query.type ?? "");
 
   if (tabId && tabId !== WEB_TAB_ID && !tabId.startsWith(ENGINE_TYPE_PREFIX)) {
+    const { query: _text, searchType: _type, ...request } = _searchParams(
+      query.q,
+      query,
+      WEB_TAB_ID,
+      getDefaultEngineConfig(),
+    );
     const tabResult = await handleTabSearch({
+      ...request,
       tabId,
       query: query.q,
-      page: query.page ?? 1,
       clientIp: getClientIp(c),
     });
     return tabResult && _outcome(tabResult, false);

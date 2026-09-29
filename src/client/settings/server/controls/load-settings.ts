@@ -38,6 +38,8 @@ export async function loadServerSettings(
     setVal("proxy-urls", data.proxyUrls);
     setToggle("image-proxy-allow-local", data.imageProxyAllowLocal);
     setVal("image-proxy-allow-list", data.imageProxyAllowList);
+    setToggle("block-client-leaks", data.blockClientLeaks);
+    setVal("privacy-policy", data.privacyPolicy);
 
     setToggle("languages-enabled", data.languagesEnabled);
     setVal("languages", data.languages);

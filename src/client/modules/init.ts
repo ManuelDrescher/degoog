@@ -27,6 +27,8 @@ import { initTabs } from "./tabs/tabs";
 
 import { copyTextToClipboard } from "../utils/dom/clipboard";
 import { initInstallPrompt } from "../utils/app/install-prompt";
+import { initLeakWatch } from "../utils/app/leak-watch";
+import { initPrivacyPolicyLink } from "./modals/privacy-modal/privacy-modal";
 import { initKeyboardShortcuts } from "../shortcuts/keyboard-shortcuts";
 import { initShortcuts } from "../shortcuts/init";
 import { initSearchBarActions } from "../utils/search/search-bar-actions";
@@ -49,9 +51,11 @@ type DegoogHistoryState = {
 };
 
 export async function init(): Promise<void> {
+  initLeakWatch();
   await applyDefaults();
 
   renderPageTemplates();
+  initPrivacyPolicyLink();
   void applyUovaStorage();
   void initHomeWizard();
 

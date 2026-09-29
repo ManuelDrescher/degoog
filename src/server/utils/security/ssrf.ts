@@ -157,6 +157,8 @@ const onAllowList = (
 
 const warned = new Set<string>();
 
+const OVERLAY_NETWORK_HOST = /\.(onion|i2p)\.?$/i;
+
 const youShallNotPass = (host: string): void => {
   if (warned.has(host)) return;
   warned.add(host);
@@ -196,6 +198,6 @@ export const isSafeHost = async (
     return false;
   } catch (err) {
     logger.debug("proxy", `DNS lookup failed for ${host}`, err);
-    return true;
+    return OVERLAY_NETWORK_HOST.test(bare) || onAllowList([host], access);
   }
 };

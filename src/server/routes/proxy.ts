@@ -7,6 +7,7 @@ import { fetchWithSafeRedirects } from "../utils/security/safe-redirects";
 import { asBoolean, asString } from "../utils/settings/plugin-settings";
 import { getInstanceSettings } from "../utils/settings/server-settings";
 import { logger } from "../utils/logger";
+import { createConcurrencyGate } from "../utils/net/concurrency-gate";
 
 const router = new Hono();
 
@@ -36,6 +37,12 @@ const getProxyFilename = (originalUrl: string, contentType: string): string => {
 const PROXY_CSP = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
 const PROXY_TIMEOUT_MS = 10_000;
 const MAX_CONTENT_LENGTH = 25 * 1024 * 1024;
+
+const PROXY_DEADLINE_MS = 30_000;
+const PROXY_MAX_ACTIVE = 256;
+const PROXY_MAX_QUEUED = 2048;
+
+export const imageProxyGate = createConcurrencyGate(PROXY_MAX_ACTIVE, PROXY_MAX_QUEUED);
 
 const _readWithin = <T>(read: Promise<T>, idleMs: number): Promise<T> => {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -83,6 +90,49 @@ const readBodyCapped = async (
   }
   return out;
 };
+export const streamBodyCapped = (
+  body: ReadableStream<Uint8Array>,
+  cap: number,
+  idleMs: number,
+  deadlineAt: number,
+  onDone: () => void,
+): ReadableStream<Uint8Array> => {
+  const reader = body.getReader();
+  let total = 0;
+  let finished = false;
+  const finish = (): void => {
+    if (finished) return;
+    finished = true;
+    onDone();
+  };
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const remaining = deadlineAt - Date.now();
+        if (remaining <= 0) throw new Error("upstream too slow");
+        const { done, value } = await _readWithin(reader.read(), Math.min(idleMs, remaining));
+        if (done) {
+          controller.close();
+          finish();
+          return;
+        }
+        total += value.byteLength;
+        if (total > cap) throw new Error("image too large");
+        controller.enqueue(value);
+      } catch (err) {
+        logger.debug("proxy", "image stream stopped", err);
+        await reader.cancel().catch(() => {});
+        controller.error(err);
+        finish();
+      }
+    },
+    async cancel() {
+      await reader.cancel().catch(() => {});
+      finish();
+    },
+  });
+};
+
 const ALLOWED_CONTENT_TYPES = [
   "image/jpeg",
   "image/png",
@@ -131,8 +181,13 @@ router.get("/api/proxy/image", async (c) => {
     Referer: parsed.origin + "/",
   };
 
+  const release = await imageProxyGate.acquire();
+  if (!release) return c.body("Image proxy busy", 503, { "Retry-After": "5" });
+
+  const deadlineAt = Date.now() + PROXY_DEADLINE_MS;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
+  let streaming = false;
 
   try {
     const res = await fetchWithSafeRedirects(
@@ -157,9 +212,9 @@ router.get("/api/proxy/image", async (c) => {
       return c.body("Image too large", 413);
     }
 
-    const body = await readBodyCapped(res, MAX_CONTENT_LENGTH, PROXY_TIMEOUT_MS);
-    if (body === "too-large") return c.body("Image too large", 413);
-    if (body === "empty") return c.body("Empty upstream body", 502);
+    if (!res.body) return c.body("Empty upstream body", 502);
+    const body = streamBodyCapped(res.body, MAX_CONTENT_LENGTH, PROXY_TIMEOUT_MS, deadlineAt, release);
+    streaming = true;
 
     return c.body(body, 200, {
       "Content-Type": contentType,
@@ -172,6 +227,8 @@ router.get("/api/proxy/image", async (c) => {
     logger.warn("proxy", "image proxy fetch failed", err);
     clearTimeout(timeout);
     return c.body("Proxy failed", 502);
+  } finally {
+    if (!streaming) release();
   }
 });
 

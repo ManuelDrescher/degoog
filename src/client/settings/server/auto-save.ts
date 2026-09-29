@@ -11,6 +11,7 @@ const COMPAT_TOGGLES = ["searx-compat-enabled", "fourget-compat-enabled"];
 const TOGGLE_KEYS = [
   "proxy-enabled",
   "image-proxy-allow-local",
+  "block-client-leaks",
   "languages-enabled",
   "rate-limit-enabled",
   "rate-limit-suggest-enabled",

@@ -33,6 +33,7 @@ import { mintToken } from "../../utils/security/link-token";
 import { cssCheckOn } from "../../utils/security/bot-trap";
 import { logger } from "../../utils/logger";
 import { generateSearchNonce } from "../../utils/security/search-nonce";
+import { leakBufferScript } from "../../utils/security/content-policy";
 import { getInstanceSettings } from "../../utils/settings/server-settings";
 import { readShortcutsSettings } from "../../utils/settings/shortcuts-settings";
 import { getClientShortcuts } from "../../extensions/shortcuts/registry";
@@ -180,8 +181,17 @@ export async function applyPagePlaceholders(
   }
 
   result = result.replace("</head>", `${translationsScript}\n  </head>`);
+  const leakScript = leakBufferScript(asBoolean(pageSettings.blockClientLeaks));
+  result = result.replace(/<head[^>]*>/i, (open) => `${open}\n  ${leakScript}`);
 
   result = syncVortexSignal(result, t, resolvedLocale);
+
+  if (asString(pageSettings.privacyPolicy).trim()) {
+    result = result.replace(
+      "</head>",
+      `<script>window.__DEGOOG_PRIVACY_POLICY__=true</script>\n  </head>`,
+    );
+  }
 
   const acDebounceMs = parseInt(asString(pageSettings.acDebounceMs), 10);
   const acDebounce =
