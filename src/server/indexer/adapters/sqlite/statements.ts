@@ -120,7 +120,7 @@ export const substringSql = (needleCount: number): string => `
          u.image_url, u.is_gif, u.duration, u.extras_json
   FROM scan s
   JOIN urls u ON u.id = s.id
-  WHERE ${Array.from({ length: needleCount }, () => "(instr(lower(u.title), ?) > 0 OR instr(lower(u.snippet), ?) > 0)").join(" AND ")}
+  WHERE (${Array.from({ length: needleCount }, () => "(instr(lower(u.title), ?) > 0 OR instr(lower(u.snippet), ?) > 0)").join(" OR ")})
     AND EXISTS (
       SELECT 1 FROM query_hits h
       WHERE h.url_id = u.id

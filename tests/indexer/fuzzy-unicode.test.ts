@@ -22,6 +22,7 @@ import { setInstanceSettings } from "../../src/server/utils/settings/server-sett
 import type { SearchResult } from "../../src/shared/search-types";
 
 const TYPE = "web";
+const MANY_TERMS = Array.from({ length: 40 }, (_, i) => `搜索${i}`).join(" ");
 
 const DOCS: Record<string, string> = {
   underscore: "foo_bar configuration guide",
@@ -34,6 +35,7 @@ const DOCS: Record<string, string> = {
   korean: "한국어 검색 엔진",
   accents: "café crème recipes",
   russian: "погода в москве",
+  many: `${MANY_TERMS} 中文`,
 };
 
 const CASES: [string, string, boolean][] = [
@@ -137,6 +139,7 @@ describe("sqlite fuzzy recall across scripts", () => {
       degoogIndexerPruneEnabled: "true",
       degoogIndexerFuzzyEnabled: "true",
       degoogIndexerQueryLimit: "30",
+      degoogIndexerFuzzyMinTermRatio: "0.6",
     });
     await clearAll();
     await recordResults("seed", TYPE, Object.keys(DOCS).map(res));
@@ -151,9 +154,15 @@ describe("sqlite fuzzy recall across scripts", () => {
   }
 
   test("a query with many unspaced words still answers", async () => {
-    const many = Array.from({ length: 40 }, (_, i) => `搜索${i}`).join(" ");
-    const out = await queryIndex(`${many} 中文`, TYPE);
-    expect(Array.isArray(out)).toBe(true);
+    const urls = (await queryIndex(`${MANY_TERMS} 中文`, TYPE)).map((r) => r.url);
+    expect(urls).toContain("https://example.org/many");
+  });
+
+  test("embedded matches only need as many terms as the ratio asks for", async () => {
+    await setInstanceSettings({ degoogIndexerFuzzyMinTermRatio: "0.5" });
+    const urls = (await queryIndex("搜索 天気", TYPE)).map((r) => r.url);
+    expect(urls).toContain("https://example.org/cjk");
+    expect(urls).toContain("https://example.org/japanese");
   });
 
   test("the fts table is untouched, no reindex needed", () => {

@@ -156,7 +156,7 @@ export const selectSubstring = (
 ) => {
   const contains = needles
     .map((n) => sql`(strpos(lower(u.title), ${n}) > 0 OR strpos(lower(u.snippet), ${n}) > 0)`)
-    .reduce((acc, clause) => sql`${acc} AND ${clause}`);
+    .reduce((acc, clause) => sql`${acc} OR ${clause}`);
   return sql<UrlRow[]>`
     WITH scan AS (
       SELECT id FROM ${sql(schema)}.urls
@@ -167,7 +167,7 @@ export const selectSubstring = (
            u.image_url, u.is_gif, u.duration, u.extras_json
     FROM scan s
     JOIN ${sql(schema)}.urls u ON u.id = s.id
-    WHERE ${contains}
+    WHERE (${contains})
       AND EXISTS (
         SELECT 1 FROM ${sql(schema)}.query_hits h
         WHERE h.url_id = u.id
