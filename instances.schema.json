@@ -4,9 +4,14 @@
   "title": "degoog public instances",
   "description": "Machine readable list of public degoog instances. Consumers should ignore unknown fields, new optional fields may be added without bumping version. Breaking changes bump version.",
   "type": "object",
-  "required": ["version", "instances"],
+  "required": [
+    "version",
+    "instances"
+  ],
   "properties": {
-    "$schema": { "type": "string" },
+    "$schema": {
+      "type": "string"
+    },
     "version": {
       "description": "Schema major version.",
       "type": "integer",
@@ -14,52 +19,80 @@
     },
     "instances": {
       "type": "array",
-      "items": { "$ref": "#/$defs/instance" }
+      "items": {
+        "$ref": "#/$defs/instance"
+      }
     }
   },
   "$defs": {
     "urlList": {
       "type": "array",
       "uniqueItems": true,
-      "items": { "type": "string", "format": "uri", "pattern": "^https?://[^/]+$" }
+      "items": {
+        "type": "string",
+        "format": "uri",
+        "pattern": "^https?://[^/]+$"
+      }
     },
     "instance": {
       "type": "object",
-      "required": ["id", "name", "urls", "appearance"],
+      "required": [
+        "id",
+        "name",
+        "clearnet",
+        "appearance"
+      ],
       "properties": {
         "id": {
           "description": "Stable identifier, never reused or renamed.",
           "type": "string",
           "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
         },
-        "name": { "type": "string", "minLength": 1 },
-        "urls": {
-          "description": "Base URLs grouped by network, no trailing slash.",
-          "type": "object",
-          "required": ["clearnet"],
-          "properties": {
-            "clearnet": { "$ref": "#/$defs/urlList" },
-            "tor": { "$ref": "#/$defs/urlList" },
-            "i2p": { "$ref": "#/$defs/urlList" }
-          }
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "clearnet": {
+          "description": "Clearnet base URLs, no trailing slash.",
+          "$ref": "#/$defs/urlList"
+        },
+        "tor": {
+          "description": "Onion base URLs, no trailing slash.",
+          "$ref": "#/$defs/urlList"
+        },
+        "i2p": {
+          "description": "I2P base URLs, no trailing slash.",
+          "$ref": "#/$defs/urlList"
         },
         "appearance": {
           "description": "Whether the instance uses the stock degoog look or a customised one.",
           "type": "string",
-          "enum": ["default", "custom"]
+          "enum": [
+            "default",
+            "custom"
+          ]
         },
         "theme": {
           "description": "Name of the theme when appearance is custom and the theme is known.",
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "country": {
           "description": "ISO 3166-1 alpha-2 code of the hosting location.",
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "pattern": "^[A-Z]{2}$"
         },
         "cloudflare": {
           "description": "Whether the instance sits behind Cloudflare.",
-          "type": ["boolean", "null"]
+          "type": [
+            "boolean",
+            "null"
+          ]
         }
       }
     }

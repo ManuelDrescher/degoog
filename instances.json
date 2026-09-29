@@ -5,44 +5,44 @@
     {
       "id": "degoog-org",
       "name": "degoog.org",
-      "urls": {
-        "clearnet": ["https://degoog.org"],
-        "tor": [],
-        "i2p": []
-      },
+      "clearnet": [
+        "https://degoog.org"
+      ],
+      "tor": [],
+      "i2p": [],
       "appearance": "default",
       "theme": null
     },
     {
       "id": "mirnir-com",
       "name": "mirnir.com",
-      "urls": {
-        "clearnet": ["https://mirnir.com"],
-        "tor": [],
-        "i2p": []
-      },
+      "clearnet": [
+        "https://mirnir.com"
+      ],
+      "tor": [],
+      "i2p": [],
       "appearance": "default",
       "theme": null
     },
     {
       "id": "nepnir-com",
       "name": "nepnir.com",
-      "urls": {
-        "clearnet": ["https://nepnir.com"],
-        "tor": [],
-        "i2p": []
-      },
+      "clearnet": [
+        "https://nepnir.com"
+      ],
+      "tor": [],
+      "i2p": [],
       "appearance": "custom",
       "theme": "Zen"
     },
     {
       "id": "degoog-ogservers-org",
       "name": "degoog.ogservers.org",
-      "urls": {
-        "clearnet": ["https://degoog.ogservers.org"],
-        "tor": [],
-        "i2p": []
-      },
+      "clearnet": [
+        "https://degoog.ogservers.org"
+      ],
+      "tor": [],
+      "i2p": [],
       "appearance": "custom",
       "theme": null
     }
