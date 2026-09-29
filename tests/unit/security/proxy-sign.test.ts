@@ -2,6 +2,7 @@ import { describe, test, expect, beforeAll } from "bun:test";
 import { initServerKey } from "../../../src/server/utils/security/server-key";
 import {
   isSealedResult,
+  proxyHtmlImages,
   proxyMarkdownImages,
   signResultThumbnails,
   verifyProxyUrl,
@@ -87,5 +88,26 @@ describe("proxy-sign markdown images", () => {
     expect(out[1]).toContain('src="/api/proxy/image?url=');
     expect(out[2]).toBe("[a link](https://example.org/page)");
     expect(out[3]).toBe("![local](./screenshot.png)");
+  });
+});
+
+describe("proxy-sign plugin html images", () => {
+  test("remote img, source, poster and srcset go through the proxy", () => {
+    const out = proxyHtmlImages(
+      '<img src="https://cdn.example/a.png?x=1&amp;y=2" alt="a">' +
+        '<video poster="https://cdn.example/p.jpg"><source src="https://cdn.example/v.mp4"></video>' +
+        '<img srcset="https://cdn.example/s1.png 1x, https://cdn.example/s2.png 2x">',
+    );
+    expect(out).not.toMatch(/(src|poster|srcset)="https:/);
+    expect(out).toContain(encodeURIComponent("https://cdn.example/a.png?x=1&y=2"));
+    expect(out).toContain(" 2x");
+    expect(out.match(/\/api\/proxy\/image\?url=/g)).toHaveLength(5);
+  });
+
+  test("links, local images and the instance's own proxy URLs are left alone", () => {
+    const html =
+      '<a href="https://example.org">x</a><img src="/public/logo.png">' +
+      '<img src="/api/proxy/image?url=https%3A%2F%2Fcdn.example%2Fa.png&sig=abc">';
+    expect(proxyHtmlImages(html)).toBe(html);
   });
 });

@@ -1,3 +1,4 @@
+import { proxyHtmlImages } from "../utils/net/proxy-sign";
 import {
   type ScoredResult,
   type SlotPanel,
@@ -50,7 +51,10 @@ export const renderNojsSlots = async (
   const options = { locale, searchType, nojs: true };
   const instant = await runSlotPlugins(query, clientIp, undefined, options);
   const afterResults = await runSlotPlugins(query, clientIp, results, options);
-  const panels = [...instant, ...afterResults];
+  const panels = [...instant, ...afterResults].map((panel) => ({
+    ...panel,
+    html: proxyHtmlImages(panel.html),
+  }));
 
   const byContainer: Record<string, string> = {};
   const knowledgePanels: SlotPanel[] = [];

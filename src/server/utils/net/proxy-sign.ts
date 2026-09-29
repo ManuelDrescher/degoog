@@ -69,3 +69,25 @@ export const proxyMarkdownImages = (markdown: string): string =>
   markdown
     .replace(MD_IMAGE_RE, (_m, open: string, url: string) => `${open}${buildSignedProxyUrl(url)}`)
     .replace(HTML_IMG_RE, (_m, open: string, url: string) => `${open}${buildSignedProxyUrl(url)}`);
+
+const HTML_MEDIA_SRC_RE =
+  /(<(?:img|source|video|audio|input)\b[^>]*?\b(?:src|poster)\s*=\s*["'])(https?:\/\/[^"']+)/gi;
+const HTML_SRCSET_RE = /(<(?:img|source)\b[^>]*?\bsrcset\s*=\s*)(["'])([^"']*)\2/gi;
+
+const _proxyAttrUrl = (raw: string): string => {
+  const url = raw.replace(/&amp;/g, "&");
+  return _isOwnProxyUrl(url) ? raw : buildSignedProxyUrl(url);
+};
+
+const _proxySrcset = (srcset: string): string =>
+  srcset
+    .split(",")
+    .map((candidate) =>
+      candidate.replace(/^(\s*)(https?:\/\/\S+)/i, (_m, lead: string, url: string) => `${lead}${_proxyAttrUrl(url)}`),
+    )
+    .join(",");
+
+export const proxyHtmlImages = (html: string): string =>
+  html
+    .replace(HTML_MEDIA_SRC_RE, (_m, open: string, url: string) => `${open}${_proxyAttrUrl(url)}`)
+    .replace(HTML_SRCSET_RE, (_m, open: string, quote: string, set: string) => `${open}${quote}${_proxySrcset(set)}${quote}`);

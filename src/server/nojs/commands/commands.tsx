@@ -6,7 +6,7 @@ import type { BangMatch } from "../../extensions/commands/registry";
 import type { CommandContext, Translate } from "../../types/extension";
 import { logger } from "../../utils/logger";
 import { isDisabled } from "../../utils/settings/plugin-settings";
-import { buildSignedProxyUrl } from "../../utils/net/proxy-sign";
+import { proxyHtmlImages, buildSignedProxyUrl } from "../../utils/net/proxy-sign";
 import { syncVortexSignal } from "../../utils/extension-support/translation-circuit";
 
 type NojsCommandMatch = Extract<BangMatch, { type: "command" }>;
@@ -62,9 +62,11 @@ export const renderNojsCommand = async (
       "plugin",
       `${match.command.trigger} executed in ${Math.round(performance.now() - t0)}ms for nojs`,
     );
-    const html = match.command.t
-      ? syncVortexSignal(result.html, match.command.t, locale)
-      : result.html;
+    const html = proxyHtmlImages(
+      match.command.t
+        ? syncVortexSignal(result.html, match.command.t, locale)
+        : result.html,
+    );
     return {
       html: _panel(match.commandId, result.title ?? "", html),
       totalPages:
