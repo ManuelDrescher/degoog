@@ -167,6 +167,14 @@ export const getInstalledSearchTypes = async (
   return [...types];
 };
 
+export const getEngineSearchTypes = async (
+  engineId: string,
+): Promise<string[]> => {
+  const plugin = allEngineEntries().find((e) => e.id === engineId);
+  if (!plugin) return [];
+  return resolveEngineTypes(plugin);
+};
+
 export const getEngineSearchType = async (
   engineId: string,
   preferredTab?: string,

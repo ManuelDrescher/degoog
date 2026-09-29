@@ -5,6 +5,7 @@ import {
 } from "../../extensions/commands/registry";
 import {
   getEngineSearchType,
+  getEngineSearchTypes,
   singleEngineConfig,
 } from "../../extensions/engines/catalog";
 import { handleSearch } from "../../search/handlers";
@@ -58,9 +59,10 @@ const _runCommand = async (
     if (limitRes) return limitRes;
     const authRes = await guardApiKey(c, "apiKeySearchEnabled");
     if (authRes) return authRes;
-    const requestedType = type?.trim() || undefined;
+    const requestedType = type?.trim().replace(/^tab:engine:/, "") || undefined;
     const resolvedType =
       (await getEngineSearchType(match.engineId, requestedType)) ?? "web";
+    const searchTypes = await getEngineSearchTypes(match.engineId);
     const response = await handleSearch({
       ...search,
       query: match.query,
@@ -72,6 +74,7 @@ const _runCommand = async (
       type: "engine",
       engineId: match.engineId,
       primaryType: response.type,
+      searchTypes,
     });
   }
 

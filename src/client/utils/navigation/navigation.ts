@@ -46,9 +46,12 @@ export function showHome(): void {
   window.location.href = `${getBase()}/`;
 }
 
-let _bangMatchType: string | null | undefined = undefined;
+let _bangMatchTypes: string[] | undefined = undefined;
 
-export const getBangMatchType = (): string | null | undefined => _bangMatchType;
+export const isBangTabVisible = (tabType: string): boolean | undefined =>
+  _bangMatchTypes?.some(
+    (t) => tabType === t || tabType === `tab:engine:${t}`,
+  );
 
 export function setActiveTab(type: string): void {
   document.querySelectorAll<HTMLElement>(".results-tab").forEach((tab) => {
@@ -64,20 +67,17 @@ function _updateTabVisibility(tab: HTMLElement): void {
   tab.style.display = hidden ? "none" : "";
 }
 
-export function setTabsForBang(matchType: string | null): void {
-  _bangMatchType = matchType;
+export function setTabsForBang(matchTypes: string[]): void {
+  _bangMatchTypes = matchTypes;
   document.querySelectorAll<HTMLElement>(".results-tab").forEach((tab) => {
-    const tabType = tab.dataset.type ?? "";
-    const visible =
-      matchType !== null &&
-      (tabType === matchType || tabType === `tab:engine:${matchType}`);
+    const visible = isBangTabVisible(tab.dataset.type ?? "") === true;
     tab.dataset.bangHidden = visible ? "" : "true";
     _updateTabVisibility(tab);
   });
 }
 
 export function showAllTabs(): void {
-  _bangMatchType = undefined;
+  _bangMatchTypes = undefined;
   document.querySelectorAll<HTMLElement>(".results-tab").forEach((tab) => {
     delete tab.dataset.bangHidden;
     _updateTabVisibility(tab);

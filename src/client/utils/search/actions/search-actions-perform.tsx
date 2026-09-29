@@ -298,13 +298,18 @@ async function _performBangCommand(
   if (sidebar) clear(sidebar);
   clearSlotPanels();
   document.title = `${query} - degoog`;
-  setTabsForBang(null);
+  setTabsForBang([]);
 
   state.currentBangQuery = query;
 
-  const urlParams = new URLSearchParams({ q: query });
-  if (page > 1) urlParams.set("page", String(page));
-  const historyState = { degoog: true, query, type: "web", page };
+  const requestedType = _type.replace(/^tab:engine:/, "") || "web";
+  const bangUrl = (type: string): string => {
+    const urlParams = new URLSearchParams({ q: query });
+    if (type !== "web") urlParams.set("type", type);
+    if (page > 1) urlParams.set("page", String(page));
+    return `${getBase()}/search?${urlParams.toString()}`;
+  };
+  const historyState = { degoog: true, query, type: requestedType, page };
   if (state.postMethodEnabled) {
     if (isInit) {
       history.replaceState(historyState, "", `${getBase()}/search`);
@@ -313,26 +318,19 @@ async function _performBangCommand(
     }
   } else {
     if (isInit) {
-      history.replaceState(
-        historyState,
-        "",
-        `${getBase()}/search?${urlParams.toString()}`,
-      );
+      history.replaceState(historyState, "", bangUrl(requestedType));
     } else {
-      history.pushState(
-        historyState,
-        "",
-        `${getBase()}/search?${urlParams.toString()}`,
-      );
+      history.pushState(historyState, "", bangUrl(requestedType));
     }
   }
 
   try {
-    const res = await fetchCommand(query, _type, page);
+    const res = await fetchCommand(query, requestedType, page);
     if (!res.ok) throw new Error("not found");
     const data = (await res.json()) as {
       type: string;
       primaryType?: string;
+      searchTypes?: string[];
       results?: ScoredResult[];
       engineTimings?: { name: string; time: number; resultCount: number }[];
       totalTime?: number;
@@ -353,8 +351,15 @@ async function _performBangCommand(
       state.videoPage = 1;
       state.videoLastPage = MAX_PAGE;
       destroyMediaObserver();
+      if (engineType !== requestedType) {
+        history.replaceState(
+          { ...historyState, type: engineType },
+          "",
+          state.postMethodEnabled ? `${getBase()}/search` : bangUrl(engineType),
+        );
+      }
       setActiveTab(engineType);
-      setTabsForBang(engineType);
+      setTabsForBang(data.searchTypes?.length ? data.searchTypes : [engineType]);
       if (isMedia) {
         const glanceElMedia = document.getElementById("at-a-glance");
         if (glanceElMedia) clear(glanceElMedia);
@@ -368,7 +373,7 @@ async function _performBangCommand(
       renderResults(data.results ?? []);
       return;
     }
-    setTabsForBang(null);
+    setTabsForBang([]);
     if (resultsMeta) resultsMeta.textContent = data.title ?? "";
     if (resultsList) resultsList.innerHTML = data.html || "";
     runScriptsInContainer(resultsList);
