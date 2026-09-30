@@ -227,6 +227,16 @@ describe("POST /api/settings/domain-action hostname handling", () => {
     );
   });
 
+  test("a replacement answers with the target favicon, empty while no provider is installed", async () => {
+    const res = await post("/api/settings/domain-action", {
+      kind: "replace",
+      source: "a.com",
+      target: "HTTPS://B.com/path",
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, favicon: "" });
+  });
+
   test("a replacement without a target is refused", async () => {
     const res = await post("/api/settings/domain-action", {
       kind: "replace",

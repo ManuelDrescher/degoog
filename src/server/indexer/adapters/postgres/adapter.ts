@@ -1,4 +1,3 @@
-import postgres from "postgres";
 import type { IndexerHitRow } from "../../../../shared/indexer";
 import type {
   IndexerAdapter,
@@ -14,7 +13,7 @@ import { initPgSchema } from "./schema";
 import { buildTsQuery } from "./tsquery";
 import { stripAccents } from "../../shared/terms";
 import { runPgPrune } from "./prune";
-import type { PgConnectionConfig } from "../../db/pg-config";
+import { leasePgPool, type PgConnectionInput, type PgPoolLease, type PgSql } from "../../db/pg-pool";
 import {
   ensureFoldColumn,
   ensureFoldIndex,
@@ -35,21 +34,16 @@ import {
   writePgRows,
 } from "./statements";
 
-const POOL_OPTIONS = { max: 10, idle_timeout: 30, connect_timeout: 10, prepare: false };
-
-type PgConnectionInput = string | PgConnectionConfig;
-
 export class PgAdapter implements IndexerAdapter {
-  private readonly _sql: ReturnType<typeof postgres>;
+  private readonly _lease: PgPoolLease;
+  private readonly _sql: PgSql;
   private readonly _types = new Set<string>();
   private readonly _foldColumn = new Set<string>();
   private readonly _foldReady = new Set<string>();
 
   constructor(connection: PgConnectionInput) {
-    this._sql =
-      typeof connection === "string"
-        ? postgres(connection, POOL_OPTIONS)
-        : postgres({ ...connection, ...POOL_OPTIONS });
+    this._lease = leasePgPool(connection);
+    this._sql = this._lease.sql;
   }
 
   async boot(): Promise<void> {
@@ -127,7 +121,7 @@ export class PgAdapter implements IndexerAdapter {
 
   async close(): Promise<void> {
     try {
-      await this._sql.end();
+      await this._lease.release();
     } catch (err) {
       logger.warn("indexer", "postgres close failed", err);
     }

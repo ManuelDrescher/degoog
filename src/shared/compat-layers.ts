@@ -25,6 +25,7 @@ export interface CompatCatalogItem {
   name: string;
   types: string[];
   site?: string;
+  favicon?: string;
   deps?: string[];
   notes?: string[];
   installed: boolean;

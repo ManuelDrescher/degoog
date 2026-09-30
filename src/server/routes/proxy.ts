@@ -1,11 +1,12 @@
 import { Hono } from "hono";
 import { outgoingFetch } from "../utils/net/outgoing";
-import { verifyProxyUrl } from "../utils/net/proxy-sign";
+import { verifyFaviconSig, verifyProxyUrl } from "../utils/net/proxy-sign";
+import { readWithin } from "../utils/net/read-body";
+import { localImageAccess } from "../utils/security/local-image-access";
+import { isFaviconHost } from "../favicon/host";
+import { resolveFaviconBytes } from "../favicon/resolve";
 import { getRandomUserAgent } from "../utils/net/user-agents";
-import { type LocalImageAccess } from "../utils/security/ssrf";
 import { fetchWithSafeRedirects } from "../utils/security/safe-redirects";
-import { asBoolean, asString } from "../utils/settings/plugin-settings";
-import { getInstanceSettings } from "../utils/settings/server-settings";
 import { logger } from "../utils/logger";
 import { createConcurrencyGate } from "../utils/net/concurrency-gate";
 
@@ -44,52 +45,6 @@ const PROXY_MAX_QUEUED = 2048;
 
 export const imageProxyGate = createConcurrencyGate(PROXY_MAX_ACTIVE, PROXY_MAX_QUEUED);
 
-const _readWithin = <T>(read: Promise<T>, idleMs: number): Promise<T> => {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const idle = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error("upstream body stalled")), idleMs);
-  });
-  return Promise.race([read, idle]).finally(() => clearTimeout(timer));
-};
-
-const readBodyCapped = async (
-  res: Response,
-  cap: number,
-  idleMs: number,
-): Promise<ArrayBuffer | "too-large" | "empty"> => {
-  const reader = res.body?.getReader();
-  if (!reader) return "empty";
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  try {
-    while (true) {
-      const { done, value } = await _readWithin(reader.read(), idleMs).catch(
-        async (err: unknown) => {
-          await reader.cancel().catch(() => {});
-          throw err;
-        },
-      );
-      if (done) break;
-      if (!value) continue;
-      total += value.byteLength;
-      if (total > cap) {
-        await reader.cancel().catch(() => {});
-        return "too-large";
-      }
-      chunks.push(value);
-    }
-  } finally {
-    reader.releaseLock?.();
-  }
-  const out = new ArrayBuffer(total);
-  const view = new Uint8Array(out);
-  let offset = 0;
-  for (const chunk of chunks) {
-    view.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return out;
-};
 export const streamBodyCapped = (
   body: ReadableStream<Uint8Array>,
   cap: number,
@@ -110,7 +65,7 @@ export const streamBodyCapped = (
       try {
         const remaining = deadlineAt - Date.now();
         if (remaining <= 0) throw new Error("upstream too slow");
-        const { done, value } = await _readWithin(reader.read(), Math.min(idleMs, remaining));
+        const { done, value } = await readWithin(reader.read(), Math.min(idleMs, remaining));
         if (done) {
           controller.close();
           finish();
@@ -142,14 +97,6 @@ const ALLOWED_CONTENT_TYPES = [
   "image/avif",
   "image/x-icon",
 ];
-
-const _localImageAccess = async (): Promise<LocalImageAccess> => {
-  const settings = await getInstanceSettings();
-  return {
-    enabled: asBoolean(settings.imageProxyAllowLocal),
-    patterns: asString(settings.imageProxyAllowList).split("\n"),
-  };
-};
 
 router.get("/api/proxy/image", async (c) => {
   const url = c.req.query("url");
@@ -194,7 +141,7 @@ router.get("/api/proxy/image", async (c) => {
       outgoingFetch,
       url,
       { signal: controller.signal, headers },
-      await _localImageAccess(),
+      await localImageAccess(),
     );
     clearTimeout(timeout);
 
@@ -232,49 +179,35 @@ router.get("/api/proxy/image", async (c) => {
   }
 });
 
-const FAVICON_TIMEOUT_MS = 5_000;
-const FAVICON_MAX_CONTENT_LENGTH = 512 * 1024;
-const FAVICON_CONTENT_TYPES = ["image/", "text/html"];
+const FAVICON_MAX_ACTIVE = 64;
+const FAVICON_MAX_QUEUED = 1024;
+
+export const faviconProxyGate = createConcurrencyGate(FAVICON_MAX_ACTIVE, FAVICON_MAX_QUEUED);
 
 router.get("/api/proxy/favicon", async (c) => {
-  const domain = c.req.query("domain")?.trim();
-  if (!domain || !/^[a-zA-Z0-9.-]+$/.test(domain)) {
-    return c.body("Invalid domain", 400);
+  const domain = c.req.query("domain")?.trim() ?? "";
+  if (!isFaviconHost(domain)) return c.body("Invalid domain", 400);
+
+  const sig = c.req.query("sig");
+  if (!sig || !verifyFaviconSig(domain, sig)) {
+    return c.body("Invalid or missing signature", 403);
   }
 
-  const candidates = [
-    `https://www.google.com/s2/favicons?domain=${domain}&sz=32`,
-    `https://icons.duckduckgo.com/ip3/${domain}.ico`,
-  ];
+  const release = await faviconProxyGate.acquire();
+  if (!release) return c.body("Favicon proxy busy", 503, { "Retry-After": "5" });
 
-  for (const faviconUrl of candidates) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), FAVICON_TIMEOUT_MS);
-    try {
-      const res = await outgoingFetch(faviconUrl, {
-        signal: controller.signal,
-        headers: { "User-Agent": getRandomUserAgent() },
-        redirect: "follow",
-      });
-      clearTimeout(timeout);
-      if (!res.ok) continue;
-      const contentType = res.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
-      if (!FAVICON_CONTENT_TYPES.some((t) => contentType.startsWith(t))) continue;
-      const body = await readBodyCapped(res, FAVICON_MAX_CONTENT_LENGTH, FAVICON_TIMEOUT_MS);
-      if (body === "too-large" || body === "empty") continue;
-      return c.body(body, 200, {
-        "Content-Type": contentType || "image/x-icon",
-        "Cache-Control": "public, max-age=86400",
-        "X-Content-Type-Options": "nosniff",
-        "Content-Security-Policy": PROXY_CSP,
-      });
-    } catch (err) {
-      logger.debug("proxy", "favicon fetch failed", err);
-      clearTimeout(timeout);
-    }
+  try {
+    const icon = await resolveFaviconBytes(domain);
+    if (!icon) return c.body("Favicon not found", 404);
+    return c.body(new Uint8Array(icon.data), 200, {
+      "Content-Type": icon.contentType,
+      "Cache-Control": "public, max-age=86400",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": PROXY_CSP,
+    });
+  } finally {
+    release();
   }
-
-  return c.body("Favicon not found", 404);
 });
 
 export default router;

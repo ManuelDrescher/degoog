@@ -1,4 +1,5 @@
 import pkg from "../../../package.json";
+import { faviconShapeAttr } from "../favicon/shape";
 import { getActiveTheme, getActiveThemeDataAttrs } from "../extensions/themes/registry";
 import type { Translate } from "../types/extension";
 import { mintToken } from "../utils/security/link-token";
@@ -78,7 +79,7 @@ const _themeMode = async (): Promise<string> => {
 
 const _themeAttrs = async (): Promise<string> => {
   const mode = await _themeMode();
-  const extra = await getActiveThemeDataAttrs();
+  const extra = `${await getActiveThemeDataAttrs()}${await faviconShapeAttr()}`;
   return mode ? ` data-theme="${mode}"${extra}` : extra;
 };
 

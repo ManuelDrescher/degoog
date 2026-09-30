@@ -15,8 +15,10 @@ import { Pagination } from "../../utils/pagination/pagination";
 import { PaginationNav } from "../../utils/pagination/pagination-nav";
 import { goToPage } from "../../utils/search/actions/search-actions-page";
 import { renderTemplate } from "../../utils/dom/template";
-import { attachFaviconFallback } from "../../utils/dom/favicon";
-import { faviconUrl } from "../../utils/net/url";
+import {
+  attachFaviconFallback,
+  hasFaviconProviders,
+} from "../../utils/dom/favicon";
 import { getBase } from "../../utils/net/base-url";
 import { syncMediaPreviewPanel } from "../media/media";
 import { destroyMediaObserver, setupMediaObserver } from "../media/media-scroll";
@@ -31,6 +33,7 @@ type ResultActionsFlags = {
   blockUi?: boolean;
   replaceUi?: boolean;
   scoreUi?: boolean;
+  refresh?: boolean;
 };
 
 const _resultActionsFlags = (): ResultActionsFlags =>
@@ -45,6 +48,8 @@ export const buildResultContext = (
   const showBlock = !!(flags.authenticated && flags.blockUi);
   const showReplace = !!(flags.authenticated && flags.replaceUi);
   const showScore = !!(flags.authenticated && flags.scoreUi);
+  const showRefresh = !!(flags.authenticated && flags.refresh);
+  const faviconMissing = !hasFaviconProviders();
   const isRecalled = r.idx === "recalled";
   const fromIndexTip = t("search-templates.result.from-index");
   const sources = (r.sources ?? []).map((name) => ({
@@ -58,8 +63,12 @@ export const buildResultContext = (
     cite_url: cleanUrl(r.url),
     snippet: r.snippet,
     published_at: _dateLabel(r.publishedAt),
-    favicon_url: faviconUrl(r.url),
+    favicon_url: faviconMissing ? "" : (r.favicon ?? ""),
     favicon_host: faviconHostname(r.url),
+    favicon_missing: faviconMissing,
+    favicon_missing_tip: faviconMissing
+      ? t("search-templates.result.favicon-missing")
+      : "",
     thumbnail_url: r.thumbnail || "",
     sources,
     duration: r.duration || "",
@@ -67,10 +76,11 @@ export const buildResultContext = (
     link_target: state.openInNewTab ? "_blank" : "_self",
     link_rel: state.openInNewTab ? "noopener" : "",
     insecure: !!r.insecure,
-    show_actions: showBlock || showReplace || showScore,
+    show_actions: showBlock || showReplace || showScore || showRefresh,
     action_block: showBlock,
     action_replace: showReplace,
     action_score: showScore,
+    action_refresh: showRefresh,
   };
 };
 
@@ -91,11 +101,11 @@ const _dateLabel = (iso?: string): string => {
   }
 };
 
-const _hydrateFavicons = (container: HTMLElement): void => {
+export function hydrateFavicons(container: HTMLElement): void {
   container
     .querySelectorAll<HTMLImageElement>("img.result-favicon")
     .forEach((img) => attachFaviconFallback(img));
-};
+}
 
 export function renderResults(
   results: ScoredResult[],
@@ -155,7 +165,7 @@ export function renderResults(
     )
     .join("");
 
-  _hydrateFavicons(container);
+  hydrateFavicons(container);
   attachVideoPlayers(container);
 
   if (opts.paginate !== false) {
@@ -187,7 +197,7 @@ export function appendResults(
       .join(""),
   );
 
-  _hydrateFavicons(container);
+  hydrateFavicons(container);
   attachVideoPlayers(container);
   window.dispatchEvent(new CustomEvent("degoog-results-ready"));
 }

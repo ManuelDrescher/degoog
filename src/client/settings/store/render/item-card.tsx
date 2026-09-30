@@ -3,22 +3,13 @@ import { Badge } from "../../../../shared/ui/components/primitives/badge";
 import { ItemCardActions } from "./item-card-actions";
 import { ItemCardAuthor } from "./item-card-author";
 import { ShortcutKeycaps } from "./shortcut-keycaps";
-import { engineTypeLabel, pluginTypeLabel } from "./labels";
+import { engineTypeLabel, pluginTypeLabel, storeTypeLabel } from "./labels";
 import { screenshotUrl } from "../overlays/lightbox";
 import { renderMdInline } from "../../../utils/dom/md";
 import type { Props } from "../../../../shared/ui/tribute/types";
 import type { StoreItem } from "../../../types/store-tab";
 
 const t = window.scopedT("core");
-
-const _typeLabel = (item: StoreItem): string => {
-  if (item.type === "plugin") return "Plugin";
-  if (item.type === "engine") return "Engine";
-  if (item.type === "transport") return "Transport";
-  if (item.type === "autocomplete") return "Autocomplete";
-  if (item.type === "shortcut") return "Shortcut";
-  return "Theme";
-};
 
 const _subLabel = (item: StoreItem): string => {
   if (item.type === "plugin")
@@ -110,7 +101,7 @@ export const ItemCard = ({ item }: { item: StoreItem }): JSX.Element => {
                 modifier="store-type"
                 class={`store-type-badge store-type-${item.type}`}
               >
-                {_typeLabel(item)}
+                {storeTypeLabel(item.type)}
               </Badge>
               {subLabel ? (
                 <Badge class="store-subtype-badge">{subLabel}</Badge>

@@ -151,6 +151,7 @@ export async function listRepoItems(repoUrl?: string): Promise<StoreItem[]> {
     if (pkg.autocomplete)
       await push(ExtensionStoreType.Autocomplete, pkg.autocomplete);
     if (pkg.shortcuts) await push(ExtensionStoreType.Shortcut, pkg.shortcuts);
+    if (pkg.favicon) await push(ExtensionStoreType.Favicon, pkg.favicon);
   }
 
   if (!repoUrl) {

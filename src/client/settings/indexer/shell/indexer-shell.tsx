@@ -3,6 +3,7 @@ import { Icon } from "../../../../shared/ui/components/primitives/icon";
 import { FiltersFieldset } from "./filters-fieldset";
 import { StatsBlock } from "./stats-block";
 import { StorageFieldset } from "./storage-fieldset";
+import { FaviconStoreFieldset } from "./favicon-store-fieldset";
 import { tr } from "../i18n";
 
 export const IndexerShell = (): JSX.Element => (
@@ -29,6 +30,7 @@ export const IndexerShell = (): JSX.Element => (
     <fieldset class="settings-fieldset">
       <FiltersFieldset />
       <StorageFieldset />
+      <FaviconStoreFieldset />
       <StatsBlock />
     </fieldset>
   </section>

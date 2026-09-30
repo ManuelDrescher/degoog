@@ -24,6 +24,7 @@ export const CompatIcon = ({ item }: { item: CompatCatalogItem }): JSX.Element =
       class="degoog-result--favicon compat-favicon"
       alt=""
       loading="lazy"
+      src={item.favicon || undefined}
       data-favicon-host={host}
       data-favicon-letter={letter}
     />

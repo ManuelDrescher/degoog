@@ -40,6 +40,9 @@ export const clearServerSettingsCache = (): void => {
   _cache = null;
 };
 
+export const peekInstanceSettings = (): Record<string, ServerSettingValue> | null =>
+  _cache?.settings ?? null;
+
 const _persist = async (settings: ServerSettings): Promise<void> => {
   await writeJsonAtomic(serverSettingsFile(), settings);
 };

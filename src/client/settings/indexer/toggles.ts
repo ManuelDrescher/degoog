@@ -10,6 +10,15 @@ import { tr } from "./i18n";
 const _persistField = (key: string, value: string): Promise<boolean> =>
   saveField(key, value, getStoredToken);
 
+function _clampToBounds(field: HTMLInputElement | HTMLTextAreaElement): void {
+  if (!(field instanceof HTMLInputElement) || field.type !== "number" || field.value === "") return;
+  const n = Number(field.value);
+  if (!Number.isFinite(n)) return;
+  const min = field.min === "" ? -Infinity : Number(field.min);
+  const max = field.max === "" ? Infinity : Number(field.max);
+  field.value = String(Math.min(max, Math.max(min, Math.trunc(n))));
+}
+
 export const wireToggles = async (
   refreshStats: () => Promise<void>,
 ): Promise<(isEnabled: boolean) => void> => {
@@ -21,6 +30,7 @@ export const wireToggles = async (
 
   const filtersWrap = document.getElementById("indexer-filters-wrap");
   const storageWrap = document.getElementById("indexer-storage-wrap");
+  const faviconWrap = document.getElementById("indexer-favicon-store-wrap");
   const statsWrap = document.getElementById("indexer-stats-wrap");
   const disabledNote = document.getElementById("indexer-disabled-note");
   const pruneEl = document.getElementById("indexer-prune-enabled") as HTMLInputElement | null;
@@ -34,6 +44,7 @@ export const wireToggles = async (
   const domainAllowEl = document.getElementById("indexer-domain-allowlist") as HTMLTextAreaElement | null;
   const domainBlockEl = document.getElementById("indexer-domain-blocklist") as HTMLTextAreaElement | null;
   const wordBlockEl = document.getElementById("indexer-word-blocklist") as HTMLTextAreaElement | null;
+  const faviconMaxAgeEl = document.getElementById("indexer-favicon-store-max-age-days") as HTMLInputElement | null;
 
   const str = (key: string, fallback: string): string => {
     const v = settings[key];
@@ -50,9 +61,10 @@ export const wireToggles = async (
     setIndexerNavVisible(isEnabled);
     if (filtersWrap) filtersWrap.hidden = !isEnabled;
     if (storageWrap) storageWrap.hidden = !isEnabled;
+    if (faviconWrap) faviconWrap.hidden = !isEnabled;
     if (statsWrap) statsWrap.hidden = !isEnabled;
     if (disabledNote) disabledNote.hidden = isEnabled;
-    for (const wrap of [filtersWrap, storageWrap]) {
+    for (const wrap of [filtersWrap, storageWrap, faviconWrap]) {
       wrap?.classList.toggle("degoog-fieldset--disabled", !isEnabled);
     }
     const disable = !isEnabled;
@@ -68,6 +80,7 @@ export const wireToggles = async (
       domainAllowEl,
       domainBlockEl,
       wordBlockEl,
+      faviconMaxAgeEl,
     ]) {
       if (el) el.disabled = disable;
     }
@@ -81,6 +94,7 @@ export const wireToggles = async (
   if (maxAgeDaysEl) maxAgeDaysEl.value = str("degoogIndexerMaxAgeDays", "0");
   if (queryLimitEl) queryLimitEl.value = str("degoogIndexerQueryLimit", "100");
   if (rankingWindowEl) rankingWindowEl.value = str("degoogIndexerRankingWindow", "20");
+  if (faviconMaxAgeEl) faviconMaxAgeEl.value = str("degoogFaviconStoreMaxAgeDays", "30");
   const oversized = oversizedMap(settings);
 
   const setListField = (
@@ -110,6 +124,7 @@ export const wireToggles = async (
     [maxAgeDaysEl, "degoogIndexerMaxAgeDays", "0"],
     [queryLimitEl, "degoogIndexerQueryLimit", "100"],
     [rankingWindowEl, "degoogIndexerRankingWindow", "20"],
+    [faviconMaxAgeEl, "degoogFaviconStoreMaxAgeDays", "30"],
   ];
 
   for (const [field, key, fallback] of fieldSpecs) {
@@ -117,7 +132,10 @@ export const wireToggles = async (
     const btn = createFieldSaveBtn();
     field.insertAdjacentElement("afterend", btn);
     field.addEventListener("input", () => { btn.hidden = false; });
-    bindFieldSaveBtn(btn, () => _persistField(key, field.value || fallback));
+    bindFieldSaveBtn(btn, () => {
+      _clampToBounds(field);
+      return _persistField(key, field.value || fallback);
+    });
   }
 
   const wireToggle = (

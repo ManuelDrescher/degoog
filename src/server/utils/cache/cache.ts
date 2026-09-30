@@ -58,6 +58,7 @@ export const isCacheScope = (v: unknown): v is CacheScope =>
 type TtlCache<T> = {
   get(key: string): T | null;
   set(key: string, value: T, ttlMs?: number): void;
+  delete(key: string): void;
   clear(): void;
 };
 
@@ -98,6 +99,9 @@ export function createCache<T>(
         if (oldest !== undefined) store.delete(oldest);
       }
       store.set(key, { value, expiresAt: Date.now() + ttlMs });
+    },
+    delete(key: string): void {
+      store.delete(key);
     },
     clear(): void {
       store.clear();
@@ -157,6 +161,7 @@ export const useCache = <T>(
       if (isValkeyEnabled()) await kvSet<T>(namespace, key, value, ttlMs);
     },
     async delete(key: string): Promise<void> {
+      mem.delete(key);
       if (isValkeyEnabled()) await kvDel(namespace, key);
     },
     async clear(): Promise<void> {

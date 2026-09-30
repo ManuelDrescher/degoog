@@ -29,7 +29,11 @@ import {
 import { destroyMediaObserver, setupMediaObserver } from "../media/media-scroll";
 import { prependKnowledgePanels, renderSidebar } from "../renderer/sidebar/render-sidebar";
 import { clearSlotPanels } from "../renderer/render-slots";
-import { buildResultContext, renderResults } from "../renderer/render";
+import {
+  buildResultContext,
+  hydrateFavicons,
+  renderResults,
+} from "../renderer/render";
 import { renderImgEngines } from "../filters/image-filters";
 import { getBase } from "../../utils/net/base-url";
 import { buildSearchBody, buildSearchParams } from "../../utils/net/url";
@@ -258,6 +262,7 @@ function _renderTabResults(
       return renderTemplate("degoog-result", ctx) ?? "";
     })
     .join("");
+  hydrateFavicons(container);
 }
 
 function _renderTabPagination(

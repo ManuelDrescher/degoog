@@ -67,6 +67,7 @@ beforeAll(async () => {
             }
           : null,
       autocomplete: null,
+      favicon: null,
     }),
   }));
   mock.module(SETTINGS_MOD, () => ({

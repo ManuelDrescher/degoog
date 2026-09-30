@@ -91,6 +91,13 @@ describe("store/reload-sync", () => {
     expect(reloads).toEqual([{ type: ExtensionStoreType.Shortcut, bust: false }]);
   });
 
+  test("peer workers refresh the favicon registry", async () => {
+    sync.heimdall(peerEvent("favicon:refresh"));
+    await settle();
+
+    expect(reloads).toEqual([{ type: ExtensionStoreType.Favicon, bust: false }]);
+  });
+
   test("ignores unknown types, modes and other scopes", async () => {
     sync.heimdall(peerEvent("widget:bump"));
     sync.heimdall(peerEvent("theme:explode"));

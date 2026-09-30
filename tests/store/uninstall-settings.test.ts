@@ -23,6 +23,12 @@ const CASES: [ExtensionStoreType, string, string, string][] = [
     "acme-do-thing-shortcut",
     "shortcut-acme-do-thing",
   ],
+  [
+    ExtensionStoreType.Favicon,
+    "acme-fav",
+    "acme-fav-favicon",
+    "favicon-acme-fav",
+  ],
   [ExtensionStoreType.Plugin, "acme-px", "acme-px-command", "plugin-acme-px"],
 ];
 

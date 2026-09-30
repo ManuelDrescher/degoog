@@ -117,6 +117,7 @@
       "saving-to-index": "Saving to your index",
       "insecure": "Insecure",
       "insecure-tooltip": "This site is served over an unencrypted HTTP connection.",
+      "favicon-missing": "No favicon extension installed",
       "actions": {
         "menu-aria": "Domain actions",
         "block": "Block this domain",
@@ -130,7 +131,10 @@
         "prompt-score": "Score for this domain (positive boosts, negative demotes):",
         "modal-confirm": "Confirm",
         "modal-cancel": "Cancel",
-        "scored": "Scored"
+        "scored": "Scored",
+        "refresh": "Refresh favicon",
+        "refreshed": "Favicon refreshed",
+        "refresh-failed": "No favicon found"
       }
     },
     "pagination": {

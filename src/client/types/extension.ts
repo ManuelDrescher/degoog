@@ -29,6 +29,7 @@ export interface AllExtensions {
   themes: ExtensionMeta[];
   transports: ExtensionMeta[];
   autocomplete: ExtensionMeta[];
+  favicon: ExtensionMeta[];
   shortcuts: ExtensionMeta[];
 }
 

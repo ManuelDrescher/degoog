@@ -1,10 +1,16 @@
 import type { ScoredResult } from "../../../shared/search-types";
+import { faviconHostname } from "../../../shared/utils/url";
+import { hasFaviconSource } from "../../favicon/source";
+import { FAVICON_SIZE } from "../../favicon/size";
+import { normalizeFaviconHost } from "../../favicon/host";
 import type { AutocompleteCacheItem } from "../cache/cache";
 import { signData, verifyData } from "../security/server-key";
 import { getBasePath, getBaseUrl } from "./base-url";
 
 const PROXY_PATHS = ["/api/proxy/image", "/api/proxy/favicon"];
 const RESULT_SEAL_PREFIX = "result:";
+const FAVICON_SIG_PREFIX = "favicon:";
+const FAVICON_PROXY_PATH = "/api/proxy/favicon";
 
 const _ownPrefixes = (): string[] => {
   const baseUrl = getBaseUrl();
@@ -44,10 +50,42 @@ export const isSealedResult = (result: unknown): result is ScoredResult => {
   );
 };
 
+export const verifyFaviconSig = (host: string, sig: string): boolean =>
+  verifyData(`${FAVICON_SIG_PREFIX}${host}`, sig);
+
+const _signedFaviconUrl = (host: string, version?: number): string => {
+  const sig = signData(`${FAVICON_SIG_PREFIX}${host}`);
+  const bust = version !== undefined ? `&v=${Math.trunc(version)}` : "";
+  return `${getBasePath()}${FAVICON_PROXY_PATH}?domain=${encodeURIComponent(host)}&sig=${sig}&s=${FAVICON_SIZE}${bust}`;
+};
+
+export const buildFaviconUrl = (host: string, version?: number): string => {
+  const normalized = normalizeFaviconHost(host);
+  if (!normalized || !hasFaviconSource()) return "";
+  return _signedFaviconUrl(normalized, version);
+};
+
+const _faviconSigner = (): ((url: string) => string) => {
+  if (!hasFaviconSource()) return () => "";
+  const byHost = new Map<string, string>();
+  return (url) => {
+    const host = normalizeFaviconHost(faviconHostname(url));
+    if (!host) return "";
+    let signed = byHost.get(host);
+    if (signed === undefined) {
+      signed = _signedFaviconUrl(host);
+      byHost.set(host, signed);
+    }
+    return signed;
+  };
+};
+
 export function signResultThumbnails(results: ScoredResult[]): ScoredResult[] {
+  const faviconFor = _faviconSigner();
   return results.map((r) => ({
     ...r,
     seal: sealResultUrl(r.url),
+    favicon: faviconFor(r.url),
     ...(r.thumbnail ? { thumbnail: _signThumb(r.thumbnail) } : {}),
     ...(r.imageUrl ? { imageUrl: _signThumb(r.imageUrl) } : {}),
   }));

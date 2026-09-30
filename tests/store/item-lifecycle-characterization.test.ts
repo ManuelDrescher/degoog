@@ -88,6 +88,11 @@ describe("installItem folder naming is the extension id contract", () => {
       "shortcuts",
       "acme-extensions-demo-shortcut",
     ],
+    [
+      ExtensionStoreType.Favicon,
+      "favicon",
+      "acme-extensions-demo-favicon",
+    ],
   ];
 
   test.each(cases)(

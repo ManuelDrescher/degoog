@@ -4,7 +4,6 @@ import { state } from "../../state";
 import { getBase } from "./base-url";
 import { appendSearchAuthParams, searchAuthHeaders } from "./request";
 import { isImageSearchType } from "../../../shared/search-types";
-import { faviconHostname } from "../../../shared/utils/url";
 
 export const imgFilterRecord = (f: ImageFilter): Record<string, string> => {
   const r: Record<string, string> = {};
@@ -29,12 +28,6 @@ export const readImgFilter = (p: URLSearchParams): ImageFilter => {
   if (layout && layout !== "any") f.layout = layout;
   if (nsfw && nsfw !== "any") f.nsfw = nsfw;
   return f;
-};
-
-export const faviconUrl = (url: string): string => {
-  const hostname = faviconHostname(url);
-  if (!hostname) return "";
-  return `${getBase()}/api/proxy/favicon?domain=${encodeURIComponent(hostname)}`;
 };
 
 export const buildSearchParams = (

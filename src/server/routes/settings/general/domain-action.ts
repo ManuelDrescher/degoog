@@ -3,6 +3,7 @@ import { asBoolean } from "../../../utils/settings/plugin-settings";
 import { readObjectBody } from "../../../utils/hono";
 import { getInstanceSettings } from "../../../utils/settings/server-settings";
 import { readDomainLists, writeDomainList } from "../../../utils/filtering/domain-lists";
+import { buildFaviconUrl } from "../../../utils/net/proxy-sign";
 import { settingsAuth } from "../../_guards";
 
 const router = new Hono();
@@ -33,6 +34,8 @@ const _upsertKeyed = (existing: string, source: string, sep: string, line: strin
   return next.join("\n");
 };
 
+const REPLACE_KIND = "replace";
+
 type DomainActionBody = { kind?: string; source?: string; target?: string; score?: number };
 
 const DOMAIN_ACTIONS: Record<
@@ -48,7 +51,7 @@ const DOMAIN_ACTIONS: Record<
     list: "domainBlockList",
     edit: (existing, source) => _appendBlock(existing, source),
   },
-  replace: {
+  [REPLACE_KIND]: {
     flag: "domainReplaceUiEnabled",
     list: "domainReplaceList",
     edit: (existing, source, body) => {
@@ -85,6 +88,9 @@ router.post("/api/settings/domain-action", settingsAuth("POST /api/settings/doma
   const next = action.edit((await readDomainLists())[action.list], source, body);
   if (typeof next !== "string") return c.json(next, 400);
   await writeDomainList(action.list, next);
+  if (kind === REPLACE_KIND) {
+    return c.json({ ok: true, favicon: buildFaviconUrl(_normalizeHostname(body.target ?? "")) });
+  }
   return c.json({ ok: true });
 });
 

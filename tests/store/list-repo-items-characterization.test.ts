@@ -134,6 +134,7 @@ describe("listRepoItems catalogue assembly", () => {
       themes: [{ path: "themes/t", name: "T" }],
       transports: [{ path: "transports/x", name: "X" }],
       autocomplete: [{ path: "autocomplete/a", name: "A" }],
+      favicon: [{ path: "favicon/f", name: "F" }],
     });
     for (const p of [
       "shortcuts/s",
@@ -142,6 +143,7 @@ describe("listRepoItems catalogue assembly", () => {
       "themes/t",
       "transports/x",
       "autocomplete/a",
+      "favicon/f",
     ])
       writeItem(p);
     writeRepos();
@@ -154,6 +156,7 @@ describe("listRepoItems catalogue assembly", () => {
       ExtensionStoreType.Transport,
       ExtensionStoreType.Autocomplete,
       ExtensionStoreType.Shortcut,
+      ExtensionStoreType.Favicon,
     ]);
   });
 

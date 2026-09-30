@@ -17,6 +17,8 @@ export function canonicalInstalledFolder(
     return makeExtID(folderName, "autocomplete");
   if (type === ExtensionStoreType.Shortcut)
     return makeExtID(folderName, "shortcut");
+  if (type === ExtensionStoreType.Favicon)
+    return makeExtID(folderName, "favicon");
   return folderName;
 }
 
@@ -62,6 +64,10 @@ export function parseDependencyUrl(depUrl: string): {
     {
       type: ExtensionStoreType.Shortcut,
       pattern: /^(.+?)\/(shortcuts\/[^/]+)$/,
+    },
+    {
+      type: ExtensionStoreType.Favicon,
+      pattern: /^(.+?)\/(favicon\/[^/]+)$/,
     },
   ];
   for (const { type, pattern } of typePatterns) {

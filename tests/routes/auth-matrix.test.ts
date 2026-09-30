@@ -14,6 +14,7 @@ const MODULES = [
   "commands",
   "compat-engines",
   "extensions",
+  "favicon",
   "health",
   "indexer",
   "pages",

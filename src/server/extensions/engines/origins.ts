@@ -15,7 +15,7 @@ import {
 import { normalizeRepoUrl, readReposData } from "../store/persistence";
 import { folderFromExtID } from "../../utils/extension-support/extension-id";
 import { getBasePath } from "../../utils/net/base-url";
-import { buildSignedProxyUrl } from "../../utils/net/proxy-sign";
+import { buildFaviconUrl, buildSignedProxyUrl } from "../../utils/net/proxy-sign";
 import { logger } from "../../utils/logger";
 import { engineHost } from "./engine-hosts";
 
@@ -52,7 +52,7 @@ const _hostOf = (site: string): string | undefined => {
 const _faviconFor = (entry: { id: string; site?: string }): string | undefined => {
   const host = entry.site ? _hostOf(entry.site) : engineHost(entry.id);
   if (!host) return undefined;
-  return `${getBasePath()}/api/proxy/favicon?domain=${encodeURIComponent(host)}`;
+  return buildFaviconUrl(host);
 };
 
 const _urlOf = (record: unknown, field: string): string | null => {
@@ -109,5 +109,5 @@ export const engineOrigin = (
   const folder = folderFromExtID(entry.id, "engine");
   const provenance =
     origins.get(folder) ?? origins.get(entry.id) ?? _coreOrigin();
-  return favicon ? { ...provenance, favicon } : provenance;
+  return favicon === undefined ? provenance : { ...provenance, favicon };
 };

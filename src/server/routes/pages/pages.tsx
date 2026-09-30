@@ -22,6 +22,8 @@ import { getBasePath, getBaseUrl } from "../../utils/net/base-url";
 import { getPublicUrl } from "../../utils/net/public-url";
 import { FAKE_RESULTS } from "../../../shared/fake-results";
 import { getInstanceSettings } from "../../utils/settings/server-settings";
+import { hasFaviconProviders } from "../../extensions/favicon/registry";
+import { hasFaviconSource } from "../../favicon/source";
 import { DEFAULT_THEME_DIR, getCoreTranslator } from "../../render/theme-assets";
 import {
   applyPagePlaceholders,
@@ -83,6 +85,9 @@ router.get("/", async (c) => {
   return c.html(await buildLayoutPage("index.html", locale));
 });
 
+const _scriptJson = (value: Record<string, boolean>): string =>
+  JSON.stringify(value).replace(/<\//g, "<\\/");
+
 const _buildResultActionsScript = async (c: Context): Promise<string> => {
   const token = canBalrogPass(c);
   const authenticated = await gandalf(token);
@@ -95,14 +100,18 @@ const _buildResultActionsScript = async (c: Context): Promise<string> => {
     replaceUi = asBoolean(settings.domainReplaceUiEnabled);
     scoreUi = asBoolean(settings.domainScoreUiEnabled);
   }
-  const payload = JSON.stringify({
+  const payload = _scriptJson({
     authenticated,
     blockUi,
     replaceUi,
     scoreUi,
-  }).replace(/<\//g, "<\\/");
+    refresh: authenticated && hasFaviconProviders(),
+  });
   return `<script>window.__DEGOOG_RESULT_ACTIONS__=${payload}</script>`;
 };
+
+const _buildFaviconsScript = (): string =>
+  `<script>window.__DEGOOG_FAVICONS__=${_scriptJson({ providers: hasFaviconSource() })}</script>`;
 
 const _injectIntoHead = (html: string, fragment: string): string => {
   if (html.includes("</head>")) {
@@ -140,7 +149,7 @@ router.get("/search", async (c) => {
   } else {
     html = await buildLayoutPage("search.html", locale, "has-results");
   }
-  return c.html(_injectIntoHead(html, actionsScript));
+  return c.html(_injectIntoHead(html, `${actionsScript}\n${_buildFaviconsScript()}`));
 });
 
 router.get("/settings/", (c) =>
