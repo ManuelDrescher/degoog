@@ -49,6 +49,8 @@ export async function performTabSearch(
   page = 1,
 ): Promise<void> {
   if (!query.trim()) return;
+  destroyMediaObserver();
+  teardownInfinite();
   const seq = beginSearch();
 
   const tabType = `tab:${tabId}`;

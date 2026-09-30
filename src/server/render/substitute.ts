@@ -10,7 +10,4 @@ export const beforeHeadEnd = (html: string, fragment: string): string =>
   subFirst(html, HEAD_END, `${fragment}\n  ${HEAD_END}`);
 
 export const scriptJson = (value: unknown): string =>
-  JSON.stringify(value).replace(/<\//g, "<\\/");
-
-export const windowGlobalScript = (name: string, value: unknown): string =>
-  `<script>window.${name}=${scriptJson(value)}</script>`;
+  JSON.stringify(value).replace(/</g, "\\u003c");

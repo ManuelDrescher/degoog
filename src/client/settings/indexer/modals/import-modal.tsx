@@ -53,7 +53,7 @@ const runImport = async (
   type: string,
   file: File,
   hostEl: HTMLElement,
-  statusEl: HTMLElement,
+  setStatus: (text: string) => void,
 ): Promise<CompleteResponse | null> => {
   const base = getBase();
   const bar = mountProgress(hostEl);
@@ -69,14 +69,14 @@ const runImport = async (
   });
   const start = (await startRes.json().catch(() => ({}))) as StartResponse;
   if (!startRes.ok || !start.sessionId) {
-    statusEl.textContent = start.error ?? `Import failed (${startRes.status})`;
+    setStatus(start.error ?? `Import failed (${startRes.status})`);
     bar.finish(true);
     return null;
   }
 
   const uploaded = await uploadChunks(file, start.sessionId, bar);
   if (!uploaded) {
-    statusEl.textContent = tr("import-progress");
+    setStatus(tr("import-progress"));
     bar.finish(true);
     return null;
   }
@@ -92,7 +92,7 @@ const runImport = async (
   });
   const data = (await doneRes.json().catch(() => ({}))) as CompleteResponse;
   if (!doneRes.ok || !data.ok) {
-    statusEl.textContent = data.error ?? `Import failed (${doneRes.status})`;
+    setStatus(data.error ?? `Import failed (${doneRes.status})`);
     bar.finish(true);
     return null;
   }
@@ -142,6 +142,17 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
 
   let running = false;
   let finished = false;
+  let owned = true;
+
+  const showSave = (): void => {
+    if (!owned) return;
+    saveEl.disabled = false;
+    saveEl.hidden = false;
+  };
+
+  const setStatus = (text: string): void => {
+    if (owned) statusEl.textContent = text;
+  };
 
   const onSave = async (): Promise<void> => {
     if (finished) {
@@ -173,31 +184,37 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
     saveEl.hidden = true;
 
     try {
-      const data = await runImport(type, file, host, statusEl);
+      const data = await runImport(type, file, host, setStatus);
       if (!data) {
-        saveEl.disabled = false;
-        saveEl.hidden = false;
+        showSave();
         return;
       }
-      statusEl.textContent = tr("import-done", {
-        type,
-        urls: String(data.urls ?? 0),
-        hits: String(data.hits ?? 0),
-      });
       onDone();
+      if (!owned) return;
+      setStatus(
+        tr("import-done", {
+          type,
+          urls: String(data.urls ?? 0),
+          hits: String(data.hits ?? 0),
+        }),
+      );
       finished = true;
       saveEl.textContent = tr("import-close");
-      saveEl.disabled = false;
-      saveEl.hidden = false;
+      showSave();
     } catch {
-      statusEl.textContent = "Import failed";
-      saveEl.disabled = false;
-      saveEl.hidden = false;
+      setStatus("Import failed");
+      showSave();
     } finally {
       running = false;
     }
   };
 
-  borrowModal({ onSave: () => void onSave(), onClose: () => clear(bodyEl) });
+  borrowModal({
+    onSave: () => void onSave(),
+    onClose: () => {
+      owned = false;
+      clear(bodyEl);
+    },
+  });
   saveEl.textContent = tr("import-btn");
 };

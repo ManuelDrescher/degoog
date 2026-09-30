@@ -3,8 +3,8 @@ import { buildThemedLayoutPage } from "../../../src/server/routes/pages/render";
 import {
   beforeHeadEnd,
   subFirst,
-  windowGlobalScript,
 } from "../../../src/server/render/substitute";
+import { windowGlobalScript } from "../../../src/server/render/window-global-script";
 
 const DOLLAR_PATTERNS = "price $& then $$ and $' plus $` end";
 
@@ -25,7 +25,14 @@ describe("page placeholder substitution", () => {
   test("window globals cannot close their own script tag", () => {
     const script = windowGlobalScript("__PROBE__", { value: "</script><b>$&</b>" });
     expect(script).toBe(
-      '<script>window.__PROBE__={"value":"<\\/script><b>$&<\\/b>"}</script>',
+      '<script>window.__PROBE__={"value":"\\u003c/script>\\u003cb>$&\\u003c/b>"}</script>',
+    );
+  });
+
+  test("window globals cannot enter the double-escaped script state", () => {
+    const script = windowGlobalScript("__PROBE__", { value: "<!--<script>" });
+    expect(script).toBe(
+      '<script>window.__PROBE__={"value":"\\u003c!--\\u003cscript>"}</script>',
     );
   });
 });

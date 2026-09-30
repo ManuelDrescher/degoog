@@ -443,6 +443,23 @@ describe("handleRetry", () => {
     expect(out.totalPages).toBe(first.totalPages);
   });
 
+  test("a retry with an uncached sibling leaves the page total unknown", async () => {
+    harness({
+      engines: [
+        makeEngine("Alpha", 1, { pages: 7 }),
+        makeEngine("Beta", 1, { pages: 4 }),
+      ],
+    });
+    const { handleRetry } = await handlers();
+
+    const out = await handleRetry({
+      ...baseParams(uniqueQuery("coldretrypages")),
+      engineName: "alpha-engine",
+    });
+
+    expect(out.totalPages).toBeUndefined();
+  });
+
   test("retry forces the retried engine fresh while siblings stay cached", async () => {
     const query = uniqueQuery("freshretry");
     harness({ engines: [makeEngine("Alpha", 1), makeEngine("Beta", 1)] });

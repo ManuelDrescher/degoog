@@ -174,7 +174,9 @@ export async function handleRetry(
     timing,
     engineTimings,
     totalPages: agreedPageTotal([
-      ...knownRuns.map(({ run }) => run.pages),
+      ...others.map(
+        (engine) => knownRuns.find((known) => known.engine === engine)?.run.pages,
+      ),
       retriedPages,
     ]),
     results: signResultThumbnails(

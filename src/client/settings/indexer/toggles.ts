@@ -147,10 +147,12 @@ export const wireToggles = async (
     checkEl: HTMLInputElement | null,
     key: string,
   ): void => {
+    let revision = 0;
     checkEl?.addEventListener("change", async () => {
       const sent = checkEl.checked;
+      const current = ++revision;
       if (await _persistField(key, String(sent))) return;
-      if (checkEl.checked === sent) checkEl.checked = !sent;
+      if (current === revision) checkEl.checked = !sent;
       flashError(window.scopedT("core")("settings-page.server.save-failed-network"));
     });
   };

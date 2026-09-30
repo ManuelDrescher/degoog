@@ -55,8 +55,8 @@ import {
 import {
   beforeHeadEnd,
   subFirst,
-  windowGlobalScript,
 } from "../../render/substitute";
+import { windowGlobalScript } from "../../render/window-global-script";
 import { ApiKeyLocked } from "./api-key-locked";
 import { ApiKeySection } from "./api-key-section";
 

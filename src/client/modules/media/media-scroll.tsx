@@ -109,6 +109,6 @@ export async function loadMoreMedia(type: string): Promise<void> {
   } finally {
     state.mediaLoading = false;
     if (sentinel) clear(sentinel);
-    if (appended && isCurrentSearch(seq)) _rearmMediaObserver();
+    if (appended || !isCurrentSearch(seq)) _rearmMediaObserver();
   }
 }

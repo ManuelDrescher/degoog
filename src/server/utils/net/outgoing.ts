@@ -62,13 +62,15 @@ export const isUrlAllowedForOutgoing = (
   url: string,
   allowed: string[] | null = _allowedHosts(),
 ): boolean => {
-  if (!allowed) return true;
   let host: string;
   try {
-    host = new URL(url).hostname.toLowerCase();
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    host = parsed.hostname.toLowerCase();
   } catch {
     return false;
   }
+  if (!allowed) return true;
   return allowed.some((pattern) => _hostMatches(host, pattern));
 };
 

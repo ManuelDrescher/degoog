@@ -90,6 +90,8 @@ export async function performSearch(
   const restorePage = takeRestoreInfinitePage();
   const resolvedType = type || state.currentType || "web";
   if (!query.trim()) return;
+  destroyMediaObserver();
+  teardownInfinite();
   const seq = beginSearch();
 
   void import("../../../modules/filters/image-filters").then(
@@ -203,6 +205,7 @@ export async function performSearch(
 
     if (!res.ok) {
       const body = await res.text().catch(() => "(unreadable)");
+      if (!isCurrentSearch(seq)) return;
       console.error("[search] non-ok response", res.status, body);
       const msg =
         res.status === 429

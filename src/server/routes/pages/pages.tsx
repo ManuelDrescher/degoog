@@ -29,8 +29,8 @@ import { DEFAULT_THEME_DIR, getCoreTranslator } from "../../render/theme-assets"
 import {
   beforeHeadEnd,
   subFirst,
-  windowGlobalScript,
 } from "../../render/substitute";
+import { windowGlobalScript } from "../../render/window-global-script";
 import {
   applyPagePlaceholders,
   buildLayoutPage,

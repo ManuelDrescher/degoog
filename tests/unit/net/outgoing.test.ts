@@ -24,6 +24,13 @@ describe("outgoing", () => {
       expect(isUrlAllowedForOutgoing("https://any.com", null)).toBe(true);
     });
 
+    test("non-http protocols are rejected with or without an allowlist", () => {
+      for (const url of ["file:///etc/passwd", "gopher://any.com", "ftp://any.com"]) {
+        expect(isUrlAllowedForOutgoing(url, null)).toBe(false);
+        expect(isUrlAllowedForOutgoing(url, parseAllowedHosts("*"))).toBe(false);
+      }
+    });
+
     test("allows only listed hosts", () => {
       const allowed = parseAllowedHosts("example.com,api.example.org");
       expect(isUrlAllowedForOutgoing("https://example.com/path", allowed)).toBe(true);
