@@ -122,7 +122,10 @@ const _tryProvider = async (
   host: string,
 ): Promise<NonNullable<FaviconResult> | null> => {
   try {
-    const ctx = await buildFaviconContext(entry.id);
+    const ctx = await buildFaviconContext(
+      entry.id,
+      AbortSignal.timeout(FAVICON_PROVIDER_TIMEOUT_MS),
+    );
     const result = await withTimeout(
       Promise.resolve(entry.instance.getFavicon(host, ctx)),
       FAVICON_PROVIDER_TIMEOUT_MS,

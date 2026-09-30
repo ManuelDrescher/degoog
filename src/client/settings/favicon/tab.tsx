@@ -38,20 +38,25 @@ const _savePriorities = async (list: HTMLElement): Promise<void> => {
   const cards = Array.from(list.querySelectorAll<HTMLElement>(".ext-card"));
   const total = cards.length;
   try {
-    await Promise.all(
-      cards.map((card, i) => {
+    const responses = await Promise.all(
+      cards.flatMap((card, i) => {
         const id = card.dataset.id;
-        if (!id) return Promise.resolve();
-        return fetch(
-          `${getBase()}/api/extensions/${encodeURIComponent(id)}/settings`,
-          {
-            method: "POST",
-            headers: jsonHeaders(getStoredToken),
-            body: JSON.stringify({ priority: String(total - 1 - i) }),
-          },
-        );
+        if (!id) return [];
+        return [
+          fetch(
+            `${getBase()}/api/extensions/${encodeURIComponent(id)}/settings`,
+            {
+              method: "POST",
+              headers: jsonHeaders(getStoredToken),
+              body: JSON.stringify({ priority: String(total - 1 - i) }),
+            },
+          ),
+        ];
       }),
     );
+    if (responses.some((res) => !res.ok)) {
+      flashError(t("settings-page.server.save-failed-network"));
+    }
   } catch (err) {
     console.warn("[settings] favicon provider order save failed", err);
   }
