@@ -3,18 +3,15 @@ import {
   getCommandsApiResponse,
   matchBangCommand,
 } from "../../extensions/commands/registry";
-import {
-  getEngineSearchType,
-  getEngineSearchTypes,
-  singleEngineConfig,
-} from "../../extensions/engines/catalog";
+import { getEngineSearchTypes } from "../../extensions/engines/catalog";
+import { planEngineBang } from "../../search/engine-bang";
 import { handleSearch } from "../../search/handlers";
 import type { SearchBody, SearchParams, SearchType } from "../../types/search";
 import { getLocale, readObjectBody } from "../../utils/hono";
 import { logger } from "../../utils/logger";
 import { isDisabled } from "../../utils/settings/plugin-settings";
 import { buildSignedProxyUrl } from "../../utils/net/proxy-sign";
-import { _applyRateLimit } from "../../utils/search";
+import { _applyRateLimit, parseEngineConfig } from "../../utils/search";
 import { guardApiKey } from "../../utils/security/api-key-guard";
 import { parseSearchBody, parseSearchRequest } from "../search/parsers";
 import { publicBodyLimit } from "../_guards";
@@ -24,7 +21,9 @@ import { applyFilter, syncVortexSignal } from "../../utils/extension-support/tra
 const router = new Hono();
 
 router.get("/api/commands", async (c) => {
-  return c.json(await getCommandsApiResponse());
+  return c.json(
+    await getCommandsApiResponse(parseEngineConfig(new URL(c.req.url).searchParams)),
+  );
 });
 
 type CommandRequest = {
@@ -60,14 +59,14 @@ const _runCommand = async (
     const authRes = await guardApiKey(c, "apiKeySearchEnabled");
     if (authRes) return authRes;
     const requestedType = type?.trim().replace(/^tab:engine:/, "") || undefined;
-    const resolvedType =
-      (await getEngineSearchType(match.engineId, requestedType)) ?? "web";
+    const plan = await planEngineBang(match.engineId, search.engines, requestedType);
+    if (!plan) return c.json({ error: "This engine is disabled" }, 403);
     const searchTypes = await getEngineSearchTypes(match.engineId);
     const response = await handleSearch({
       ...search,
       query: match.query,
-      engines: singleEngineConfig(match.engineId),
-      searchType: resolvedType as SearchType,
+      engines: plan.engines,
+      searchType: plan.searchType as SearchType,
     });
     return c.json({
       ...response,
@@ -98,6 +97,7 @@ const _runCommand = async (
     clientIp,
     page,
     signProxyUrl: buildSignedProxyUrl,
+    engines: search.engines,
   });
   logger.debug(
     "plugin",

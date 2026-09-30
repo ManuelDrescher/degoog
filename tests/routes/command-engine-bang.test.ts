@@ -5,6 +5,7 @@ import { join } from "path";
 import type { SearchEngine } from "../../src/server/types/extension";
 import { ImgNsfw, type TimeFilter } from "../../src/server/types/search";
 import { clearServerSettingsCache } from "../../src/server/utils/settings/server-settings";
+import { clearPluginSettingsCache } from "../../src/server/utils/settings/plugin-settings";
 import { writeDomainList } from "../../src/server/utils/filtering/domain-lists";
 import { initServerKey } from "../../src/server/utils/security/server-key";
 import {
@@ -15,6 +16,8 @@ import {
 const REGISTRY_MOD = "../../src/server/extensions/commands/registry";
 const CATALOG_MOD = "../../src/server/extensions/engines/catalog";
 const ENGINE_SETTINGS_MOD = "../../src/server/extensions/engines/engine-settings";
+const LOADER_MOD = "../../src/server/extensions/engines/loader";
+const loaderReal = { ...(await import(LOADER_MOD)) };
 const registryReal = { ...(await import(REGISTRY_MOD)) };
 const catalogReal = { ...(await import(CATALOG_MOD)) };
 const engineSettingsReal = { ...(await import(ENGINE_SETTINGS_MOD)) };
@@ -105,8 +108,13 @@ beforeAll(async () => {
       query: q.replace(/\s*!\S+$/, ""),
     }),
   }));
+  mock.module(LOADER_MOD, () => ({
+    ...loaderReal,
+    listEngineIds: () => [ENGINE_ID],
+  }));
   mock.module(CATALOG_MOD, () => ({
     ...catalogReal,
+    getDefaultEngineConfig: () => ({ [ENGINE_ID]: true }),
     getEngineSearchType: async () => "images",
     getEnginesForCustomType: async () => active,
     getActiveWebEngines: async () => active,
@@ -131,6 +139,7 @@ beforeEach(async () => {
 afterAll(() => {
   mock.module(REGISTRY_MOD, () => registryReal);
   mock.module(CATALOG_MOD, () => catalogReal);
+  mock.module(LOADER_MOD, () => loaderReal);
   mock.module(ENGINE_SETTINGS_MOD, () => engineSettingsReal);
   for (const [k, v] of savedEnv) {
     if (v === undefined) delete process.env[k];
@@ -185,6 +194,40 @@ describe("GET /api/command engine bang", () => {
     expect(new URL(body.results[0].url).hostname).toBe("redlib.example.com");
     expect(seen[0].context?.lang).toBe("it");
     expect(seen[0].context?.imageFilter?.nsfw).toBe(ImgNsfw.ON);
+  });
+
+  test("refuses an engine the visitor has turned off", async () => {
+    const res = await bang({ type: "images", [ENGINE_ID]: "false" });
+    expect(res.status).toBe(403);
+    expect(seen).toHaveLength(0);
+  });
+
+  test("POST refuses an engine missing from the enabled list", async () => {
+    const res = await router.request(
+      new Request("http://localhost/api/command", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: `dog${++queryCounter} !fake`, engines: [] }),
+      }),
+    );
+    expect(res.status).toBe(403);
+    expect(seen).toHaveLength(0);
+  });
+
+  test("refuses an engine the admin has disabled", async () => {
+    writeFileSync(
+      process.env.DEGOOG_PLUGIN_SETTINGS_FILE!,
+      JSON.stringify({ [ENGINE_ID]: { disabled: "true" } }),
+    );
+    clearPluginSettingsCache();
+    try {
+      const res = await bang({ type: "images" });
+      expect(res.status).toBe(403);
+      expect(seen).toHaveLength(0);
+    } finally {
+      writeFileSync(process.env.DEGOOG_PLUGIN_SETTINGS_FILE!, "{}");
+      clearPluginSettingsCache();
+    }
   });
 
   test("enforces the search API key like /api/search", async () => {

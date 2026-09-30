@@ -1,11 +1,8 @@
 import { clear, render } from "../../../shared/ui/tribute/dom";
 import { LoadingDots } from "../../../shared/ui/components/feedback/loading-dots";
 import { state } from "../../state";
-import { getBase } from "../../utils/net/base-url";
 import { isImageSearchType, type ScoredResult } from "../../../shared/search-types";
-import { getEngines } from "../../utils/search/engines";
-import { buildSearchBody, buildSearchUrl, fetchCommand } from "../../utils/net/url";
-import { searchAuthHeaders, appendSearchAuthParams } from "../../utils/net/request";
+import { fetchResultsPage } from "../../utils/net/url";
 
 let mediaObserver: IntersectionObserver | null = null;
 let appendMediaCardsRef:
@@ -65,30 +62,9 @@ export async function loadMoreMedia(type: string): Promise<void> {
   );
   if (sentinel) render(<LoadingDots />, sentinel);
 
-  const bangQuery = state.currentBangQuery;
   let res: Response;
   try {
-    if (bangQuery) {
-      res = await fetchCommand(bangQuery, type, nextPage);
-    } else {
-      const engines = await getEngines();
-      res = state.postMethodEnabled
-        ? await fetch(`${getBase()}/api/search`, {
-            method: "POST",
-            body: JSON.stringify(
-              buildSearchBody(state.currentQuery, engines, type, nextPage),
-            ),
-            headers: {
-              "Content-Type": "application/json",
-              ...searchAuthHeaders(),
-            },
-          })
-        : await fetch(
-            appendSearchAuthParams(
-              buildSearchUrl(state.currentQuery, engines, type, nextPage),
-            ),
-          );
-    }
+    res = await fetchResultsPage(type, nextPage);
 
     const raw = (await res.json()) as {
       results?: ScoredResult[];

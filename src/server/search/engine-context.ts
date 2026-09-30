@@ -13,7 +13,18 @@ import {
 } from "../utils/security/sentinel";
 import { extractImageUrl } from "../utils/extract-image";
 import { getRandomUserAgent } from "../utils/net/user-agents";
-import { outgoingFetch, parseOutgoingTransport } from "../utils/net/outgoing";
+import {
+  outgoingFetch,
+  parseOutgoingTransport,
+  pickProxyUrl,
+} from "../utils/net/outgoing";
+import { fetchPastAnubis } from "../utils/net/challenges/anubis";
+import { resolveTransport } from "../extensions/transports/registry";
+import {
+  ENGINE_CHALLENGE,
+  type EngineChallenge,
+  type TransportFetchOptions,
+} from "../types/extension";
 import { asString, getSettings } from "../utils/settings/plugin-settings";
 import { buildSignedProxyUrl } from "../utils/net/proxy-sign";
 
@@ -45,7 +56,16 @@ interface EngineContextOptions {
   signal?: AbortSignal;
   searchType?: SearchType;
   pageCounter?: PageCounter;
+  challenges?: readonly EngineChallenge[];
+  engineName?: string;
 }
+
+const _solvesAnubis = (
+  challenges: readonly EngineChallenge[] | undefined,
+  transport: string,
+): boolean =>
+  !!challenges?.includes(ENGINE_CHALLENGE.ANUBIS) &&
+  resolveTransport(transport).handlesChallenges !== true;
 
 export const createSearchEngineContext = (
   engineSettingsId: string | undefined,
@@ -59,6 +79,8 @@ export const createSearchEngineContext = (
     signal,
     searchType,
     pageCounter,
+    challenges,
+    engineName: engineLabel,
   } = options;
   const resolvedLang =
     lang ||
@@ -89,17 +111,27 @@ export const createSearchEngineContext = (
       const transport = parseOutgoingTransport(raw);
       const baseInit = { ...(init ?? {}) };
       if (signal && !baseInit.signal) baseInit.signal = signal;
-      if (!customUa)
-        return outgoingFetch(url, baseInit, transport, {
-          proxyOverrideEnabled,
-          proxyOverrideUrls,
+      const requestInit = customUa
+        ? { ...baseInit, headers: { ...(baseInit.headers ?? {}), "User-Agent": customUa } }
+        : baseInit;
+      const target = typeof url === "string" ? url : String(url);
+      const proxyOptions = { proxyOverrideEnabled, proxyOverrideUrls };
+      if (!_solvesAnubis(challenges, transport)) {
+        return outgoingFetch(target, requestInit, transport, {
+          ...proxyOptions,
           engineId: engineSettingsId,
         });
-      const headers = { ...(baseInit.headers ?? {}), "User-Agent": customUa };
-      return outgoingFetch(url, { ...baseInit, headers }, transport, {
-        proxyOverrideEnabled,
-        proxyOverrideUrls,
-        engineId: engineSettingsId,
+      }
+      const pinnedProxyUrl = (await pickProxyUrl(proxyOptions)) ?? null;
+      const send = (next: string, requestOptions: TransportFetchOptions) =>
+        outgoingFetch(next, requestOptions, transport, {
+          ...proxyOptions,
+          engineId: engineSettingsId,
+          pinnedProxyUrl,
+        });
+      return fetchPastAnubis(send, target, requestInit, {
+        jarKey: `${transport}|${engineSettingsId ?? ""}|${pinnedProxyUrl ?? "direct"}`,
+        engine: engineLabel,
       });
     },
     lang: resolvedLang,

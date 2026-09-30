@@ -2,11 +2,9 @@ import { clear, render } from "../../../../shared/ui/tribute/dom";
 import { NoResults } from "../../../../shared/ui/components/feedback/no-results";
 import { SkeletonImageGrid } from "../../../animations/skeleton/skeleton-image-grid";
 import { SkeletonResults } from "../../../animations/skeleton/skeleton-results";
-import { getEngines } from "../engines";
 import { isImageSearchType, type SearchResponse } from "../../../../shared/search-types";
 import { state } from "../../../state";
-import { buildSearchBody, buildSearchUrl } from "../../net/url";
-import { searchAuthHeaders, appendSearchAuthParams } from "../../net/request";
+import { fetchResultsPage } from "../../net/url";
 import { getBase } from "../../net/base-url";
 import { clearSlotPanels } from "../../../modules/renderer/render-slots";
 import { renderResults } from "../../../modules/renderer/render";
@@ -39,31 +37,8 @@ export async function goToPage(pageNum: number): Promise<void> {
     }
   }
   if (pagination) clear(pagination);
-  const engines = await getEngines();
-  const url = buildSearchUrl(
-    state.currentQuery,
-    engines,
-    state.currentType,
-    pageNum,
-  );
   try {
-    const res = state.postMethodEnabled
-      ? await fetch(`${getBase()}/api/search`, {
-          method: "POST",
-          body: JSON.stringify(
-            buildSearchBody(
-              state.currentQuery,
-              engines,
-              state.currentType,
-              pageNum,
-            ),
-          ),
-          headers: {
-            "Content-Type": "application/json",
-            ...searchAuthHeaders(),
-          },
-        })
-      : await fetch(appendSearchAuthParams(url));
+    const res = await fetchResultsPage(state.currentType, pageNum);
 
     const data = (await res.json()) as SearchResponse;
     state.currentResults = data.results;

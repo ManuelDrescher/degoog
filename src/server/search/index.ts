@@ -181,6 +181,8 @@ export const searchSingleEngine = async (
     signal: ac.signal,
     searchType,
     pageCounter,
+    challenges: engine.challenges,
+    engineName: engine.name,
   });
   try {
     const timeout = await getEngineTimeout(engineSettingsId);

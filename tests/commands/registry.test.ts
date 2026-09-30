@@ -3,8 +3,10 @@ import {
   initPlugins,
   getCommandInstanceById,
   getCommandRegistry,
+  getFilteredCommandRegistry,
   matchBangCommand,
 } from "../../src/server/extensions/commands/registry";
+import { DEGOOG_ENGINE_ID } from "../../src/server/extensions/engines/builtins/degoog";
 
 describe("commands registry", () => {
   beforeAll(async () => {
@@ -47,6 +49,14 @@ describe("commands registry", () => {
   test("matchBangCommand returns null without a standalone bang", () => {
     expect(matchBangCommand("help")).toBeNull();
     expect(matchBangCommand("foo!help")).toBeNull();
+  });
+
+  test("engine shortcuts follow the engines the caller has on", async () => {
+    const on = await getFilteredCommandRegistry({ [DEGOOG_ENGINE_ID]: true });
+    expect(on.map((c) => c.trigger)).toContain("degoog");
+    const off = await getFilteredCommandRegistry({ [DEGOOG_ENGINE_ID]: false });
+    expect(off.map((c) => c.trigger)).not.toContain("degoog");
+    expect(off.map((c) => c.trigger)).toContain("help");
   });
 
   test("loaded commands have no duplicate triggers", () => {

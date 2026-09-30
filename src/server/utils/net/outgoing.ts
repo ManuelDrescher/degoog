@@ -165,14 +165,19 @@ function _buildProxyFetch(
   };
 }
 
-async function buildTransportContext(
-  transportName: string,
-  opts?: {
-    proxyOverrideEnabled?: boolean;
-    proxyOverrideUrls?: string | string[];
-    engineId?: string;
-  },
-): Promise<{ transport: Transport; context: TransportContext }> {
+export interface OutgoingProxyOptions {
+  proxyOverrideEnabled?: boolean;
+  proxyOverrideUrls?: string | string[];
+}
+
+export interface OutgoingFetchOptions extends OutgoingProxyOptions {
+  engineId?: string;
+  pinnedProxyUrl?: string | null;
+}
+
+export async function pickProxyUrl(
+  opts?: OutgoingProxyOptions,
+): Promise<string | undefined> {
   const settings = await getInstanceSettings();
   const proxyOverrideEnabled = opts?.proxyOverrideEnabled === true;
   const proxyOverrideRaw = opts?.proxyOverrideUrls;
@@ -192,7 +197,17 @@ async function buildTransportContext(
     : globalEnabled && globalUrls.length > 0;
 
   const urls = proxyOverrideEnabled ? overrideUrls : globalUrls;
-  const proxyUrl = useProxy ? urls[proxyIndex++ % urls.length] : undefined;
+  return useProxy ? urls[proxyIndex++ % urls.length] : undefined;
+}
+
+async function buildTransportContext(
+  transportName: string,
+  opts?: OutgoingFetchOptions,
+): Promise<{ transport: Transport; context: TransportContext }> {
+  const proxyUrl =
+    opts?.pinnedProxyUrl !== undefined
+      ? opts.pinnedProxyUrl ?? undefined
+      : await pickProxyUrl(opts);
   const transport = resolveTransport(transportName);
   return {
     transport,
@@ -209,11 +224,7 @@ export async function outgoingFetch(
   url: string,
   options: TransportFetchOptions = {},
   transportName: string = "fetch",
-  ctx?: {
-    proxyOverrideEnabled?: boolean;
-    proxyOverrideUrls?: string | string[];
-    engineId?: string;
-  },
+  ctx?: OutgoingFetchOptions,
 ): Promise<Response> {
   const { transport, context } = await buildTransportContext(transportName, ctx);
   const host = new URL(url).hostname;

@@ -5,11 +5,8 @@ import {
   matchBangCommand,
   type BangMatch,
 } from "../extensions/commands/registry";
-import {
-  getDefaultEngineConfig,
-  getEngineSearchType,
-  singleEngineConfig,
-} from "../extensions/engines/catalog";
+import { getDefaultEngineConfig } from "../extensions/engines/catalog";
+import { planEngineBang } from "../search/engine-bang";
 import { build404 } from "../routes/pages/pages";
 import { handleRetry, handleSearch } from "../search/handlers";
 import { handleTabSearch } from "../search/tab-search";
@@ -148,15 +145,18 @@ const _runSearch = async (
   retry: string,
 ): Promise<NojsOutcome | null> => {
   if (bang?.type === "engine") {
-    const resolvedType =
-      (await getEngineSearchType(bang.engineId, query.type || undefined)) ??
-      WEB_TAB_ID;
+    const plan = await planEngineBang(
+      bang.engineId,
+      getDefaultEngineConfig(),
+      query.type || undefined,
+    );
+    if (!plan) return _outcome({ results: [], totalTime: 0 }, false);
     const response = await handleSearch(
       _searchParams(
         bang.query,
         query,
-        resolveBuiltinSearchType(resolvedType) || WEB_TAB_ID,
-        singleEngineConfig(bang.engineId),
+        resolveBuiltinSearchType(plan.searchType) || WEB_TAB_ID,
+        plan.engines,
       ),
     );
     return _outcome(response, false);

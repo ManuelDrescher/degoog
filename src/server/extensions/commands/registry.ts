@@ -15,6 +15,8 @@ import { bootCircuitFromPath } from "../../utils/extension-support/translation-c
 import { getDefaultEngineConfig, getEngineMap as getSearchEngineMap } from "../engines/catalog";
 import { pluginsDir } from "../../utils/paths";
 import { createRegistry } from "../registry-factory";
+import { isEngineBangAllowed } from "../../search/engine-bang";
+import type { EngineConfig } from "../../types/search";
 import { makeExtID, folderFromExtID } from "../../utils/extension-support/extension-id";
 import { buildExtensionMeta, translateSchema } from "../extension-meta";
 import { logger } from "../../utils/logger";
@@ -212,9 +214,9 @@ export function getCommandRegistry(): CommandRegistryEntry[] {
   return entries;
 }
 
-export async function getFilteredCommandRegistry(): Promise<
-  CommandRegistryEntry[]
-> {
+export async function getFilteredCommandRegistry(
+  engines: EngineConfig = getDefaultEngineConfig(),
+): Promise<CommandRegistryEntry[]> {
   const full = getCommandRegistry();
   const configuredTriggers = new Set<string>();
 
@@ -228,9 +230,8 @@ export async function getFilteredCommandRegistry(): Promise<
     }),
   );
 
-  const engineConfig = getDefaultEngineConfig();
   for (const [shortcut, engineId] of getEngineShortcuts()) {
-    if (engineConfig[engineId] === false) continue;
+    if (!(await isEngineBangAllowed(engineId, engines))) continue;
     configuredTriggers.add(shortcut);
   }
 
@@ -241,10 +242,10 @@ type CommandApiEntry = CommandRegistryEntry & {
   naturalLanguage: boolean;
 };
 
-export async function getCommandsApiResponse(): Promise<{
+export async function getCommandsApiResponse(engines?: EngineConfig): Promise<{
   commands: CommandApiEntry[];
 }> {
-  const full = await getFilteredCommandRegistry();
+  const full = await getFilteredCommandRegistry(engines);
   const commands: CommandApiEntry[] = await Promise.all(
     full.map(async (entry) => {
       const naturalLanguage = entry.id

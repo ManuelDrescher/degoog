@@ -899,6 +899,8 @@ describe("nojs slot panels are opt in", () => {
 
 const COMMANDS_MOD = "../../src/server/extensions/commands/registry";
 const commandsReal = { ...(await import(COMMANDS_MOD)) };
+const CATALOG_MOD = "../../src/server/extensions/engines/catalog";
+const catalogReal = { ...(await import(CATALOG_MOD)) };
 
 interface CommandSpy {
   args: string[];
@@ -929,13 +931,23 @@ const makeBangCommand = (
 interface BangHarness {
   match: BangMatch | null;
   disabled?: boolean;
+  engineOn?: boolean;
   results?: ScoredResult[];
 }
 
 const searchCalls: SearchParams[] = [];
 
-const bangHarness = ({ match, disabled = false, results = [] }: BangHarness): void => {
+const bangHarness = ({
+  match,
+  disabled = false,
+  engineOn = true,
+  results = [],
+}: BangHarness): void => {
   searchCalls.length = 0;
+  mock.module(CATALOG_MOD, () => ({
+    ...catalogReal,
+    getDefaultEngineConfig: () => ({ "fake-engine": engineOn }),
+  }));
   mock.module(SERVER_SETTINGS_MOD, () => ({
     ...serverSettingsReal,
     getInstanceSettings: async () => enabled(),
@@ -962,6 +974,28 @@ describe("nojs bang commands", () => {
   afterEach(() => {
     mock.module(COMMANDS_MOD, () => commandsReal);
     mock.module(PLUGIN_SETTINGS_MOD, () => pluginSettingsReal);
+    mock.module(CATALOG_MOD, () => catalogReal);
+  });
+
+  test("an engine bang for a disabled engine searches nothing", async () => {
+    bangHarness({
+      match: { type: "engine", engineId: "fake-engine", query: "kittens" },
+      engineOn: false,
+      results: [makeResult()],
+    });
+    const html = await text("/nojs/search?q=!fake%20kittens");
+    expect(searchCalls).toHaveLength(0);
+    expect(html).not.toContain("First result");
+  });
+
+  test("an engine bang for an admin disabled engine searches nothing", async () => {
+    bangHarness({
+      match: { type: "engine", engineId: "fake-engine", query: "kittens" },
+      disabled: true,
+      results: [makeResult()],
+    });
+    await text("/nojs/search?q=!fake%20kittens");
+    expect(searchCalls).toHaveLength(0);
   });
 
   test("an engine bang needs no opt in and searches that engine", async () => {

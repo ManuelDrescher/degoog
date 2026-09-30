@@ -4,6 +4,7 @@ import { state } from "../../state";
 import { getBase } from "./base-url";
 import { appendSearchAuthParams, searchAuthHeaders } from "./request";
 import { isImageSearchType } from "../../../shared/search-types";
+import { getEngines } from "../search/engines";
 
 export const imgFilterRecord = (f: ImageFilter): Record<string, string> => {
   const r: Record<string, string> = {};
@@ -119,15 +120,25 @@ export const fetchSearch = (
     ? _postSearchJson("/api/search", buildSearchBody(query, engines, type, page))
     : fetch(appendSearchAuthParams(buildSearchUrl(query, engines, type, page)));
 
-export const fetchCommand = (
+export const fetchCommand = async (
   query: string,
   type: string,
   page: number,
-): Promise<Response> =>
-  state.postMethodEnabled
-    ? _postSearchJson("/api/command", buildSearchBody(query, {}, type, page))
+): Promise<Response> => {
+  const engines = await getEngines();
+  return state.postMethodEnabled
+    ? _postSearchJson("/api/command", buildSearchBody(query, engines, type, page))
     : fetch(
         appendSearchAuthParams(
-          `${getBase()}/api/command?${buildSearchParams(query, {}, type, page).toString()}`,
+          `${getBase()}/api/command?${buildSearchParams(query, engines, type, page).toString()}`,
         ),
       );
+};
+
+export const fetchResultsPage = async (
+  type: string,
+  page: number,
+): Promise<Response> =>
+  state.currentBangQuery
+    ? fetchCommand(state.currentBangQuery, type, page)
+    : fetchSearch(state.currentQuery, await getEngines(), type, page);

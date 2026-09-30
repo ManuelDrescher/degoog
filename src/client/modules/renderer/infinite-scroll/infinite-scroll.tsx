@@ -4,17 +4,15 @@ import { InfiniteSkeleton } from "./infinite-skeleton";
 import { SENTINEL_CLASS, SKELETON_CLASS } from "./infinite-scroll-classes";
 import { SkeletonMoreResults } from "../../../animations/skeleton/skeleton-more-results";
 import { state } from "../../../state";
+import { getBase } from "../../../utils/net/base-url";
 import {
   isImageSearchType,
   type ScoredResult,
   type SearchResponse,
 } from "../../../../shared/search-types";
-import { getBase } from "../../../utils/net/base-url";
-import { getEngines } from "../../../utils/search/engines";
-import { appendSearchAuthParams, searchAuthHeaders } from "../../../utils/net/request";
 import { declaredPages } from "../../../utils/search/search-helpers";
 import { hasMorePages } from "../../../utils/pagination/page-flow";
-import { buildSearchBody, buildSearchUrl } from "../../../utils/net/url";
+import { fetchResultsPage } from "../../../utils/net/url";
 import { mergeEngineTimings } from "../../../utils/search/engine-stats/engine-stats";
 import { renderEngineStats } from "../sidebar/render-sidebar";
 import { appendResults } from "../render";
@@ -74,25 +72,7 @@ const _clearSkeleton = (): void => {
 };
 
 const _fetchPage = async (page: number): Promise<SearchResponse | null> => {
-  const engines = await getEngines();
-  const url = buildSearchUrl(
-    state.currentQuery,
-    engines,
-    state.currentType,
-    page,
-  );
-  const res = state.postMethodEnabled
-    ? await fetch(`${getBase()}/api/search`, {
-        method: "POST",
-        body: JSON.stringify(
-          buildSearchBody(state.currentQuery, engines, state.currentType, page),
-        ),
-        headers: {
-          "Content-Type": "application/json",
-          ...searchAuthHeaders(),
-        },
-      })
-    : await fetch(appendSearchAuthParams(url));
+  const res = await fetchResultsPage(state.currentType, page);
   if (!res.ok) return null;
   return (await res.json()) as SearchResponse;
 };
@@ -106,7 +86,7 @@ const _syncHistory = (): void => {
   const historyState = {
     ...(window.history.state ?? {}),
     degoog: true,
-    query: state.currentQuery,
+    query: state.currentBangQuery || state.currentQuery,
     type: state.currentType,
     page: 1,
     loaded: state.currentPage,

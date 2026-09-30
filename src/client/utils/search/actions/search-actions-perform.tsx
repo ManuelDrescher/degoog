@@ -10,7 +10,10 @@ import {
 import { destroyMediaObserver } from "../../../modules/media/media-scroll";
 import { clearSlotPanels } from "../../../modules/renderer/render-slots";
 import { renderResults } from "../../../modules/renderer/render";
-import { teardownInfinite } from "../../../modules/renderer/infinite-scroll/infinite-scroll";
+import {
+  setupInfinite,
+  teardownInfinite,
+} from "../../../modules/renderer/infinite-scroll/infinite-scroll";
 import { renderImgEngines } from "../../../modules/filters/image-filters";
 import { state } from "../../../state";
 import type { Command } from "../../../types/extension";
@@ -46,20 +49,25 @@ import {
   renderSearchResponse,
 } from "./search-actions-render";
 
-let commandsCache: Command[] | null = null;
+let commandsCache: { key: string; commands: Command[] } | null = null;
 
 onWindowEvent("extensions-saved", () => {
   commandsCache = null;
 });
 
 const _fetchCommands = async (): Promise<Command[]> => {
-  if (commandsCache) return commandsCache;
+  const engines = await getEngines();
+  const params = new URLSearchParams(
+    Object.entries(engines).map(([id, on]) => [id, String(on)]),
+  );
+  const key = params.toString();
+  if (commandsCache?.key === key) return commandsCache.commands;
   try {
-    const res = await fetch(`${getBase()}/api/commands`, { cache: "no-store" });
+    const res = await fetch(`${getBase()}/api/commands?${key}`, { cache: "no-store" });
     if (res.ok) {
       const body = (await res.json()) as { commands?: Command[] };
-      commandsCache = body.commands || [];
-      return commandsCache;
+      commandsCache = { key, commands: body.commands || [] };
+      return commandsCache.commands;
     }
   } catch (err) {
     console.debug("[search] commands fetch failed", err);
@@ -326,6 +334,12 @@ async function _performBangCommand(
 
   try {
     const res = await fetchCommand(query, requestedType, page);
+    if (res.status === 403) {
+      const { error } = (await res.json()) as { error?: string };
+      if (resultsMeta) resultsMeta.textContent = "";
+      if (resultsList) render(<NoResults>{error ?? "Disabled."}</NoResults>, resultsList);
+      return;
+    }
     if (!res.ok) throw new Error("not found");
     const data = (await res.json()) as {
       type: string;
@@ -370,7 +384,9 @@ async function _performBangCommand(
         resultsMeta.textContent = `About ${data.results?.length ?? 0} results (${((data.totalTime ?? 0) / 1000).toFixed(2)} seconds)`;
       if (isMedia) renderImgEngines(data.engineTimings ?? []);
       state.currentPage = page;
-      renderResults(data.results ?? []);
+      const infinite = (await fetchStreamingConfig()).infiniteScroll && !isMedia;
+      renderResults(data.results ?? [], { paginate: !infinite });
+      if (infinite) setupInfinite(engineType);
       return;
     }
     setTabsForBang([]);

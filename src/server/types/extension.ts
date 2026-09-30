@@ -1,7 +1,7 @@
 import type { CreateCache, UseCache } from "../utils/cache/cache";
 import type { SettingValue } from "../utils/settings/plugin-settings";
 import type { ThreatLevel } from "../utils/security/sentinel";
-import type { EngineContext, TimeFilter } from "./search";
+import type { EngineConfig, EngineContext, TimeFilter } from "./search";
 import {
   type ScoredResult,
   type SearchResult,
@@ -98,10 +98,17 @@ export interface PluginContext {
   useCache: UseCache;
 }
 
+export const ENGINE_CHALLENGE = {
+  ANUBIS: "anubis",
+} as const;
+
+export type EngineChallenge = (typeof ENGINE_CHALLENGE)[keyof typeof ENGINE_CHALLENGE];
+
 export interface SearchEngine {
   name: string;
   bangShortcut?: string;
   needsAppRestart?: boolean;
+  challenges?: readonly EngineChallenge[];
   settingsSchema?: SettingField[];
   pluginManifest?: PluginManifest;
   configure?(settings: Record<string, SettingValue>): void;
@@ -222,6 +229,7 @@ export interface CommandContext {
   page?: number;
   signProxyUrl?: (url: string) => string;
   nojs?: boolean;
+  engines?: EngineConfig;
 }
 
 export interface BangCommand {
@@ -345,6 +353,7 @@ export interface Transport {
   description?: string;
   timeoutMs?: number;
   needsAppRestart?: boolean;
+  handlesChallenges?: boolean;
   settingsSchema?: SettingField[];
   configure?(settings: Record<string, SettingValue>): void;
   getFieldOptions?: GetFieldOptions;
