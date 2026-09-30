@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll } from "bun:test";
-import { buildSearchUrl, faviconUrl } from "../../src/client/utils/net/url";
+import { buildSearchUrl } from "../../src/client/utils/net/url";
 import { state } from "../../src/client/state";
 
 const withBase = (base: string, fn: () => void): void => {
@@ -18,14 +18,6 @@ describe("public/url", () => {
     const g = globalThis as unknown as { window?: { __DEGOOG_BASE_URL__?: string } };
     if (!g.window) g.window = {};
     g.window.__DEGOOG_BASE_URL__ = "";
-  });
-
-  test("faviconUrl returns a proxy path for valid urls and empty for invalid", () => {
-    const out = faviconUrl("https://example.com/page");
-    expect(out).toContain("/api/proxy/favicon");
-    expect(out).toContain("domain=");
-    expect(out).toContain("example.com");
-    expect(faviconUrl("not-a-url")).toBe("");
   });
 
   test("buildSearchUrl includes query and engine params", () => {

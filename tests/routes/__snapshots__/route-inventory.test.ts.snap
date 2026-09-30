@@ -29,6 +29,12 @@ exports[`every mounted router exposes the routes it did before extensions route 
 ]
 `;
 
+exports[`every mounted router exposes the routes it did before favicon route list is unchanged 1`] = `
+[
+  "POST /api/favicon/refresh",
+]
+`;
+
 exports[`every mounted router exposes the routes it did before health route list is unchanged 1`] = `
 [
   "GET /api/whodis",
@@ -408,7 +414,7 @@ exports[`the admin path is operator-defined, not hardcoded DEGOOG_SETTINGS_PATH 
 
 exports[`route shape invariants the mounted surface totals stay put 1`] = `
 {
-  "totalHandlers": 310,
-  "unique": 253,
+  "totalHandlers": 313,
+  "unique": 254,
 }
 `;

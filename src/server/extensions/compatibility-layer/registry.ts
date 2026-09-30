@@ -8,6 +8,8 @@ import {
 } from "../../../shared/compat-layers";
 import { getInstanceSettings } from "../../utils/settings/server-settings";
 import { asBoolean } from "../../utils/settings/plugin-settings";
+import { buildFaviconUrl } from "../../utils/net/proxy-sign";
+import { faviconHostname } from "../../../shared/utils/url";
 import {
   installSearx,
   listSearxItems,
@@ -67,13 +69,21 @@ const _searxItems = async (): Promise<CompatCatalogItem[]> =>
     })),
   }));
 
+const _withFavicons =
+  (list: () => Promise<CompatCatalogItem[]>) =>
+  async (): Promise<CompatCatalogItem[]> =>
+    (await list()).map((item) => ({
+      ...item,
+      favicon: item.site ? buildFaviconUrl(faviconHostname(item.site)) : "",
+    }));
+
 export const COMPAT_LAYERS: readonly CompatLayerDef[] = Object.freeze([
   {
     id: CompatLayerId.Searx,
     label: COMPAT_LAYER_LABELS[CompatLayerId.Searx],
     settingKey: SEARX_SETTING_KEY,
     loadEngines: loadSearxCompatibilityEngines,
-    listItems: _searxItems,
+    listItems: _withFavicons(_searxItems),
     install: installSearx,
     update: updateSearx,
     uninstall: uninstallSearx,
@@ -84,7 +94,7 @@ export const COMPAT_LAYERS: readonly CompatLayerDef[] = Object.freeze([
     label: COMPAT_LAYER_LABELS[CompatLayerId.FourGet],
     settingKey: FOURGET_SETTING_KEY,
     loadEngines: loadFourGetEngines,
-    listItems: listFourGetItems,
+    listItems: _withFavicons(listFourGetItems),
     install: installFourGet,
     update: updateFourGet,
     uninstall: uninstallFourGet,

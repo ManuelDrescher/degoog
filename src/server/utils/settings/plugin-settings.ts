@@ -101,6 +101,23 @@ export async function setSettings(
   await publishInvalidate(INVALIDATE_SCOPE.PLUGIN_SETTINGS, id);
 }
 
+export const SCHEMA_VERSION_KEY = "__schemaVersion";
+
+export const getSchemaVersion = async (): Promise<number> => {
+  const store = (await load()) as Record<string, unknown>;
+  const version = store[SCHEMA_VERSION_KEY];
+  return typeof version === "number" ? version : 0;
+};
+
+export async function setSchemaVersion(version: number): Promise<void> {
+  const store = await load();
+  (store as Record<string, unknown>)[SCHEMA_VERSION_KEY] = version;
+  cache = store;
+  await persist(store);
+  loadFailed = false;
+  await publishInvalidate(INVALIDATE_SCOPE.PLUGIN_SETTINGS, SCHEMA_VERSION_KEY);
+}
+
 export const getAllSettings = async (): Promise<PluginSettingsStore> => {
   return load();
 };

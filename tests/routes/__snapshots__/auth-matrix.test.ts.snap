@@ -29,6 +29,12 @@ exports[`what an unauthenticated caller gets from every route extensions unauthe
 ]
 `;
 
+exports[`what an unauthenticated caller gets from every route favicon unauthenticated responses are unchanged (nojs pinned off) 1`] = `
+[
+  "POST /api/favicon/refresh -> 401",
+]
+`;
+
 exports[`what an unauthenticated caller gets from every route health unauthenticated responses are unchanged (nojs pinned off) 1`] = `
 [
   "GET /api/whodis -> 200",

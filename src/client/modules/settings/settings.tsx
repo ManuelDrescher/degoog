@@ -17,6 +17,7 @@ import { initEnginesTab } from "../../settings/engines/tab";
 import { initPluginsTab } from "../../settings/plugins/tab";
 import { initTransportsTab } from "../../settings/transports/tab";
 import { initAutocompleteTab } from "../../settings/autocomplete/tab";
+import { initFaviconTab } from "../../settings/favicon/tab";
 import { initThemesTab } from "../../settings/themes/tab";
 import { initServerTab } from "../../settings/server/tab";
 import { initStoreTab } from "../../settings/store/tab";
@@ -221,6 +222,7 @@ async function _initSettings(): Promise<void> {
     initPluginsTab(allExtensions);
     initTransportsTab(allExtensions);
     initAutocompleteTab(allExtensions);
+    initFaviconTab(allExtensions);
     await initThemesTab(themesData, allExtensions.themes ?? []);
     const storeEl = document.getElementById("store-content");
     if (storeEl) void initStoreTab(storeEl, getStoredToken);
@@ -233,6 +235,7 @@ async function _initSettings(): Promise<void> {
     const pluginsEl = document.getElementById("plugins-content");
     const transportsEl = document.getElementById("transports-content");
     const autocompleteEl = document.getElementById("autocomplete-content");
+    const faviconEl = document.getElementById("favicon-content");
     const themesEl = document.getElementById("themes-content");
     if (enginesEl)
       render(
@@ -253,6 +256,11 @@ async function _initSettings(): Promise<void> {
       render(
         <ErrorNotice messageKey="settings-page.errors.load-autocomplete" />,
         autocompleteEl,
+      );
+    if (faviconEl)
+      render(
+        <ErrorNotice messageKey="settings-page.errors.load-favicon" />,
+        faviconEl,
       );
     if (themesEl)
       render(
@@ -278,6 +286,7 @@ window.addEventListener("extensions-saved", async () => {
     initPluginsTab(allExtensions);
     initTransportsTab(allExtensions);
     initAutocompleteTab(allExtensions);
+    initFaviconTab(allExtensions);
     await initThemesTab(themesData, allExtensions.themes ?? []);
   } catch (err) {
     console.warn("[settings] extension tabs refresh failed", err);

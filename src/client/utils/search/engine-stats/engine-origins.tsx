@@ -117,6 +117,10 @@ const _paintOne = (
   origin: EngineOrigin,
   mode: EngineOriginDisplay,
 ): void => {
+  if (mode === EngineOriginDisplay.Favicon && origin.favicon === "") {
+    slot.remove();
+    return;
+  }
   const artwork = _artwork(slot, origin, mode);
   if (!artwork) return;
   const label = t("search-templates.sidebar.engine-origin", {

@@ -92,6 +92,8 @@ function getStoreItemPath(type: ExtensionStoreType, item: string): string {
       return `autocomplete/${item}`;
     case ExtensionStoreType.Shortcut:
       return `shortcuts/${item}`;
+    case ExtensionStoreType.Favicon:
+      return `favicon/${item}`;
     case ExtensionStoreType.Engine:
       return `engines/${item}`;
   }

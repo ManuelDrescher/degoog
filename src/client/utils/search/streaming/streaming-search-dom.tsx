@@ -8,7 +8,10 @@ import {
   type ScoredResult,
 } from "../../../../shared/search-types";
 import { renderTemplate } from "../../dom/template";
-import { buildResultContext } from "../../../modules/renderer/render";
+import {
+  buildResultContext,
+  hydrateFavicons,
+} from "../../../modules/renderer/render";
 import { engineCount } from "../engine-stats/engine-failure";
 import { originSlot, paintOrigins } from "../engine-stats/engine-origins";
 import { PANEL_LAYOUT_BREAKPOINT } from "../../../modules/renderer/media/render-media";
@@ -25,6 +28,7 @@ export function renderResultEl(
   wrapper.innerHTML = html;
   const el = wrapper.firstElementChild as HTMLElement | null;
   if (!el) return null;
+  hydrateFavicons(el);
   el.dataset.resultUrl = r.url;
   el.dataset.idx = r.idx ?? "";
   return el;

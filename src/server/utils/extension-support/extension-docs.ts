@@ -1,6 +1,12 @@
 import { access } from "fs/promises";
 import { join } from "path";
-import { enginesDir, pluginsDir, themesDir, transportsDir } from "../paths";
+import {
+  enginesDir,
+  faviconDir,
+  pluginsDir,
+  themesDir,
+  transportsDir,
+} from "../paths";
 
 type ExtensionDocsPath = { readmePath: string; exists: boolean };
 
@@ -11,6 +17,7 @@ const _destDirFromId = (id: string): string | null => {
   if (id.endsWith("-theme")) return themesDir();
   if (id.endsWith("-transport")) return transportsDir();
   if (id.endsWith("-engine")) return enginesDir();
+  if (id.endsWith("-favicon")) return faviconDir();
   return null;
 };
 
@@ -34,7 +41,7 @@ export const getExtensionReadmePath = (id: string, folder?: string): string | nu
   const base = _destDirFromId(id);
   if (!base) return null;
   const fallbackFolder = id.replace(
-    /-(command|slot|middleware|tab|theme|transport|engine)$/,
+    /-(command|slot|middleware|tab|theme|transport|engine|favicon)$/,
     "",
   );
   const resolved = folder ?? _folderById.get(id) ?? fallbackFolder;

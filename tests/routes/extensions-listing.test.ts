@@ -12,6 +12,7 @@ const SOURCES: [string, string, string][] = [
   ["../../src/server/extensions/transports/registry", "getTransportExtensionMeta", "tr1-transport"],
   ["../../src/server/extensions/autocomplete/registry", "getAutocompleteExtensionMeta", "a1-autocomplete"],
   ["../../src/server/extensions/shortcuts/registry", "getShortcutExtensionMeta", "sc1-shortcut"],
+  ["../../src/server/extensions/favicon/registry", "getFaviconProviderMetas", "f1-favicon"],
 ];
 const LIFECYCLE_MOD = "../../src/server/extensions/store/item-lifecycle";
 
@@ -60,6 +61,7 @@ describe("GET /api/extensions", () => {
       "transports",
       "autocomplete",
       "shortcuts",
+      "favicon",
     ]);
     expect(ids(body.engines)).toEqual(["e1-engine"]);
     expect(ids(body.plugins)).toEqual([
@@ -73,6 +75,7 @@ describe("GET /api/extensions", () => {
     expect(ids(body.transports)).toEqual(["tr1-transport"]);
     expect(ids(body.autocomplete)).toEqual(["a1-autocomplete"]);
     expect(ids(body.shortcuts)).toEqual(["sc1-shortcut"]);
+    expect(ids(body.favicon)).toEqual(["f1-favicon"]);
     expect(body.engines[0].settings).toEqual({ secret: "s" });
   });
 
@@ -82,6 +85,17 @@ describe("GET /api/extensions", () => {
     expect(slot.requiresNewerVersion).toBe(true);
     expect(body.themes[0].requiresNewerVersion).toBe(false);
     expect(body.engines[0]).not.toHaveProperty("requiresNewerVersion");
+  });
+
+  test("unauthenticated listing redacts favicon provider settings", async () => {
+    delete process.env.DEGOOG_DANGEROUSLY_NO_PASSWORD;
+    try {
+      const body = await (await router.request("http://localhost/api/extensions?type=favicon")).json();
+      expect(Object.keys(body)).toEqual(["favicon"]);
+      expect(body.favicon[0].settings).toEqual({});
+    } finally {
+      process.env.DEGOOG_DANGEROUSLY_NO_PASSWORD = "true";
+    }
   });
 
   test("a type filter returns just that group", async () => {

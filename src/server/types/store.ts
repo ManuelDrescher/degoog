@@ -78,6 +78,7 @@ export interface RepoPackageJson {
   "repo-image"?: string;
   autocomplete?: RepoPackageItem[];
   shortcuts?: RepoPackageItem[];
+  favicon?: RepoPackageItem[];
 }
 
 export interface AuthorJson {

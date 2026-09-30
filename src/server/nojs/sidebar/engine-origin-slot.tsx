@@ -15,6 +15,7 @@ export const EngineOriginSlot = ({
   engineId,
   label,
 }: EngineOriginSlotProps): JSX.Element | null => {
+  if (mode === EngineOriginDisplay.Favicon && origin.favicon === "") return null;
   const src =
     mode === EngineOriginDisplay.Favicon && origin.favicon
       ? origin.favicon

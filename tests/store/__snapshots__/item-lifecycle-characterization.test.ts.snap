@@ -8,6 +8,9 @@ exports[`settingsIdsForInstalled each type maps to its canonical settings ids 1`
   "engine": [
     "acme-demo-engine",
   ],
+  "favicon": [
+    "acme-demo-favicon",
+  ],
   "plugin": [
     "acme-demo-command",
   ],

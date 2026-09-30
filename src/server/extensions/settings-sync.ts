@@ -8,6 +8,7 @@ import {
 import { logger } from "../utils/logger";
 import { getSettings, type SettingValue } from "../utils/settings/plugin-settings";
 import { reconfigureManifestEngines } from "./engines/catalog";
+import { applyFaviconSettings } from "./favicon/registry";
 import { resolveExtension } from "./resolve";
 
 type ExtSettings = Record<string, SettingValue>;
@@ -23,6 +24,7 @@ const applyExtSettings = (id: string, settings: ExtSettings): void => {
   resolved.tab?.configure?.(settings);
   resolved.transport?.configure?.(settings);
   resolved.autocomplete?.configure?.(settings);
+  if (resolved.favicon) applyFaviconSettings(id, settings);
 
   if (settings.priority === undefined) return;
 

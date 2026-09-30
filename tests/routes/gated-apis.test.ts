@@ -13,6 +13,7 @@ type Method = "GET" | "POST" | "PATCH" | "DELETE";
 const ROUTER_MODULES = [
   "compat-engines",
   "extensions",
+  "favicon",
   "indexer",
   "pages",
   "searx-engines",
@@ -40,6 +41,8 @@ const GATED_APIS: Array<{ method: Method; path: string; routerKey: RouterKey; bo
   { method: "POST", path: "/api/extensions/engine-foo/options/key", routerKey: "extensions" },
   { method: "POST", path: "/api/extensions/engine-foo/upload", routerKey: "extensions" },
   { method: "POST", path: "/api/extensions/transports/fetch/test", routerKey: "extensions" },
+
+  { method: "POST", path: "/api/favicon/refresh", routerKey: "favicon", body: '{"domain":"example.org"}' },
 
   { method: "GET", path: "/api/indexer/stats", routerKey: "indexer" },
   { method: "GET", path: "/api/indexer/types", routerKey: "indexer" },

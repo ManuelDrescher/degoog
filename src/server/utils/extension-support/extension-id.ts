@@ -11,7 +11,8 @@ export type ExtensionKind =
   | "theme"
   | "autocomplete"
   | "shortcut"
-  | "uovadipasqua";
+  | "uovadipasqua"
+  | "favicon";
 
 const _shortHash = (input: string): string =>
   createHash("sha256").update(input).digest("hex").slice(0, 8);

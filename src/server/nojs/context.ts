@@ -1,14 +1,13 @@
 import type { Context } from "hono";
 import { DEGOOG_ENGINE_NAME, type ScoredResult } from "../../shared/search-types";
 import type { Translate } from "../types/extension";
-import { getBasePath } from "../utils/net/base-url";
+import { hasFaviconSource } from "../extensions/favicon/source";
+import { buildFaviconUrl } from "../utils/net/proxy-sign";
 import { DEFAULT_LANGUAGES } from "../utils/search";
 import { logger } from "../utils/logger";
 import { searchHref, type NojsQuery } from "./links";
 import { nojsTabType } from "./tabs";
 import { cleanHostname, faviconHostname, linkHref } from "../../shared/utils/url";
-
-const BASE_PATH = getBasePath();
 
 const citeUrl = (url: string): string => {
   try {
@@ -36,11 +35,10 @@ const _dateLabel = (iso: string | undefined, locale: string): string => {
   }
 };
 
-export const faviconUrl = (url: string): string => {
-  const hostname = faviconHostname(url);
-  if (!hostname) return "";
-  return `${BASE_PATH}/api/proxy/favicon?domain=${encodeURIComponent(hostname)}`;
-};
+const _faviconUrl = (result: ScoredResult): string =>
+  typeof result.favicon === "string"
+    ? result.favicon
+    : buildFaviconUrl(faviconHostname(result.url));
 
 export const buildResultContext = (
   result: ScoredResult,
@@ -53,6 +51,7 @@ export const buildResultContext = (
   const fromIndex = String(
     t("search-templates.result.from-index", undefined, locale),
   );
+  const faviconMissing = !hasFaviconSource();
   return {
     index,
     title: result.title,
@@ -60,8 +59,12 @@ export const buildResultContext = (
     cite_url: citeUrl(result.url),
     snippet: result.snippet,
     published_at: _dateLabel(result.publishedAt, locale),
-    favicon_url: faviconUrl(result.url),
+    favicon_url: faviconMissing ? "" : _faviconUrl(result),
     favicon_host: faviconHostname(result.url),
+    favicon_missing: faviconMissing,
+    favicon_missing_tip: faviconMissing
+      ? String(t("search-templates.result.favicon-missing", undefined, locale))
+      : "",
     thumbnail_url: result.thumbnail || result.imageUrl || "",
     duration: result.duration || "",
     is_video: isVideoType || !!result.duration,
@@ -72,6 +75,7 @@ export const buildResultContext = (
     action_block: false,
     action_replace: false,
     action_score: false,
+    action_refresh: false,
     sources: (result.sources ?? []).map((name) => ({
       name,
       tooltip: recalled && name === DEGOOG_ENGINE_NAME ? fromIndex : "",

@@ -22,6 +22,7 @@ import { helpCommand } from "../../src/server/extensions/commands/builtins/help"
 import { ipCommand } from "../../src/server/extensions/commands/builtins/ip";
 import { speedtestCommand } from "../../src/server/extensions/commands/builtins/speedtest";
 import { uuidCommand } from "../../src/server/extensions/commands/builtins/uuid";
+import { fakeFaviconProviders, restoreFaviconProviders } from "../helpers/favicon-providers";
 
 const SERVER_SETTINGS_MOD = "../../src/server/utils/settings/server-settings";
 const SEARCH_HANDLERS_MOD = "../../src/server/search/handlers";
@@ -470,6 +471,7 @@ describe("nojs results layout matches the real page", () => {
   });
 
   test("the result card keeps the markup the real theme ships", async () => {
+    fakeFaviconProviders(true);
     harness({
       settings: enabled(),
       results: [
@@ -478,19 +480,34 @@ describe("nojs results layout matches the real page", () => {
           url: "http://example.test/one",
           thumbnail: "https://pics.test/thumb.jpg",
           duration: "3:21",
+          favicon: "/api/proxy/favicon?domain=example.test&sig=feedface",
         }),
       ],
     });
-    const html = await text("/nojs/search?q=hello");
+    const html = await text("/nojs/search?q=hello").finally(restoreFaviconProviders);
     expect(html).toContain("result-favicon degoog-result--favicon");
-    expect(html).toContain("/api/proxy/favicon?domain=example.test");
+    expect(html).toContain("/api/proxy/favicon?domain=example.test&amp;sig=feedface");
     expect(html).toContain('data-favicon-host="example.test"');
+    expect(html).not.toContain("result-favicon-missing");
+    expect(html).not.toContain("result-action-refresh-");
     expect(html).toContain("result-insecure-badge");
     expect(html).toContain("unencrypted HTTP connection");
     expect(html).toContain("degoog-result--video-play");
     expect(html).toContain("degoog-result--video-duration");
     expect(html).not.toContain("result-actions-toggle");
     expect(html).not.toContain("result-actions-menu");
+  });
+
+  test("with no favicon provider the card shows the placeholder and never asks the proxy", async () => {
+    fakeFaviconProviders(false);
+    harness({
+      settings: enabled(),
+      results: [makeResult({ url: "https://example.test/one", favicon: "" })],
+    });
+    const html = await text("/nojs/search?q=hello").finally(restoreFaviconProviders);
+    expect(html).toContain("result-favicon-missing degoog-result--favicon-missing");
+    expect(html).toContain('data-tooltip="No favicon extension installed"');
+    expect(html).not.toContain("/api/proxy/favicon");
   });
 
   test("an engine tag recalled from the index carries a tooltip", async () => {

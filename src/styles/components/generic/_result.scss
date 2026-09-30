@@ -92,7 +92,16 @@
     flex-shrink: 0;
     border-radius: $radius-full;
     object-fit: contain;
-    padding: 4px;
+  }
+
+  &--favicon-missing {
+    @include flex-center;
+    width: 1.625rem;
+    height: 1.625rem;
+    flex-shrink: 0;
+    color: var(--text-secondary);
+    font-size: $font-size-xs;
+    cursor: help;
   }
 
   &--cite {

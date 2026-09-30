@@ -69,6 +69,9 @@ export const settingsTokensFile = (): string =>
 export const autocompleteDir = (): string =>
   process.env.DEGOOG_AUTOCOMPLETE_DIR ?? join(dataDir(), "autocomplete");
 
+export const faviconDir = (): string =>
+  process.env.DEGOOG_FAVICON_DIR ?? join(dataDir(), "favicon");
+
 export const shortcutsDir = (): string =>
   process.env.DEGOOG_SHORTCUTS_DIR ?? join(dataDir(), "shortcuts");
 

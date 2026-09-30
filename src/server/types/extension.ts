@@ -44,6 +44,7 @@ export enum ExtensionStoreType {
   Transport = "transport",
   Autocomplete = "autocomplete",
   Shortcut = "shortcut",
+  Favicon = "favicon",
 }
 
 export type GetFieldOptions = (
@@ -143,6 +144,28 @@ export interface AutocompleteProvider {
     query: string,
     context?: AutocompleteContext,
   ): Promise<AutocompleteSuggestion[]>;
+}
+
+export type FaviconResult =
+  | { url: string }
+  | { data: Uint8Array; contentType: string }
+  | null;
+
+export interface FaviconContext {
+  fetch: (url: string, init?: RequestInit) => Promise<Response>;
+  userAgent: string;
+  size: number;
+  useCache: UseCache;
+}
+
+export interface FaviconProvider {
+  name: string;
+  description?: string;
+  needsAppRestart?: boolean;
+  settingsSchema?: SettingField[];
+  configure?(settings: Record<string, SettingValue>): void;
+  getFieldOptions?: GetFieldOptions;
+  getFavicon(host: string, context: FaviconContext): Promise<FaviconResult>;
 }
 
 export const SLOT_POSITION_SETTING_KEY = "slotPosition";

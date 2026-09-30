@@ -2,6 +2,10 @@ import {
   DEFAULT_ENGINE_ORIGIN_DISPLAY,
   ENGINE_ORIGIN_DISPLAY_VALUES,
 } from "../../../shared/engine-origins";
+import {
+  DEFAULT_FAVICON_SHAPE,
+  FAVICON_SHAPE_VALUES,
+} from "../../../shared/favicon-shapes";
 
 type SettingKind = "string" | "boolean" | "number" | "lines";
 
@@ -9,6 +13,8 @@ interface SettingDef {
   kind: SettingKind;
   default: string | boolean;
   values?: readonly string[];
+  min?: number;
+  max?: number;
 }
 
 export const SETTINGS_SCHEMA = {
@@ -70,10 +76,13 @@ export const SETTINGS_SCHEMA = {
   degoogIndexerDomainAllowlist: { kind: "lines",   default: "" },
   degoogIndexerDomainBlocklist: { kind: "lines",   default: "" },
   degoogIndexerWordBlocklist:   { kind: "lines",   default: "" },
+  degoogFaviconStoreEnabled:    { kind: "boolean", default: true },
+  degoogFaviconStoreMaxAgeDays: { kind: "number",  default: "30", min: 1, max: 3650 },
   searxCompatEnabled:           { kind: "boolean", default: false },
   searxApiEnabled:              { kind: "boolean", default: false },
   fourgetCompatEnabled:         { kind: "boolean", default: false },
   engineOriginDisplay:          { kind: "string",  default: DEFAULT_ENGINE_ORIGIN_DISPLAY, values: ENGINE_ORIGIN_DISPLAY_VALUES },
+  faviconShape:                 { kind: "string",  default: DEFAULT_FAVICON_SHAPE, values: FAVICON_SHAPE_VALUES },
 } satisfies Record<string, SettingDef>;
 
 export type SettingKey = keyof typeof SETTINGS_SCHEMA;
@@ -83,7 +92,10 @@ export const coerceSetting = (def: SettingDef, raw: string): string | boolean =>
     case "boolean": return raw === "true";
     case "number": {
       const n = Number(raw);
-      return Number.isFinite(n) ? String(Math.trunc(n)) : String(def.default);
+      if (!Number.isFinite(n)) return String(def.default);
+      const low = def.min ?? -Infinity;
+      const high = def.max ?? Infinity;
+      return String(Math.min(high, Math.max(low, Math.trunc(n))));
     }
     default:
       if (def.values && !def.values.includes(raw)) return String(def.default);

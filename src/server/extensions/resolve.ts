@@ -23,6 +23,10 @@ import {
 } from "./autocomplete/registry";
 import { getShortcutExtensionMeta } from "./shortcuts/registry";
 import {
+  getFaviconProviderById,
+  getFaviconProviderMetas,
+} from "./favicon/registry";
+import {
   getSearchResultTabById,
   getSearchResultTabExtensionMeta,
   getSearchResultTabs,
@@ -31,6 +35,7 @@ import type {
   AutocompleteProvider,
   BangCommand,
   ExtensionMeta,
+  FaviconProvider,
   GetFieldOptions,
   QueryInterceptor,
   SearchEngine,
@@ -41,6 +46,7 @@ import type {
 
 const TRANSPORT_SUFFIX = "-transport";
 const AUTOCOMPLETE_SUFFIX = "-autocomplete";
+const FAVICON_SUFFIX = "-favicon";
 
 interface ResolvedExtension {
   engine: SearchEngine | null;
@@ -50,6 +56,7 @@ interface ResolvedExtension {
   tab: SearchResultTab | null;
   transport: Transport | null;
   autocomplete: AutocompleteProvider | null;
+  favicon: FaviconProvider | null;
 }
 
 type LiveTarget = NonNullable<ResolvedExtension[keyof ResolvedExtension]>;
@@ -72,6 +79,7 @@ export const getExtensionMetaGroups = async () => {
     transports,
     autocomplete,
     shortcuts,
+    favicon,
   ] = await Promise.all([
     getEngineExtensionMeta(coreT),
     getPluginExtensionMeta(coreT),
@@ -83,8 +91,21 @@ export const getExtensionMetaGroups = async () => {
     getTransportExtensionMeta(),
     getAutocompleteExtensionMeta(),
     getShortcutExtensionMeta(),
+    getFaviconProviderMetas(),
   ]);
-  return { engines, plugins, slots, interceptors, searchBar, tabs, themes, transports, autocomplete, shortcuts };
+  return {
+    engines,
+    plugins,
+    slots,
+    interceptors,
+    searchBar,
+    tabs,
+    themes,
+    transports,
+    autocomplete,
+    shortcuts,
+    favicon,
+  };
 };
 
 const getAllExtensionMeta = async (): Promise<ExtensionMeta[]> =>
@@ -116,6 +137,9 @@ export const resolveExtension = (id: string): ResolvedExtension => ({
   autocomplete: id.endsWith(AUTOCOMPLETE_SUFFIX)
     ? (getAutocompleteProviderById(id) ?? null)
     : null,
+  favicon: id.endsWith(FAVICON_SUFFIX)
+    ? (getFaviconProviderById(id) ?? null)
+    : null,
 });
 
 const liveTargets = (resolved: ResolvedExtension): LiveTarget[] => {
@@ -127,6 +151,7 @@ const liveTargets = (resolved: ResolvedExtension): LiveTarget[] => {
     resolved.tab,
     resolved.transport,
     resolved.autocomplete,
+    resolved.favicon,
   ];
   return entries.filter((entry): entry is LiveTarget => entry !== null);
 };

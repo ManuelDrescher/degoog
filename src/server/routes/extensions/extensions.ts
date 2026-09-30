@@ -144,7 +144,8 @@ type ExtensionGroupKey =
   | "themes"
   | "transports"
   | "autocomplete"
-  | "shortcuts";
+  | "shortcuts"
+  | "favicon";
 
 const EXTENSION_TYPE_KEY: Record<ExtensionStoreType, ExtensionGroupKey> = {
   [ExtensionStoreType.Engine]: "engines",
@@ -153,6 +154,7 @@ const EXTENSION_TYPE_KEY: Record<ExtensionStoreType, ExtensionGroupKey> = {
   [ExtensionStoreType.Transport]: "transports",
   [ExtensionStoreType.Autocomplete]: "autocomplete",
   [ExtensionStoreType.Shortcut]: "shortcuts",
+  [ExtensionStoreType.Favicon]: "favicon",
 };
 
 const EXTENSION_GROUP_KEYS = new Set<string>(Object.values(EXTENSION_TYPE_KEY));
@@ -171,8 +173,19 @@ router.get("/api/extensions", async (c) => {
     getExtensionMetaGroups(),
     getInstalledItems(),
   ]);
-  const { engines, plugins, slots, interceptors, searchBar, tabs, themes, transports, autocomplete, shortcuts } =
-    groups;
+  const {
+    engines,
+    plugins,
+    slots,
+    interceptors,
+    searchBar,
+    tabs,
+    themes,
+    transports,
+    autocomplete,
+    shortcuts,
+    favicon,
+  } = groups;
 
   for (const meta of Object.values(groups).flat()) {
     const inst = installedItems.find((i) => {
@@ -192,7 +205,9 @@ router.get("/api/extensions", async (c) => {
                 ? [makeExtID(i.installedAs, "autocomplete")]
                 : i.type === ExtensionStoreType.Shortcut
                   ? [makeExtID(i.installedAs, "shortcut")]
-                  : [makeExtID(i.installedAs, "transport")];
+                  : i.type === ExtensionStoreType.Favicon
+                    ? [makeExtID(i.installedAs, "favicon")]
+                    : [makeExtID(i.installedAs, "transport")];
       return expected.includes(meta.id);
     });
     if (inst?.minDegoogVersion) {
@@ -214,6 +229,7 @@ router.get("/api/extensions", async (c) => {
     transports: redact(transports),
     autocomplete: redact(autocomplete),
     shortcuts: redact(shortcuts),
+    favicon: redact(favicon),
   };
 
   const requestedType = c.req.query("type");
@@ -245,6 +261,9 @@ router.post("/api/extensions/:id/settings", settingsAuth(), async (c) => {
   schemaKeys.add("priority");
   if (ext.type === ExtensionStoreType.Engine) {
     schemaKeys.add("score");
+    schemaKeys.add("outgoingTransport");
+  }
+  if (ext.type === ExtensionStoreType.Favicon) {
     schemaKeys.add("outgoingTransport");
   }
   const filtered: Record<string, SettingValue> = {};

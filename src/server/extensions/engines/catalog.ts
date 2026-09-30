@@ -93,20 +93,22 @@ export const singleEngineConfig = (engineId: string): EngineConfig => ({
 
 export const listEngines = async (): Promise<EngineCatalogEntry[]> => {
   const origins = await storeOrigins();
-  return Promise.all(
-    allEngineEntries().map(async (e) => {
-      const searchTypes = await resolveEngineTypes(e);
-      return {
-        id: e.id,
-        displayName: e.displayName,
-        disabledByDefault: e.disabledByDefault,
-        searchTypes,
-        primaryType: primaryType(searchTypes),
-        filters: e.filters,
-        origin: engineOrigin(e, origins),
-      };
-    }),
+  const entries = await Promise.all(
+    allEngineEntries().map(async (e) => ({
+      entry: e,
+      searchTypes: await resolveEngineTypes(e),
+    })),
   );
+  await getInstanceSettings();
+  return entries.map(({ entry: e, searchTypes }) => ({
+    id: e.id,
+    displayName: e.displayName,
+    disabledByDefault: e.disabledByDefault,
+    searchTypes,
+    primaryType: primaryType(searchTypes),
+    filters: e.filters,
+    origin: engineOrigin(e, origins),
+  }));
 };
 
 export const getEngineMap = (): Record<string, SearchEngine> =>

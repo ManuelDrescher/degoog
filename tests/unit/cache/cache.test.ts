@@ -3,6 +3,7 @@ import {
   clear,
   engineErrored,
   engineRunCache,
+  useCache,
   type CachedEngineRun,
 } from "../../../src/server/utils/cache/cache";
 
@@ -58,6 +59,17 @@ describe("cache", () => {
       await engineRunCache.set("bing|cats", mockRun(8, "ok"));
       expect((await engineRunCache.get("jellyfin|cats"))?.pages).toBe(12);
       expect((await engineRunCache.get("bing|cats"))?.pages).toBeUndefined();
+    });
+  });
+
+  describe("useCache delete", () => {
+    test("evicts the in-memory entry, not just the valkey copy", async () => {
+      const cache = useCache<string>("test:cache-delete", 60_000);
+      await cache.set("gone", "value");
+      await cache.set("kept", "value");
+      await cache.delete("gone");
+      expect(await cache.get("gone")).toBeNull();
+      expect(await cache.get("kept")).toBe("value");
     });
   });
 

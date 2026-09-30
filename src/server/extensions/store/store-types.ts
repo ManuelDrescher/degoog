@@ -6,6 +6,7 @@ import {
   transportsDir,
   autocompleteDir,
   shortcutsDir,
+  faviconDir,
 } from "../../utils/paths";
 import { getPluginSettingsIds } from "../../utils/extension-support/plugin-assets";
 import { makeExtID } from "../../utils/extension-support/extension-id";
@@ -24,6 +25,7 @@ import { initEngines } from "../engines/loader";
 import { initTransports } from "../transports/registry";
 import { initAutocomplete } from "../autocomplete/registry";
 import { reloadShortcutsRegistry } from "../shortcuts/registry";
+import { initFavicon } from "../favicon/registry";
 
 type ManifestKey =
   | "plugins"
@@ -31,7 +33,8 @@ type ManifestKey =
   | "engines"
   | "transports"
   | "autocomplete"
-  | "shortcuts";
+  | "shortcuts"
+  | "favicon";
 
 interface StoreTypeSpec {
   destDir: () => string;
@@ -93,5 +96,11 @@ export const STORE_TYPE_SPECS: Record<ExtensionStoreType, StoreTypeSpec> = {
     manifestKey: "shortcuts",
     reload: reloadShortcutsRegistry,
     settingsIds: (id) => [makeExtID(id, "shortcut")],
+  },
+  [ExtensionStoreType.Favicon]: {
+    destDir: faviconDir,
+    manifestKey: "favicon",
+    reload: initFavicon,
+    settingsIds: (id) => [makeExtID(id, "favicon")],
   },
 };

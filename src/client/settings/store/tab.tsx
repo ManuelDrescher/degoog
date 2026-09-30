@@ -23,7 +23,13 @@ import {
 } from "./handlers";
 import { collectSubtypes, filterItems } from "./render/filters";
 import { ItemCard } from "./render/item-card";
-import { engineTypeLabel, pluginTypeLabel } from "./render/labels";
+import {
+  STORE_ITEM_TYPES,
+  engineTypeLabel,
+  pluginTypeLabel,
+  storeAllFilterLabel,
+  storeFilterLabel,
+} from "./render/labels";
 import { RepoList } from "./render/repo-list";
 import { normalizeRepoUrl } from "./render/repo-url";
 
@@ -143,35 +149,20 @@ export async function initStoreTab(
       : items;
 
     if (typeSelect) {
-      const typeCounts = {
-        all: scopedItems.length,
-        plugin: scopedItems.filter((i) => i.type === "plugin").length,
-        theme: scopedItems.filter((i) => i.type === "theme").length,
-        engine: scopedItems.filter((i) => i.type === "engine").length,
-        transport: scopedItems.filter((i) => i.type === "transport").length,
-        autocomplete: scopedItems.filter((i) => i.type === "autocomplete")
-          .length,
-        shortcut: scopedItems.filter((i) => i.type === "shortcut").length,
-      };
       renderNodes(
         <FilterOptions
           selected={typeFilter}
           options={[
-            { id: "all", label: "Extensions", count: typeCounts.all },
-            { id: "plugin", label: "Plugins", count: typeCounts.plugin },
-            { id: "theme", label: "Themes", count: typeCounts.theme },
-            { id: "engine", label: "Engines", count: typeCounts.engine },
             {
-              id: "transport",
-              label: "Transports",
-              count: typeCounts.transport,
+              id: "all",
+              label: storeAllFilterLabel(),
+              count: scopedItems.length,
             },
-            {
-              id: "autocomplete",
-              label: "Autocomplete",
-              count: typeCounts.autocomplete,
-            },
-            { id: "shortcut", label: "Shortcuts", count: typeCounts.shortcut },
+            ...STORE_ITEM_TYPES.map((type) => ({
+              id: type,
+              label: storeFilterLabel(type),
+              count: scopedItems.filter((i) => i.type === type).length,
+            })),
           ]}
         />,
         typeSelect,
