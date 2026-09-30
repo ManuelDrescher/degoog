@@ -26,7 +26,6 @@ const MODULES = [
   "search",
   "search-bar",
   "search/stream",
-  "searx-engines",
   "settings",
   "settings-auth",
   "settings-backup",
@@ -225,9 +224,9 @@ describe("gate invariants that no snapshot update may waive", () => {
     expect(open).toEqual([]);
   });
 
-  test("a disabled searx compat layer answers 401 before it answers 404", () => {
+  test("a disabled compat layer answers 401 before it answers 404", () => {
     const wrong = rows()
-      .filter((r) => r.module === "searx-engines")
+      .filter((r) => r.module === "compat-engines")
       .filter((r) => r.status !== "401")
       .map((r) => `${r.method} ${r.path} -> ${r.status}`);
     expect(wrong).toEqual([]);

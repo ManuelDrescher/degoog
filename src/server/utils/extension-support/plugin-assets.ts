@@ -63,12 +63,25 @@ export function getPluginScriptFolders(): string[] {
   return Array.from(scriptFolderSource.keys());
 }
 
+export function prunePluginAssets(pluginRoot: string): void {
+  for (const [settingsId, dir] of extensionDirs) {
+    if (existsSync(dir)) continue;
+    extensionDirs.delete(settingsId);
+    pluginCss.delete(settingsId);
+  }
+  for (const [folder, source] of scriptFolderSource) {
+    if (source !== "plugin" || existsSync(join(pluginRoot, folder))) continue;
+    scriptFolderSource.delete(folder);
+  }
+}
+
 export function getScriptFolderSource(
   folder: string,
 ): "plugin" | "builtin" | null {
   return scriptFolderSource.get(folder) ?? null;
 }
 
+import { existsSync } from "fs";
 import { join } from "path";
 import type { PluginContext } from "../../types/extension";
 import type { SettingField } from "../../../shared/setting-field";

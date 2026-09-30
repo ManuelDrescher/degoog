@@ -78,4 +78,22 @@ describe("a failed flush keeps its rows", () => {
     await queue.flushQueue();
     expect(written.length).toBe(queue.MAX_PENDING_PER_TYPE);
   });
+
+  test("enqueue caps a queue that never flushes and keeps the newest rows", async () => {
+    await drain();
+    for (let i = 0; i < 12; i++) queue.enqueue(rowsFor("news", 1000));
+    queue.enqueue([{ engine_type: "news", url: "/newest" } as IndexRow]);
+
+    await queue.flushQueue();
+    expect(written.length).toBe(queue.MAX_PENDING_PER_TYPE);
+    expect(written.at(-1)?.url).toBe("/newest");
+  });
+
+  test("enqueue below the cap keeps every row", async () => {
+    await drain();
+    queue.enqueue(rowsFor("videos", queue.MAX_PENDING_PER_TYPE));
+
+    await queue.flushQueue();
+    expect(written.length).toBe(queue.MAX_PENDING_PER_TYPE);
+  });
 });

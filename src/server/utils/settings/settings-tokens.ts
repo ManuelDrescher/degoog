@@ -1,7 +1,8 @@
-import { readFile, writeFile, rename } from "fs/promises";
+import { readFile } from "fs/promises";
 import { timingSafeEqual } from "crypto";
 import { logger } from "../logger";
 import { settingsTokensFile } from "../paths";
+import { writeJsonAtomic } from "../storage/atomic-json";
 
 export const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -16,12 +17,8 @@ const _persistNow = async (): Promise<void> => {
     return;
   }
   _persisting = true;
-  const file = settingsTokensFile();
-  const tmp = `${file}.tmp`;
   try {
-    const snapshot = Object.fromEntries(_validTokens);
-    await writeFile(tmp, JSON.stringify(snapshot), "utf-8");
-    await rename(tmp, file);
+    await writeJsonAtomic(settingsTokensFile(), Object.fromEntries(_validTokens));
   } catch (e) {
     logger.warn(
       "settings-auth",

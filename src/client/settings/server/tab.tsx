@@ -56,20 +56,25 @@ export async function initServerTab(
     successKey,
     failKey,
   ) => {
-    const btn = document.getElementById(id);
+    const btn = document.getElementById(id) as HTMLButtonElement | null;
     if (!btn) return;
+    const original = Array.from(btn.childNodes);
+    let resetTimer = 0;
 
     btn.addEventListener("click", async () => {
-      const prev = btn.textContent;
+      if (btn.disabled) return;
+      btn.disabled = true;
+      window.clearTimeout(resetTimer);
       try {
         await action();
         btn.textContent = t(successKey);
       } catch {
         if (failKey) btn.textContent = t(failKey);
       } finally {
-        setTimeout(
+        btn.disabled = false;
+        resetTimer = window.setTimeout(
           () => {
-            btn.textContent = prev;
+            btn.replaceChildren(...original);
           },
           failKey ? 1500 : 1200,
         );

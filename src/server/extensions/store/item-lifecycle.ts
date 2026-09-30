@@ -22,12 +22,8 @@ import { runStoreExclusive } from "./store-lock";
 import { resolveChild } from "../../utils/paths";
 import { logger } from "../../utils/logger";
 import { markRestartPending } from "../../utils/extension-support/restart-state";
-import {
-  slugifyIdPart,
-  repoAuthorAndName,
-  stageItemDir,
-  resolveStoreItemDir,
-} from "./item-files";
+import { stageItemDir, resolveStoreItemDir } from "./item-files";
+import { folderNameForItem } from "../../utils/extension-support/extension-id";
 import {
   getDestDir,
   canonicalInstalledFolder,
@@ -145,11 +141,9 @@ async function _installItem(
     if (manifest.dependencies?.length)
       await installDependencies(manifest.dependencies);
     const freshData = await readReposData();
-    const itemFolder = normalizedPath.split("/").pop() ?? normalizedPath;
-    const { author, name } = repoAuthorAndName(repo.url);
     const folderName = canonicalInstalledFolder(
       type,
-      `${author}-${name}-${slugifyIdPart(itemFolder)}`,
+      folderNameForItem(repo.url, normalizedPath),
     );
     const destBase = getDestDir(type);
     await mkdir(destBase, { recursive: true });

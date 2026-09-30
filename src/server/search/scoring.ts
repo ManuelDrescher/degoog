@@ -86,15 +86,3 @@ export const scoreResults = (
   }
   return _sortedFromMap(urlMap);
 };
-
-export const mergeNewResults = (
-  existing: ScoredResult[],
-  newResults: SearchResult[],
-): ScoredResult[] => {
-  const urlMap = new Map<string, ScoredResult>();
-  for (const r of existing) {
-    urlMap.set(normalizeUrl(r.url), { ...r, sources: [...r.sources] });
-  }
-  _mergeIntoMap(urlMap, newResults);
-  return _sortedFromMap(urlMap);
-};

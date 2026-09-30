@@ -5,29 +5,6 @@ import type { AuthorJson } from "../../types/store";
 import { resolveChild, resolveRealChild } from "../../utils/paths";
 import { logger } from "../../utils/logger";
 
-export function slugifyIdPart(input: string): string {
-  return (
-    input
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 64) || "unknown"
-  );
-}
-
-export function repoAuthorAndName(repoUrl: string): { author: string; name: string } {
-  try {
-    const u = new URL(repoUrl.replace(/\.git$/, ""));
-    const parts = u.pathname.split("/").filter(Boolean);
-    const authorRaw = parts[0] ?? "unknown";
-    const repoRaw = (parts[1] ?? "repo").replace(/\.git$/, "");
-    return { author: slugifyIdPart(authorRaw), name: slugifyIdPart(repoRaw) };
-  } catch (err) {
-    logger.debug("store:item", `invalid repo URL "${repoUrl}"`, err);
-    return { author: "unknown", name: "repo" };
-  }
-}
-
 export async function readAuthorJson(dir: string): Promise<AuthorJson | null> {
   try {
     const raw = await readFile(join(dir, "author.json"), "utf-8");

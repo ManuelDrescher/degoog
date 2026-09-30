@@ -2,6 +2,8 @@ import { Button } from "../../../../shared/ui/components/primitives/button";
 import type { Props } from "../../../../shared/ui/tribute/types";
 import type { StoreItem } from "../../../types/store-tab";
 
+const t = window.scopedT("core");
+
 export const ItemCardActions = ({ item }: { item: StoreItem }): JSX.Element => {
   const dataAttrs: Props = {
     "data-repo-url": item.repoUrl,
@@ -29,7 +31,7 @@ export const ItemCardActions = ({ item }: { item: StoreItem }): JSX.Element => {
   if (!item.installed) {
     return (
       <Button variant="primary" class="store-btn-install" {...dataAttrs}>
-        Install
+        {t("settings-page.store.install")}
       </Button>
     );
   }
@@ -38,11 +40,11 @@ export const ItemCardActions = ({ item }: { item: StoreItem }): JSX.Element => {
       <span class="ext-configured-badge"></span>
       {item.updateAvailable ? (
         <Button variant="primary" class="store-btn-update" {...dataAttrs}>
-          Update
+          {t("settings-page.store.update")}
         </Button>
       ) : null}
       <Button variant="secondary" class="store-btn-uninstall" {...dataAttrs}>
-        Uninstall
+        {t("settings-page.store.uninstall")}
       </Button>
     </>
   );

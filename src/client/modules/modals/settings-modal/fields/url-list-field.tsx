@@ -76,10 +76,12 @@ export const UrlListField = ({
 };
 
 export function initUrlList(container: HTMLElement): void {
-  const field = container.querySelector<HTMLElement>(
-    ".ext-field[data-type='urllist']",
-  );
-  if (!field) return;
+  container
+    .querySelectorAll<HTMLElement>(".ext-field[data-type='urllist']")
+    .forEach((field) => _initUrlListField(field));
+}
+
+function _initUrlListField(field: HTMLElement): void {
   const listEl = field.querySelector<HTMLElement>(".ext-field-urllist");
   const addInput = field.querySelector<HTMLInputElement>(
     ".ext-field-urllist-input",

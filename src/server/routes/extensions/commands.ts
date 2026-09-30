@@ -3,9 +3,11 @@ import {
   getCommandsApiResponse,
   matchBangCommand,
 } from "../../extensions/commands/registry";
+import { clampCommandPage } from "../../extensions/commands/command-page";
 import { getEngineSearchTypes } from "../../extensions/engines/catalog";
 import { planEngineBang } from "../../search/engine-bang";
 import { handleSearch } from "../../search/handlers";
+import type { CommandResult } from "../../types/extension";
 import type { SearchBody, SearchParams, SearchType } from "../../types/search";
 import { getLocale, readObjectBody } from "../../utils/hono";
 import { logger } from "../../utils/logger";
@@ -82,10 +84,7 @@ const _runCommand = async (
     if (limitRes) return limitRes;
   }
 
-  const page = Math.max(
-    1,
-    Math.min(10, Math.floor(Number(rawPage)) || 1),
-  );
+  const page = clampCommandPage(rawPage);
 
   const clientIp = getClientIp(c);
 
@@ -93,12 +92,18 @@ const _runCommand = async (
 
   const language = getLocale(c);
 
-  const result = await match.command.execute(match.args, {
-    clientIp,
-    page,
-    signProxyUrl: buildSignedProxyUrl,
-    engines: search.engines,
-  });
+  let result: CommandResult;
+  try {
+    result = await match.command.execute(match.args, {
+      clientIp,
+      page,
+      signProxyUrl: buildSignedProxyUrl,
+      engines: search.engines,
+    });
+  } catch (err) {
+    logger.error("plugin", `command ${match.commandId} failed`, err);
+    return c.json({ error: "Command failed" }, 500);
+  }
   logger.debug(
     "plugin",
     `${match.command.trigger} executed in ${Math.round(performance.now() - t0)}ms`,

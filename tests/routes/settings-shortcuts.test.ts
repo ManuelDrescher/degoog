@@ -74,11 +74,21 @@ describe("settings shortcut routes", () => {
     expect(Array.isArray(data.custom)).toBe(true);
   });
 
-  test("POST rejects invalid shortcut maps", async () => {
-    const unknown = await post("/api/settings/shortcuts", {
-      shortcuts: { unknown: { key: "x" } },
+  test("POST skips bindings for shortcuts that are no longer installed", async () => {
+    const save = await post("/api/settings/shortcuts", {
+      shortcuts: {
+        "uninstalled-shortcut": { key: "x" },
+        "focus-search": { key: "j" },
+      },
     });
-    expect(unknown.status).toBe(400);
+    expect(save.status).toBe(200);
+
+    const data = await (await get("/api/settings/shortcuts")).json();
+    expect(data.shortcuts["focus-search"]).toEqual({ key: "j" });
+    expect(data.shortcuts["uninstalled-shortcut"]).toBeUndefined();
+  });
+
+  test("POST rejects invalid shortcut maps", async () => {
 
     const badShape = await post("/api/settings/shortcuts", {
       shortcuts: { "focus-search": { key: 3 } },

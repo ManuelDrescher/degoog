@@ -13,8 +13,7 @@ interface RouteEntry {
   routes: PluginRoute[];
 }
 
-const _entries: RouteEntry[] = [];
-const _registeredFolders = new Set<string>();
+let _entries: RouteEntry[] = [];
 
 
 function isPluginRoute(val: unknown): val is PluginRoute {
@@ -59,8 +58,26 @@ async function resolvePluginEntry(
 }
 
 export const clearPluginRoutes = (): void => {
-  _entries.length = 0;
-  _registeredFolders.clear();
+  _entries = [];
+};
+
+const _routeEntry = async (
+  folderName: string,
+  entryPath: string,
+  mod: Record<string, unknown>,
+): Promise<RouteEntry | null> => {
+  const routes = extractRoutes(mod);
+  if (routes.length === 0) return null;
+  const t = await bootCircuitFromPath(entryPath);
+  for (const route of routes) {
+    route.t = t;
+  }
+  return { pluginId: folderName, routes };
+};
+
+const _addEntry = (into: RouteEntry[], entry: RouteEntry | null): void => {
+  if (!entry || into.some((e) => e.pluginId === entry.pluginId)) return;
+  into.push(entry);
 };
 
 export const registerPluginRoutesFromModule = async (
@@ -68,15 +85,8 @@ export const registerPluginRoutesFromModule = async (
   entryPath: string,
   mod: Record<string, unknown>,
 ): Promise<void> => {
-  if (_registeredFolders.has(folderName)) return;
-  const routes = extractRoutes(mod);
-  if (routes.length === 0) return;
-  const t = await bootCircuitFromPath(entryPath);
-  for (const route of routes) {
-    route.t = t;
-  }
-  _registeredFolders.add(folderName);
-  _entries.push({ pluginId: folderName, routes });
+  if (_entries.some((e) => e.pluginId === folderName)) return;
+  _addEntry(_entries, await _routeEntry(folderName, entryPath, mod));
 };
 
 export async function initPluginRoutes(bust = false): Promise<void> {
@@ -88,6 +98,7 @@ export async function initPluginRoutes(bust = false): Promise<void> {
     logger.debug("plugin-routes", `plugins dir read failed ${dir}`, err);
     return;
   }
+  const next: RouteEntry[] = [];
   for (const entryName of entries) {
     const resolved = await resolvePluginEntry(dir, entryName);
     if (!resolved) continue;
@@ -97,15 +108,12 @@ export async function initPluginRoutes(bust = false): Promise<void> {
         ? `${href}?r=${getPluginRegistryReloadGeneration()}`
         : href;
       const mod = (await import(url)) as Record<string, unknown>;
-      await registerPluginRoutesFromModule(
-        resolved.base,
-        join(dir, resolved.base),
-        mod,
-      );
+      _addEntry(next, await _routeEntry(resolved.base, join(dir, resolved.base), mod));
     } catch (err) {
       logger.debug("plugin-routes", `Failed to import: ${entryName}`, err);
     }
   }
+  _entries = next;
 }
 
 export function resolvePluginFolderId(requestedId: string): string {

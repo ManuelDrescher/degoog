@@ -8,6 +8,7 @@ import {
 import { TAB_ORDER_SAVED } from "../../../constants";
 import { openCustomModal } from "../../../modules/modals/settings-modal/modal";
 import { initDragOrder } from "../../../utils/dom/drag-order";
+import { flashError } from "../flash-msg";
 import type { TypeEntry } from "../../../types/engines-tab";
 
 const t = window.scopedT("core");
@@ -19,7 +20,10 @@ const _persist = async (
   const order = Array.from(list.querySelectorAll<HTMLElement>("[data-key]"))
     .map((item) => item.dataset.key ?? "")
     .filter(Boolean);
-  await saveTabOrder(order, token);
+  if (!(await saveTabOrder(order, token))) {
+    flashError(t("settings-page.server.save-failed-network"));
+    return;
+  }
   window.dispatchEvent(new CustomEvent(TAB_ORDER_SAVED));
 };
 
@@ -38,7 +42,6 @@ export const openTabOrderModal = async (
 
   openCustomModal({
     title: t("settings-page.extensions.order-tabs"),
-    body: "",
   });
 
   const bodyEl = document.getElementById("ext-modal-body");

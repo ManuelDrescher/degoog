@@ -53,5 +53,3 @@ export type Child =
   | Child[];
 
 export type Component<P = Record<string, unknown>> = (props: P) => VNode;
-
-export type Tag = string | Component<never>;

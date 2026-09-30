@@ -133,10 +133,6 @@ function _renderPluginTabs(): void {
   }
 }
 
-export function reloadPluginTabs(): void {
-  void _loadPluginTabs();
-}
-
 export const getPluginTabIds = async (): Promise<Set<string>> => {
   if (tabsReady) await tabsReady;
   const ids = new Set<string>();

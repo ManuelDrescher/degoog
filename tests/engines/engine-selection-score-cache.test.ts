@@ -19,7 +19,10 @@ import { SHORT_TTL_MS, TTL_MS } from "../../src/server/utils/cache/cache";
 import { ImgNsfw } from "../../src/server/types/search";
 import { DEGOOG_ENGINE_NAME } from "../../src/shared/search-types";
 
-const withTempEngineEnv = async <T>(fn: () => Promise<T>): Promise<T> => {
+const withTempEngineEnv = async <T>(
+  fn: () => Promise<T>,
+  extra: Record<string, string> = {},
+): Promise<T> => {
   const dir = mkdtempSync(join(tmpdir(), "degoog-engine-score-"));
   const enginesDir = join(dir, "engines");
   const settingsFile = join(dir, "plugin-settings.json");
@@ -55,6 +58,10 @@ const withTempEngineEnv = async <T>(fn: () => Promise<T>): Promise<T> => {
   mkdirSync(join(enginesDir, "beta-images"), { recursive: true });
   writeFileSync(join(enginesDir, "alpha-images", "index.js"), engineSource("Alpha Images"));
   writeFileSync(join(enginesDir, "beta-images", "index.js"), engineSource("Beta Images"));
+  for (const [folder, source] of Object.entries(extra)) {
+    mkdirSync(join(enginesDir, folder), { recursive: true });
+    writeFileSync(join(enginesDir, folder, "index.js"), source);
+  }
 
   try {
     return await fn();
@@ -96,6 +103,59 @@ describe("engine scoring outside web search", () => {
         [beta!, 2],
       ]);
     });
+  });
+
+  test("an engine's score resolves the same on every tab", async () => {
+    const dual = `
+      export const type = ["web", "images"];
+      export default class DualEngine {
+        name = "Dual";
+        async executeSearch() { return []; }
+      }
+    `;
+    await withTempEngineEnv(async () => {
+      await initEngines(true);
+      const id = listEngineIds().find((e) => e.includes("dual"));
+      expect(id).toBeTruthy();
+
+      for (const [stored, expected] of [
+        [undefined, 1],
+        ["1", 1],
+        ["2.5", 2.5],
+        ["0", 0.1],
+        ["-3", 0.1],
+        ["nope", 1],
+      ] as const) {
+        await setSettings(id!, stored === undefined ? {} : { score: stored });
+        const web = await selectActiveEngines("web", { [id!]: true });
+        const images = await selectActiveEngines("images", { [id!]: true });
+        expect(web.map((e) => e.score)).toEqual([expected]);
+        expect(images.map((e) => e.score)).toEqual([expected]);
+      }
+    }, { "dual-engine": dual });
+  });
+
+  test("engines missing required config are skipped on every tab", async () => {
+    const keyed = `
+      export const type = ["web", "images"];
+      export default class KeyedEngine {
+        name = "Keyed";
+        settingsSchema = [{ key: "apiKey", label: "API key", type: "password", required: true }];
+        async executeSearch() { return []; }
+      }
+    `;
+    await withTempEngineEnv(async () => {
+      await initEngines(true);
+      const id = listEngineIds().find((e) => e.includes("keyed"));
+      expect(id).toBeTruthy();
+
+      expect(await selectActiveEngines("web", { [id!]: true })).toEqual([]);
+      expect(await selectActiveEngines("images", { [id!]: true })).toEqual([]);
+
+      await setSettings(id!, { apiKey: "secret" });
+      expect((await selectActiveEngines("web", { [id!]: true })).map((e) => e.id)).toEqual([id!]);
+      expect((await selectActiveEngines("images", { [id!]: true })).map((e) => e.id)).toEqual([id!]);
+    }, { "keyed-engine": keyed });
   });
 
   test("engine fingerprint changes when that engine's score changes", async () => {

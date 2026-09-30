@@ -141,7 +141,6 @@ export const openCompatModal = async (
 
   openCustomModal({
     title: t(`${KEY}compat-title`, { layer: name }),
-    body: "",
     wide: true,
   });
 

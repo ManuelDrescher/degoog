@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import type { TransportFetchOptions } from "../../../../types/extension";
 import { logger } from "../../../../utils/logger";
+import { killOnAbort } from "../../utils/kill-on-abort";
 
 const DEFAULT_TIMEOUT_SEC = 60;
 const DELIMITER = randomUUID();
@@ -48,14 +49,15 @@ export async function fetchViaCurl(
     throw new Error("Invalid protocol");
   }
 
-  const timeoutSec = Math.min(300, Math.max(1, DEFAULT_TIMEOUT_SEC));
-  const args = buildCurlArgs(url, options, proxyUrl, timeoutSec);
+  options.signal?.throwIfAborted();
+  const args = buildCurlArgs(url, options, proxyUrl, DEFAULT_TIMEOUT_SEC);
 
   const proc = Bun.spawn(["curl", ...args], {
     stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",
   });
+  const release = killOnAbort(proc, options.signal);
 
   const headerPayload = Object.entries(options.headers ?? {})
     .filter(([k]) => k.trim())
@@ -87,8 +89,9 @@ export async function fetchViaCurl(
     Bun.readableStreamToBytes(proc.stdout),
     new Response(proc.stderr).text(),
     proc.exited,
-  ]);
+  ]).finally(release);
 
+  options.signal?.throwIfAborted();
   if (exitCode !== 0) {
     throw new Error(stderrText.trim() || `Curl failed (${exitCode})`);
   }

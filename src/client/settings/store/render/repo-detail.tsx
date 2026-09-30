@@ -4,6 +4,8 @@ import { formatRelativeTime, normalizeRepoUrl, repoImageSrc } from "./repo-url";
 import { OFFICIAL_REPO_URL } from "../../../../shared/official-repo";
 import type { RepoInfo } from "../../../types/store-tab";
 
+const t = window.scopedT("core");
+
 export interface RepoDetailProps {
   repo: RepoInfo;
   statusByUrl: Record<string, number>;
@@ -34,17 +36,19 @@ export const RepoDetail = ({ repo, statusByUrl }: RepoDetailProps): JSX.Element 
           {repo.error ? <span class="store-repo-error">{repo.error}</span> : null}
           {behind > 0 ? (
             <span class="store-repo-updates-note" title="Refresh to get latest">
-              {`${behind} update${behind !== 1 ? "s" : ""} available`}
+              {behind === 1
+                ? t("settings-page.store.updates-one")
+                : t("settings-page.store.updates-many", { count: String(behind) })}
             </span>
           ) : null}
         </div>
         <div class="store-repo-actions">
           <button class="btn degoog-btn store-btn-refresh" type="button" data-url={repo.url}>
-            Refresh
+            {t("settings-page.store.refresh")}
           </button>
           {isOfficial ? null : (
             <Button variant="danger" class="store-btn-remove" data-url={repo.url}>
-              Remove
+              {t("settings-page.store.remove")}
             </Button>
           )}
         </div>

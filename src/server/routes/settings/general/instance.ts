@@ -1,8 +1,9 @@
-import { readFile, writeFile } from "fs/promises";
+import { readFile } from "fs/promises";
+import { writeJsonAtomic } from "../../../utils/storage/atomic-json";
 import { Hono } from "hono";
 import { defaultEnginesFile } from "../../../utils/paths";
 import { asBoolean, asString } from "../../../utils/settings/plugin-settings";
-import { DEFAULT_LANGUAGES } from "../../../utils/search";
+import { resolveLanguages } from "../../../utils/search";
 import { syncBlocklist } from "../../../utils/security/bot-trap";
 import { readObjectBody } from "../../../utils/hono";
 import {
@@ -48,15 +49,12 @@ router.get("/api/settings/streaming", async (c) => {
 
 router.get("/api/settings/languages", async (c) => {
   const settings = await getInstanceSettings();
-  if (!asBoolean(settings["languagesEnabled"])) {
-    return c.json({ languages: DEFAULT_LANGUAGES });
-  }
-  const raw = asString(settings["languages"] ?? "");
-  const codes = raw
-    .split(/[\n,]/)
-    .map((s) => s.trim().toLowerCase())
-    .filter((s) => /^[a-z]{2,3}$/.test(s));
-  return c.json({ languages: codes.length > 0 ? codes : DEFAULT_LANGUAGES });
+  return c.json({
+    languages: resolveLanguages(
+      asBoolean(settings["languagesEnabled"]),
+      asString(settings["languages"] ?? ""),
+    ),
+  });
 });
 
 router.get("/api/settings/general", settingsAuth("GET /api/settings/general"), async (c) => {
@@ -136,7 +134,9 @@ router.post("/api/settings/sync", settingsAuth("POST /api/settings/sync"), async
   if (JSON.stringify(body.settings).length > 64_000) {
     return c.json({ error: "Settings too large" }, 413);
   }
-  const settings = await writeSyncedDefaults(body.settings as Record<string, unknown>);
+  const settings = await settingsLock(() =>
+    writeSyncedDefaults(body.settings as Record<string, unknown>),
+  );
   return c.json({ ok: true, settings });
 });
 
@@ -153,7 +153,7 @@ router.get("/api/settings/default-engines", settingsAuth("GET /api/settings/defa
 router.post("/api/settings/default-engines", settingsAuth("POST /api/settings/default-engines"), async (c) => {
   const body = await readObjectBody<Record<string, boolean>>(c);
   if (!body) return c.json({ error: "Invalid JSON" }, 400);
-  await writeFile(defaultEnginesFile(), JSON.stringify(body, null, 2), "utf-8");
+  await writeJsonAtomic(defaultEnginesFile(), body);
   return c.json({ ok: true });
 });
 

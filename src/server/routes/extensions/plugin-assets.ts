@@ -11,6 +11,7 @@ import {
 } from "../../utils/extension-support/plugin-assets";
 import { rewritePluginPaths, rewriteThemePaths } from "../../utils/extension-support/extension-id";
 import { TTL_MS } from "../../utils/cache/cache";
+import { routeSuffix } from "../../utils/net/route-path";
 
 const NO_CACHE = "no-cache";
 const STATIC_ASSET_CACHE = `public, max-age=${Math.floor(TTL_MS / 1000)}`;
@@ -43,7 +44,7 @@ const router = new Hono();
 
 router.get("/plugins/:folder/*", async (c) => {
   const folder = c.req.param("folder");
-  const rest = c.req.path.replace(`/plugins/${folder}/`, "");
+  const rest = routeSuffix(c.req.path, `/plugins/${folder}`).replace(/^\//, "");
   if (!rest || rest.includes("..") || rest.startsWith("index.")) {
     return c.notFound();
   }
@@ -73,7 +74,7 @@ router.get("/plugins/:folder/*", async (c) => {
 
 router.get("/themes/:folder/*", async (c) => {
   const folder = c.req.param("folder");
-  const rest = c.req.path.replace(`/themes/${folder}/`, "");
+  const rest = routeSuffix(c.req.path, `/themes/${folder}`).replace(/^\//, "");
   if (
     !rest ||
     rest.includes("..") ||

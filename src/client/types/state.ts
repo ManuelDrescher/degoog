@@ -32,4 +32,5 @@ export interface AppState {
   showResultDates: boolean;
   isInitialLoad: boolean;
   imageFilter: ImageFilter;
+  searchSeq: number;
 }

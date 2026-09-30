@@ -215,7 +215,6 @@ function _patchChildren(
     for (const node of instance.nodes) owned.add(node);
 
   for (const instance of previous) {
-    if (used.has(instance)) continue;
     for (const node of instance.nodes) {
       if (!owned.has(node) && node.parentNode === parent)
         parent.removeChild(node);

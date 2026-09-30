@@ -73,6 +73,7 @@ const registry = createRegistry<CommandEntry>({
       instance,
     };
   },
+  reset: () => seenTriggers.clear(),
   onLoad: async (entry, { entryPath, folderName, source }) => {
     if (seenTriggers.has(entry.trigger)) return false;
     seenTriggers.add(entry.trigger);
@@ -117,15 +118,11 @@ async function loadAliases(): Promise<void> {
 
 export async function initPlugins(): Promise<void> {
   await loadAliases();
-  commandSourceMap.clear();
-  seenTriggers.clear();
   await registry.init();
 }
 
 export async function reloadCommands(bust = false): Promise<void> {
   await loadAliases();
-  commandSourceMap.clear();
-  seenTriggers.clear();
   await (bust ? registry.reload() : registry.refresh());
 }
 

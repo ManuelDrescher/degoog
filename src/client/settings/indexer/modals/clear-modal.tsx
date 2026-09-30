@@ -4,6 +4,7 @@ import { getBase } from "../../../utils/net/base-url";
 import { jsonHeaders } from "../../../utils/net/request";
 import { getStoredToken } from "../../../utils/settings/settings-token";
 import { tr } from "../i18n";
+import { borrowModal, closeModal } from "../../../modules/modals/settings-modal/modal";
 
 export const openClearModal = (onCleared: () => void): void => {
   const overlay = document.getElementById("ext-modal-overlay");
@@ -13,25 +14,14 @@ export const openClearModal = (onCleared: () => void): void => {
   const saveEl = document.getElementById(
     "ext-modal-save",
   ) as HTMLButtonElement | null;
-  const closeBtn = document.getElementById("ext-modal-close");
   if (!overlay || !titleEl || !bodyEl || !statusEl || !saveEl) return;
 
   titleEl.textContent = tr("clear-modal-title");
   render(<ClearBody />, bodyEl);
   statusEl.textContent = "";
-  saveEl.textContent = tr("clear-confirm");
-  saveEl.disabled = false;
-  saveEl.hidden = false;
   overlay.style.display = "";
 
-  const close = (): void => {
-    overlay.style.display = "none";
-    statusEl.textContent = "";
-    clear(bodyEl);
-  };
-  closeBtn?.addEventListener("click", close, { once: true });
-
-  saveEl.addEventListener("click", async () => {
+  const confirmClear = async (): Promise<void> => {
     const input = bodyEl.querySelector<HTMLInputElement>(
       "#indexer-clear-confirm",
     );
@@ -51,11 +41,14 @@ export const openClearModal = (onCleared: () => void): void => {
         saveEl.disabled = false;
         return;
       }
-      close();
+      closeModal();
       onCleared();
     } catch {
       statusEl.textContent = "Failed";
       saveEl.disabled = false;
     }
-  });
+  };
+
+  borrowModal({ onSave: () => void confirmClear(), onClose: () => clear(bodyEl) });
+  saveEl.textContent = tr("clear-confirm");
 };

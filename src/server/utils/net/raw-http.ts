@@ -8,15 +8,6 @@ const MAX_RESPONSE_BYTES = 64 * 1024 * 1024;
 
 type OpenSocket = (host: string, port: number) => Promise<Socket>;
 
-async function _upgradeTls(sock: Socket, host: string, useTls: boolean): Promise<Socket> {
-  if (!useTls) return sock;
-  const tlsSock = tls.connect({ socket: sock, servername: host });
-  await new Promise<void>((resolve, reject) => {
-    tlsSock.once("secureConnect", resolve);
-    tlsSock.once("error", reject);
-  });
-  return tlsSock;
-}
 
 function _buildHttpRequest(
   method: string,
@@ -45,6 +36,74 @@ const _abortError = (signal: AbortSignal): Error =>
   signal.reason instanceof Error
     ? signal.reason
     : new DOMException("The operation was aborted.", "AbortError");
+
+const _openAbortable = (
+  open: OpenSocket,
+  host: string,
+  port: number,
+  signal: AbortSignal | undefined,
+): Promise<Socket> => {
+  if (!signal) return open(host, port);
+  if (signal.aborted) return Promise.reject(_abortError(signal));
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const onAbort = (): void => {
+      settled = true;
+      reject(_abortError(signal));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    open(host, port).then(
+      (sock) => {
+        signal.removeEventListener("abort", onAbort);
+        if (settled) {
+          sock.destroy();
+          return;
+        }
+        settled = true;
+        resolve(sock);
+      },
+      (err: unknown) => {
+        signal.removeEventListener("abort", onAbort);
+        if (settled) return;
+        settled = true;
+        reject(err);
+      },
+    );
+  });
+};
+
+const _handshake = (tlsSock: Socket, signal: AbortSignal | undefined): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const onAbort = (): void => reject(_abortError(signal!));
+    if (signal?.aborted) return onAbort();
+    signal?.addEventListener("abort", onAbort, { once: true });
+    tlsSock.once("secureConnect", () => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    });
+    tlsSock.once("error", (err) => {
+      signal?.removeEventListener("abort", onAbort);
+      reject(err);
+    });
+  });
+
+const _upgradeTls = async (
+  sock: Socket,
+  host: string,
+  useTls: boolean,
+  signal: AbortSignal | undefined,
+): Promise<Socket> => {
+  if (!useTls) return sock;
+  const tlsSock = tls.connect({ socket: sock, servername: host });
+  try {
+    await _handshake(tlsSock, signal);
+  } catch (err) {
+    tlsSock.destroy();
+    sock.destroy();
+    throw err;
+  }
+  return tlsSock;
+};
 
 const _readAll = (sock: Socket, signal?: AbortSignal): Promise<Buffer> =>
   new Promise((resolve, reject) => {
@@ -140,7 +199,12 @@ export async function fetchOverSocket(
     const useTls = parsed.protocol === "https:";
     const port = Number(parsed.port) || (useTls ? 443 : 80);
 
-    const sock = await _upgradeTls(await open(parsed.hostname, port), parsed.hostname, useTls);
+    const sock = await _upgradeTls(
+      await _openAbortable(open, parsed.hostname, port, options.signal),
+      parsed.hostname,
+      useTls,
+      options.signal,
+    );
 
     try {
       sock.write(_buildHttpRequest(method, parsed, options.headers, options.body));

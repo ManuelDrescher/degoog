@@ -3,7 +3,7 @@ import { InfiniteSentinel } from "./infinite-sentinel";
 import { InfiniteSkeleton } from "./infinite-skeleton";
 import { SENTINEL_CLASS, SKELETON_CLASS } from "./infinite-scroll-classes";
 import { SkeletonMoreResults } from "../../../animations/skeleton/skeleton-more-results";
-import { state } from "../../../state";
+import { isCurrentSearch, state } from "../../../state";
 import { getBase } from "../../../utils/net/base-url";
 import {
   isImageSearchType,
@@ -102,11 +102,13 @@ const _applyPage = async (
   page: number,
   showSkeleton: boolean,
 ): Promise<boolean> => {
+  const seq = state.searchSeq;
   const startIndex = state.currentResults.length;
   if (showSkeleton) _showSkeleton();
 
   try {
     const data = await _fetchPage(page);
+    if (!isCurrentSearch(seq)) return false;
     const results: ScoredResult[] = data?.results ?? [];
     state.currentPage = page;
     if (state.currentData) {
@@ -134,23 +136,27 @@ const _applyPage = async (
     return true;
   } catch (err) {
     console.warn("[infinite-scroll] next page failed", err);
+    if (!isCurrentSearch(seq)) return false;
     exhausted = true;
     teardownInfinite();
     return false;
   } finally {
-    if (showSkeleton) _clearSkeleton();
-    _setPull(0);
-    _rearm();
+    if (isCurrentSearch(seq)) {
+      if (showSkeleton) _clearSkeleton();
+      _setPull(0);
+      _rearm();
+    }
   }
 };
 
 const _loadNext = async (): Promise<void> => {
   if (loading || !_hasMorePages()) return;
+  const seq = state.searchSeq;
   loading = true;
   try {
     await _applyPage(state.currentPage + 1, true);
   } finally {
-    loading = false;
+    if (isCurrentSearch(seq)) loading = false;
   }
 };
 
@@ -158,6 +164,7 @@ export const restoreInfinitePages = async (
   targetPage: number,
 ): Promise<void> => {
   if (loading || targetPage <= state.currentPage) return;
+  const seq = state.searchSeq;
   loading = true;
   try {
     for (let page = state.currentPage + 1; page <= targetPage; page++) {
@@ -166,7 +173,7 @@ export const restoreInfinitePages = async (
       if (!loadedPage) break;
     }
   } finally {
-    loading = false;
+    if (isCurrentSearch(seq)) loading = false;
   }
 };
 
@@ -193,4 +200,9 @@ export const setupInfinite = (type: string): void => {
     { rootMargin: LOAD_ROOT_MARGIN, threshold: PULL_RATIOS },
   );
   observer.observe(sentinel);
+};
+
+export const armInfinite = (type: string, restorePage: number): void => {
+  setupInfinite(type);
+  if (restorePage > 1) void restoreInfinitePages(restorePage);
 };

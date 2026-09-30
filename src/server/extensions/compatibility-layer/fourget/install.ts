@@ -1,9 +1,9 @@
-import { mkdir, readdir, rename, rm, unlink, writeFile } from "fs/promises";
+import { readdir, rm, unlink } from "fs/promises";
 import { existsSync } from "fs";
-import { randomBytes } from "crypto";
 import { join, resolve } from "path";
 import { logger } from "../../../utils/logger";
 import { createMutex } from "../../../utils/cache/mutex";
+import { writeFileAtomic } from "../../../utils/storage/atomic-json";
 import type { CompatCatalogItem, CompatRuntimeNeed } from "../../../../shared/compat-layers";
 import {
   FOURGET_CATALOG,
@@ -77,18 +77,6 @@ const _download = async (url: string): Promise<string> => {
   throw new Error("too many 4get download redirects");
 };
 
-const _writeSwap = async (target: string, dir: string, body: string): Promise<void> => {
-  const tmp = `${target}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
-  try {
-    await mkdir(dir, { recursive: true });
-    await writeFile(tmp, body, "utf-8");
-    await rename(tmp, target);
-  } catch (err) {
-    await unlink(tmp).catch(() => undefined);
-    throw err;
-  }
-};
-
 const _dropStaged = async (code: string): Promise<void> => {
   const staged = [
     join(resolve(stagingRoot()), "scraper", `${code}.php`),
@@ -99,13 +87,13 @@ const _dropStaged = async (code: string): Promise<void> => {
 
 const _fetchLib = async (code: string): Promise<void> => {
   const source = await _download(sharedUrl(code));
-  await _writeSwap(_libPath(code), resolve(sharedLibDir()), source);
+  await writeFileAtomic(_libPath(code), source);
   await _dropStaged(code);
 };
 
 const _fetchScraper = async (code: string): Promise<void> => {
   const source = await _download(scraperUrl(code));
-  await _writeSwap(_scraperPath(code), resolve(scrapersDir()), source);
+  await writeFileAtomic(_scraperPath(code), source);
   await _dropStaged(code);
 };
 

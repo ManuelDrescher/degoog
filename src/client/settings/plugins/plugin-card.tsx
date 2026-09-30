@@ -45,7 +45,9 @@ export const PluginCard = ({
           class="plugin-toggle-label"
           name={plugin.displayName}
         />,
-        plugin.source === "builtin" ? <Badge>Built-in</Badge> : null,
+        plugin.source === "builtin" ? (
+          <Badge>{t("settings-page.extensions.builtin-badge")}</Badge>
+        ) : null,
       ]}
       info={[
         plugin.description ? (

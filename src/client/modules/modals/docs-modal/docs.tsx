@@ -1,7 +1,7 @@
 import { render } from "../../../../shared/ui/tribute/dom";
 import { DocsEmpty } from "./docs-empty";
 import { DocsError } from "./docs-error";
-import { getStoredToken } from "../../settings/settings";
+import { getStoredToken } from "../../../utils/settings/settings-token";
 import { jsonHeaders } from "../../../utils/net/request";
 import { getBase } from "../../../utils/net/base-url";
 import {

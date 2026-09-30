@@ -414,7 +414,9 @@ router.post("/api/extensions/transports/:name/test", settingsAuth(), async (c) =
 
   const body = await readObjectBody<Record<string, string>>(c);
   if (body && transport.configure) {
-    transport.configure(body);
+    transport.configure(
+      mergeSecrets(body, await getSettings(name), transport.settingsSchema ?? []),
+    );
   }
 
   try {

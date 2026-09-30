@@ -9,7 +9,6 @@ const ROUTE_MODULE_PATHS: Record<string, string> = {
   "plugin-routes": "extensions/plugin-routes",
   "rate-limit": "security/rate-limit",
   "search-bar": "search/search-bar",
-  "searx-engines": "extensions/searx-engines",
   settings: "settings/settings",
   "settings-auth": "settings/settings-auth",
   "settings-backup": "settings/settings-backup",

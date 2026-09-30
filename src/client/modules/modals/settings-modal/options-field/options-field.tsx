@@ -1,5 +1,5 @@
 import { getBase } from "../../../../utils/net/base-url";
-import { getStoredToken } from "../../../settings/settings";
+import { getStoredToken } from "../../../../utils/settings/settings-token";
 import { jsonHeaders } from "../../../../utils/net/request";
 import { render } from "../../../../../shared/ui/tribute/dom";
 import { OPTIONS_BTN_CLASS } from "./options-button";

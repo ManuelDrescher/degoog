@@ -1,47 +1,57 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect } from "bun:test";
 import {
   isUrlAllowedForOutgoing,
-  setOutgoingAllowlist,
+  parseAllowedHosts,
 } from "../../../src/server/utils/net/outgoing";
 
 describe("outgoing", () => {
-  beforeEach(() => {
-    const prev = process.env.DEGOOG_OUTGOING_ALLOWED_HOSTS;
-    setOutgoingAllowlist([]);
-    if (prev !== undefined) process.env.DEGOOG_OUTGOING_ALLOWED_HOSTS = prev;
+  describe("parseAllowedHosts", () => {
+    test("unset or blank means no restriction", () => {
+      expect(parseAllowedHosts(undefined)).toBeNull();
+      expect(parseAllowedHosts(" , ")).toBeNull();
+    });
+
+    test("trims and lowercases entries", () => {
+      expect(parseAllowedHosts(" Example.COM ,api.example.org")).toEqual([
+        "example.com",
+        "api.example.org",
+      ]);
+    });
   });
 
   describe("isUrlAllowedForOutgoing", () => {
-    test("returns false for non-http(s) protocols and unparseable urls", () => {
-      setOutgoingAllowlist(["*"]);
-      expect(isUrlAllowedForOutgoing("ftp://host.com")).toBe(false);
-      expect(isUrlAllowedForOutgoing("file:///local")).toBe(false);
-      expect(isUrlAllowedForOutgoing("not-a-url")).toBe(false);
+    test("no allowlist allows everything", () => {
+      expect(isUrlAllowedForOutgoing("https://any.com", null)).toBe(true);
     });
 
-    test("when allowlist has hosts, allows only those hosts", () => {
-      setOutgoingAllowlist(["example.com", "api.example.org"]);
-      expect(isUrlAllowedForOutgoing("https://example.com/path")).toBe(true);
-      expect(isUrlAllowedForOutgoing("http://api.example.org")).toBe(true);
-      expect(isUrlAllowedForOutgoing("https://other.com")).toBe(false);
+    test("allows only listed hosts", () => {
+      const allowed = parseAllowedHosts("example.com,api.example.org");
+      expect(isUrlAllowedForOutgoing("https://example.com/path", allowed)).toBe(true);
+      expect(isUrlAllowedForOutgoing("http://api.example.org", allowed)).toBe(true);
+      expect(isUrlAllowedForOutgoing("https://other.com", allowed)).toBe(false);
+      expect(isUrlAllowedForOutgoing("https://sub.example.com", allowed)).toBe(false);
     });
 
     test("host matching is case-insensitive", () => {
-      setOutgoingAllowlist(["Example.COM"]);
-      expect(isUrlAllowedForOutgoing("https://example.com")).toBe(true);
-      expect(isUrlAllowedForOutgoing("https://EXAMPLE.COM")).toBe(true);
+      const allowed = parseAllowedHosts("Example.COM");
+      expect(isUrlAllowedForOutgoing("https://EXAMPLE.COM", allowed)).toBe(true);
     });
 
-    test("when allowlist has *, allows any http(s) URL", () => {
-      setOutgoingAllowlist(["*"]);
-      expect(isUrlAllowedForOutgoing("https://any.com")).toBe(true);
-      expect(isUrlAllowedForOutgoing("http://other.org")).toBe(true);
+    test("*.example.com matches subdomains but not the apex or lookalikes", () => {
+      const allowed = parseAllowedHosts("*.example.com");
+      expect(isUrlAllowedForOutgoing("https://a.example.com", allowed)).toBe(true);
+      expect(isUrlAllowedForOutgoing("https://a.b.example.com", allowed)).toBe(true);
+      expect(isUrlAllowedForOutgoing("https://example.com", allowed)).toBe(false);
+      expect(isUrlAllowedForOutgoing("https://badexample.com", allowed)).toBe(false);
     });
 
-    test("empty allowlist denies all", () => {
-      setOutgoingAllowlist(["example.com"]);
-      setOutgoingAllowlist([]);
-      expect(isUrlAllowedForOutgoing("https://example.com")).toBe(false);
+    test("* allows any host", () => {
+      const allowed = parseAllowedHosts("*");
+      expect(isUrlAllowedForOutgoing("https://any.com", allowed)).toBe(true);
+    });
+
+    test("unparseable urls are refused when an allowlist is set", () => {
+      expect(isUrlAllowedForOutgoing("not-a-url", parseAllowedHosts("*"))).toBe(false);
     });
   });
 });

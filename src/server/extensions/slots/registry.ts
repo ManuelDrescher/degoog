@@ -94,7 +94,6 @@ const registry = createRegistry<SlotPlugin>({
 });
 
 export async function initSlotPlugins(): Promise<void> {
-  slotSourceMap.clear();
   await registry.init();
 }
 
@@ -121,7 +120,6 @@ export function getAllSlotTranslators(): {
 }
 
 export async function reloadSlotPlugins(bust = true): Promise<void> {
-  slotSourceMap.clear();
   await (bust ? registry.reload() : registry.refresh());
 }
 

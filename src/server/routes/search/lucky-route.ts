@@ -1,11 +1,15 @@
 import type { Context, Hono } from "hono";
 import { search } from "../../search";
 import type { SearchType } from "../../types/search";
-import { _applyRateLimit, parseEngineConfig } from "../../utils/search";
+import { _applyRateLimit } from "../../utils/search";
 import { guardApiKey } from "../../utils/security/api-key-guard";
 import { applyMergedDomainRules } from "../../search/domain-rules";
+import { resolveSearchOverrides } from "../../search/overrides";
+import { parseSearchParams } from "./parsers";
 import { logger } from "../../utils/logger";
 import { publicBodyLimit } from "../_guards";
+
+const LUCKY_SEARCH_TYPE = "web" as SearchType;
 
 const _feelLucky = async (
   c: Context,
@@ -15,12 +19,27 @@ const _feelLucky = async (
   if (limitRes) return limitRes;
   const authRes = await guardApiKey(c, "apiKeySearchEnabled");
   if (authRes) return authRes;
-  const query = params.get("q");
-  if (!query) return c.json({ error: "Missing query parameter 'q'" }, 400);
+  const { origQ, engines, timeFilter, lang, dateFrom, dateTo, imageFilter } =
+    parseSearchParams(params);
+  if (!origQ) return c.json({ error: "Missing query parameter 'q'" }, 400);
 
-  const engines = parseEngineConfig(params);
-  const type = "web" as SearchType;
-  const response = await search(query, engines, type, 1);
+  const resolved = await resolveSearchOverrides(
+    origQ,
+    LUCKY_SEARCH_TYPE,
+    lang,
+    timeFilter,
+  );
+  const response = await search(
+    resolved.query,
+    engines,
+    resolved.type,
+    1,
+    resolved.timeFilter,
+    resolved.lang,
+    dateFrom,
+    dateTo,
+    imageFilter,
+  );
   const luckyResults = await applyMergedDomainRules(response.results);
   if (luckyResults.length > 0) return c.redirect(luckyResults[0].url);
   return c.json({ error: "No results found" }, 404);

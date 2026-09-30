@@ -17,5 +17,4 @@ export {
 export const DB_NAME = "degoog";
 export const DB_VERSION = 2;
 export const STORE_NAME = "settings";
-export const PER_PAGE = 10;
 export const MAX_PAGE = 10;

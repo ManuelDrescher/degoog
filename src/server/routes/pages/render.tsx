@@ -52,11 +52,15 @@ import {
   textDirection,
   themeCssLink,
 } from "../../render/theme-assets";
+import {
+  beforeHeadEnd,
+  subFirst,
+  windowGlobalScript,
+} from "../../render/substitute";
 import { ApiKeyLocked } from "./api-key-locked";
 import { ApiKeySection } from "./api-key-section";
 
 const BASE_PREFIX = basePrefix();
-
 
 interface DefaultThemeManifest {
   templates?: Record<string, string>;
@@ -149,25 +153,23 @@ export async function applyPagePlaceholders(
   }
 
   const clientTranslations = compileLexicons(entries, resolvedLocale);
-  const safeJson = JSON.stringify(clientTranslations).replace(/<\//g, "<\\/");
-  const translationsScript = `<script>window.__DEGOOG_T__=${safeJson}</script>\n  <script src="/public/t.js?v=${pkg.version}"></script>`;
+  const translationsScript = `${windowGlobalScript("__DEGOOG_T__", clientTranslations)}\n  <script src="/public/t.js?v=${pkg.version}"></script>`;
 
-  let result = html
-    .replace("__LANG_ATTR__", resolvedLocale)
-    .replace("__THEME_CSS__", await themeCssLink())
-    .replace("__THEME_ATTRS__", themeAttrs)
-    .replace("__PLUGIN_ASSETS__", await pluginAssetsPlaceholder())
-    .replace("__CUSTOM_CSS__", await customCssTag())
-    .replace("__RTL_SUPPORT__", `dir=${textDirection(resolvedLocale)}`);
+  let result = subFirst(html, "__LANG_ATTR__", resolvedLocale);
+  result = subFirst(result, "__THEME_CSS__", await themeCssLink());
+  result = subFirst(result, "__THEME_ATTRS__", themeAttrs);
+  result = subFirst(result, "__PLUGIN_ASSETS__", await pluginAssetsPlaceholder());
+  result = subFirst(result, "__CUSTOM_CSS__", await customCssTag());
+  result = subFirst(result, "__RTL_SUPPORT__", `dir=${textDirection(resolvedLocale)}`);
   const defaultTemplates = await getDefaultTemplatesHtml();
   const themeTemplates = await getThemeTemplatesHtml();
   const allTemplates = [defaultTemplates, themeTemplates]
     .filter(Boolean)
     .join("\n");
   if (result.includes("__THEME_TEMPLATES__")) {
-    result = result.replace("__THEME_TEMPLATES__", allTemplates);
+    result = subFirst(result, "__THEME_TEMPLATES__", allTemplates);
   } else if (allTemplates) {
-    result = result.replace("</body>", `${allTemplates}\n</body>`);
+    result = subFirst(result, "</body>", `${allTemplates}\n</body>`);
   }
   result = result.replaceAll("__APP_VERSION__", pkg.version);
 
@@ -177,64 +179,51 @@ export async function applyPagePlaceholders(
     asBoolean(pageSettings.apiKeySuggestEnabled);
   if (anyApiKeyEnabled) {
     const auth = generateSearchNonce();
-    const nonceScript = `<script>window.__DEGOOG_SEARCH_AUTH__=${JSON.stringify(auth)}</script>`;
-    result = result.replace("</head>", `${nonceScript}\n  </head>`);
+    result = beforeHeadEnd(result, windowGlobalScript("__DEGOOG_SEARCH_AUTH__", auth));
   }
 
-  result = result.replace("</head>", `${translationsScript}\n  </head>`);
+  result = beforeHeadEnd(result, translationsScript);
   const leakScript = leakBufferScript(asBoolean(pageSettings.blockClientLeaks));
   result = result.replace(/<head[^>]*>/i, (open) => `${open}\n  ${leakScript}`);
 
   result = syncVortexSignal(result, t, resolvedLocale);
 
   if (asString(pageSettings.privacyPolicy).trim()) {
-    result = result.replace(
-      "</head>",
-      `<script>window.__DEGOOG_PRIVACY_POLICY__=true</script>\n  </head>`,
-    );
+    result = beforeHeadEnd(result, windowGlobalScript("__DEGOOG_PRIVACY_POLICY__", true));
   }
 
   const acDebounceMs = parseInt(asString(pageSettings.acDebounceMs), 10);
   const acDebounce =
     Number.isFinite(acDebounceMs) && acDebounceMs >= 0 ? acDebounceMs : 150;
-  const acScript = `<script>window.__DEGOOG_AC_DEBOUNCE__=${acDebounce}</script>`;
-  result = result.replace("</head>", `${acScript}\n  </head>`);
+  result = beforeHeadEnd(result, windowGlobalScript("__DEGOOG_AC_DEBOUNCE__", acDebounce));
 
   const rawOriginDisplay = asString(pageSettings.engineOriginDisplay);
   const originDisplay = isOriginDisplay(rawOriginDisplay)
     ? rawOriginDisplay
     : DEFAULT_ENGINE_ORIGIN_DISPLAY;
-  const originScript = `<script>window.__DEGOOG_ENGINE_ORIGINS__=${JSON.stringify(originDisplay)}</script>`;
-  result = result.replace("</head>", `${originScript}\n  </head>`);
+  result = beforeHeadEnd(result, windowGlobalScript("__DEGOOG_ENGINE_ORIGINS__", originDisplay));
 
   const shortcutSettings = await readShortcutsSettings();
   const shortcutsConfig = {
     bindings: shortcutSettings.bindings,
     custom: await getClientShortcuts(),
   };
-  const safeShortcuts = JSON.stringify(shortcutsConfig).replace(/<\//g, "<\\/");
-  const shortcutsScript = `<script>window.__DEGOOG_SHORTCUTS__=${safeShortcuts}</script>`;
-  result = result.replace("</head>", `${shortcutsScript}\n  </head>`);
+  result = beforeHeadEnd(result, windowGlobalScript("__DEGOOG_SHORTCUTS__", shortcutsConfig));
 
   const syncedDefaults = await readSyncedDefaults();
   if (Object.keys(syncedDefaults).length > 0) {
-    const safeSync = JSON.stringify(syncedDefaults).replace(/<\//g, "<\\/");
-    const syncScript = `<script>window.__DEGOOG_SYNCED_DEFAULTS__=${safeSync}</script>`;
-    result = result.replace("</head>", `${syncScript}\n  </head>`);
+    result = beforeHeadEnd(result, windowGlobalScript("__DEGOOG_SYNCED_DEFAULTS__", syncedDefaults));
   }
 
-  result = result.replace(
-    "</head>",
-    `<link rel="stylesheet" href="/public/icons/fontawesome/css/all.min.css?v=${pkg.version}">\n  </head>`,
+  result = beforeHeadEnd(
+    result,
+    `<link rel="stylesheet" href="/public/icons/fontawesome/css/all.min.css?v=${pkg.version}">`,
   );
 
   if (await cssCheckOn()) {
     try {
       const tok = mintToken();
-      result = result.replace(
-        "</head>",
-        `<link rel="stylesheet" href="/style/v/${tok}">\n  </head>`,
-      );
+      result = beforeHeadEnd(result, `<link rel="stylesheet" href="/style/v/${tok}">`);
     } catch (e) {
       logger.error(
         "link-token",
@@ -244,11 +233,10 @@ export async function applyPagePlaceholders(
   }
 
   if (BASE_PREFIX) {
-    const baseScript = `<script>window.__DEGOOG_BASE_URL__=${JSON.stringify(BASE_PREFIX)}</script>`;
-    result = result.replace("</head>", `${baseScript}\n  </head>`);
+    result = beforeHeadEnd(result, windowGlobalScript("__DEGOOG_BASE_URL__", BASE_PREFIX));
     result = result.replace(
       /(<(?:link|script|a|form)[^>]*(?:href|src|action)=")\/(?!\/)/g,
-      `$1${BASE_PREFIX}/`,
+      (_match, open: string) => `${open}${BASE_PREFIX}/`,
     );
   }
 
@@ -273,9 +261,11 @@ export async function buildLayoutPage(
 ): Promise<string> {
   const layout = await getLayout();
   const pageContent = await Bun.file(`${DEFAULT_THEME_DIR}/${pageName}`).text();
-  const html = layout
-    .replace("__PAGE_CONTENT__", pageContent)
-    .replace("__BODY_CLASS__", bodyClass ? `class="${bodyClass}"` : "");
+  const html = subFirst(
+    subFirst(layout, "__PAGE_CONTENT__", pageContent),
+    "__BODY_CLASS__",
+    bodyClass ? `class="${bodyClass}"` : "",
+  );
   const t = await getTranslator(locale);
   return applyPagePlaceholders(html, t, locale);
 }
@@ -286,9 +276,11 @@ export async function buildThemedLayoutPage(
   bodyClass?: string,
 ): Promise<string> {
   const layout = await getLayout();
-  const html = layout
-    .replace("__PAGE_CONTENT__", themePageHtml)
-    .replace("__BODY_CLASS__", bodyClass ? `class="${bodyClass}"` : "");
+  const html = subFirst(
+    subFirst(layout, "__PAGE_CONTENT__", themePageHtml),
+    "__BODY_CLASS__",
+    bodyClass ? `class="${bodyClass}"` : "",
+  );
   const t = await getTranslator(locale, true);
   return applyPagePlaceholders(html, t, locale);
 }
@@ -302,13 +294,13 @@ export async function buildPage(
     const content = isPasswordRequired()
       ? renderHtml(<ApiKeySection />)
       : renderHtml(<ApiKeyLocked />);
-    html = html.replace("__API_KEY_SECTION__", content);
+    html = subFirst(html, "__API_KEY_SECTION__", content);
   }
   if (html.includes("__SETTINGS_NAV__")) {
-    html = html.replace("__SETTINGS_NAV__", buildSettingsNav());
+    html = subFirst(html, "__SETTINGS_NAV__", buildSettingsNav());
   }
   if (html.includes("__SETTINGS_TAB_SELECT__")) {
-    html = html.replace("__SETTINGS_TAB_SELECT__", buildSettingsTabSelect());
+    html = subFirst(html, "__SETTINGS_TAB_SELECT__", buildSettingsTabSelect());
   }
   const t = await getTranslator(locale);
   return applyPagePlaceholders(html, t, locale);

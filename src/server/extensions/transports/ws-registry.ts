@@ -22,5 +22,11 @@ export const mountTransportWs = (name: string, h: TransportWsHandlers): void => 
   });
 };
 
+export const pruneTransportWs = (keep: ReadonlySet<string>): void => {
+  for (const name of [..._handlers.keys()]) {
+    if (!keep.has(name)) _handlers.delete(name);
+  }
+};
+
 export const getTransportWsHandlers = (): ReadonlyMap<string, TransportWsHandlers> =>
   _handlers;

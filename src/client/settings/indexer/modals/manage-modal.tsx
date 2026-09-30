@@ -4,14 +4,7 @@ import { ManageBody } from "./manage-body";
 import { ManageRow } from "./manage-row";
 import { tr } from "../i18n";
 import { deleteRows, fetchRows, MANAGE_PAGE_SIZE } from "../api";
-
-const freshButton = (id: string): HTMLButtonElement | null => {
-  const old = document.getElementById(id) as HTMLButtonElement | null;
-  if (!old) return null;
-  const clone = old.cloneNode(true) as HTMLButtonElement;
-  old.replaceWith(clone);
-  return clone;
-};
+import { borrowModal } from "../../../modules/modals/settings-modal/modal";
 
 export const openManageModal = (
   stats: IndexerStats | null,
@@ -52,28 +45,15 @@ export const openManageModal = (
     "#indexer-manage-selectall",
   );
 
-  const saveEl = freshButton("ext-modal-save");
-  const closeBtn = freshButton("ext-modal-close");
-  if (saveEl) {
-    saveEl.textContent = tr("manage-delete-selected");
-    saveEl.disabled = false;
-    saveEl.hidden = false;
-  }
+  const saveEl = document.getElementById(
+    "ext-modal-save",
+  ) as HTMLButtonElement | null;
 
   let page = 1;
   let q = "";
   let activeType: string | undefined;
   let total = 0;
   let dirty = false;
-
-  const close = (): void => {
-    modal?.classList.remove("ext-modal--wide");
-    overlay.style.display = "none";
-    statusEl.textContent = "";
-    clear(bodyEl);
-    if (dirty) onChanged();
-  };
-  closeBtn?.addEventListener("click", close, { once: true });
 
   const load = async (): Promise<void> => {
     const data = await fetchRows(q, page, activeType);
@@ -160,7 +140,8 @@ export const openManageModal = (
     }
   });
 
-  saveEl?.addEventListener("click", async () => {
+  const deleteSelected = async (): Promise<void> => {
+    if (!saveEl) return;
     const items = Array.from(
       tbody?.querySelectorAll<HTMLInputElement>(
         ".indexer-manage-check:checked",
@@ -178,7 +159,16 @@ export const openManageModal = (
       await load();
     }
     saveEl.disabled = false;
+  };
+
+  borrowModal({
+    onSave: () => void deleteSelected(),
+    onClose: () => {
+      clear(bodyEl);
+      if (dirty) onChanged();
+    },
   });
+  if (saveEl) saveEl.textContent = tr("manage-delete-selected");
 
   void load();
 };

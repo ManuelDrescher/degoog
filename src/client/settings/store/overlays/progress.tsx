@@ -46,6 +46,23 @@ function ensureOverlay(el: HTMLElement): HTMLElement {
   return overlay;
 }
 
+const FAILED_CLEAR_MS = 4000;
+
+const failedTimers = new WeakMap<HTMLElement, number>();
+
+function scheduleFailedClear(el: HTMLElement, overlay: HTMLElement): void {
+  window.clearTimeout(failedTimers.get(el));
+  failedTimers.set(
+    el,
+    window.setTimeout(() => {
+      if (!el.classList.contains("is-failed")) return;
+      if (overlay.parentElement !== el) return;
+      overlay.remove();
+      el.classList.remove("is-failed", "store-progress-host");
+    }, FAILED_CLEAR_MS),
+  );
+}
+
 function applyPhase(
   els: HTMLElement[],
   verb: string,
@@ -66,6 +83,7 @@ function applyPhase(
     } else {
       el.classList.add("is-failed");
       if (label) label.textContent = error || "Failed";
+      scheduleFailedClear(el, overlay);
     }
   }
 }
@@ -109,7 +127,12 @@ function streamStoreOp(
 
     source.addEventListener("done", (e) => {
       source.close();
-      const data: unknown = JSON.parse((e as MessageEvent).data);
+      let data: unknown = null;
+      try {
+        data = JSON.parse((e as MessageEvent).data);
+      } catch (err) {
+        console.warn("[store] unreadable stream summary", err);
+      }
       const reported =
         typeof data === "object" &&
         data !== null &&

@@ -18,6 +18,7 @@ import type { AllExtensions, ExtensionMeta } from "../../types/extension";
 import type { EngineRecord } from "../../types/state";
 import type { GroupEntry, TypeEntry } from "../../types/engines-tab";
 import { getBase } from "../../utils/net/base-url";
+import { jsonHeaders } from "../../utils/net/request";
 import { getTabOrder, applyTabOrder } from "../../utils/settings/tab-order";
 import { getStoredToken } from "../../utils/settings/settings-token";
 import { openTabOrderModal } from "../shared/tab-order/tab-order-modal";
@@ -28,6 +29,20 @@ import { enabledLayers } from "./compat/compat-api";
 const t = window.scopedT("core");
 
 let _orderSavedHandler: (() => void) | null = null;
+
+let _toggleWrites: Promise<void> = Promise.resolve();
+
+const _persistToggle = (id: string, checked: boolean): Promise<void> => {
+  _toggleWrites = _toggleWrites
+    .then(async () => {
+      const saved = (await idbGet<EngineRecord>(SETTINGS_KEY)) ?? {};
+      await idbSet(SETTINGS_KEY, { ...saved, [id]: checked });
+    })
+    .catch((err: unknown) => {
+      console.warn("[settings] engine toggle save failed", err);
+    });
+  return _toggleWrites;
+};
 
 const _groupByType = (engines: ExtensionMeta[]): GroupEntry[] => {
   const map = new Map<string, ExtensionMeta[]>();
@@ -104,23 +119,21 @@ export async function initEnginesTab(
   const onToggle =
     (engine: ExtensionMeta) =>
     (event: Event): void => {
-      enabledMap[engine.id] = (event.currentTarget as HTMLInputElement).checked;
-      void idbSet(SETTINGS_KEY, enabledMap);
+      const checked = (event.currentTarget as HTMLInputElement).checked;
+      enabledMap[engine.id] = checked;
+      void _persistToggle(engine.id, checked);
     };
 
   const _saveDefaults = async (): Promise<void> => {
     const btn = document.getElementById("save-default-engines");
     try {
-      const token = getStoredToken();
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (token) headers["x-settings-token"] = token;
-      await fetch(`${getBase()}/api/settings/default-engines`, {
+      const res = await fetch(`${getBase()}/api/settings/default-engines`, {
         method: "POST",
-        headers,
+        headers: jsonHeaders(getStoredToken),
         body: JSON.stringify(enabledMap),
       });
+      if (!res.ok)
+        throw new Error(`default engines save failed: ${res.status}`);
       await idbSet(SETTINGS_KEY, enabledMap);
       if (btn) {
         const prev = btn.textContent;

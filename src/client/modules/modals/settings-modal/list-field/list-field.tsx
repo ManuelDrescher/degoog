@@ -4,7 +4,12 @@ import { initFileUpload } from "../../../../utils/file-upload/file-upload";
 import { ExtField } from "../fields/ext-field";
 import { fieldDesc } from "../fields/field-desc";
 import { ListFieldRow } from "./list-field-row";
-import { HEX_RE, normalizeHex, uploadExtensionFile } from "../fields/field-widgets";
+import {
+  HEX_RE,
+  normalizeHex,
+  uploadExtensionFile,
+  validateFileSize,
+} from "../fields/field-widgets";
 import {
   defaultListRow,
   parseListValue,
@@ -125,15 +130,6 @@ const _bindRangeSub = (rowEl: HTMLElement): void => {
     });
 };
 
-const _validateSubSize = (sub: HTMLElement, file: File): string | null => {
-  const maxKb = Number(sub.dataset.maxKb ?? "0");
-  const minKb = Number(sub.dataset.minKb ?? "0");
-  const sizeKb = file.size / 1024;
-  if (maxKb > 0 && sizeKb > maxKb) return `≤ ${maxKb} KB`;
-  if (minKb > 0 && sizeKb < minKb) return `≥ ${minKb} KB`;
-  return null;
-};
-
 const _bindFileSub = (
   rowEl: HTMLElement,
   extId: string,
@@ -151,14 +147,16 @@ const _bindFileSub = (
       status.hidden = text === "";
     };
 
+    let latest = 0;
     const handle = initFileUpload(sub, async (file) => {
+      const attempt = ++latest;
       if (!file) {
         hidden.value = "";
         setStatus("");
         onChange();
         return;
       }
-      const sizeError = _validateSubSize(sub, file);
+      const sizeError = validateFileSize(sub, file);
       if (sizeError) {
         setStatus(sizeError);
         handle?.reset();
@@ -168,6 +166,7 @@ const _bindFileSub = (
       const path = await uploadExtensionFile(extId, key, file).catch(
         () => null,
       );
+      if (attempt !== latest) return;
       if (!path) {
         setStatus(t("settings-page.modal.field-upload-failed"));
         handle?.reset();

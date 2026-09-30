@@ -32,4 +32,15 @@ export const state: AppState = {
   showResultDates: true,
   isInitialLoad: false,
   imageFilter: defaultImageFilter(),
+  searchSeq: 0,
+};
+
+export const beginSearch = (): number => ++state.searchSeq;
+
+export const isCurrentSearch = (seq: number): boolean => seq === state.searchSeq;
+
+export const takeRestoreInfinitePage = (): number => {
+  const page = state.restoreInfinitePage;
+  state.restoreInfinitePage = 1;
+  return page;
 };

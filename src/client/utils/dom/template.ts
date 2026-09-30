@@ -15,6 +15,3 @@ export const renderTemplate = (
   if (!el) return null;
   return renderTemplateString(el.innerHTML, ctx);
 };
-
-export const hasTemplate = (templateId: string): boolean =>
-  _findTemplate(templateId) !== null;

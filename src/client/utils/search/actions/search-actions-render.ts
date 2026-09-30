@@ -15,7 +15,7 @@ import {
 import { clearSlotPanels } from "../../../modules/renderer/render-slots";
 import { renderResults } from "../../../modules/renderer/render";
 import { renderImgEngines } from "../../../modules/filters/image-filters";
-import { state } from "../../../state";
+import { isCurrentSearch, state } from "../../../state";
 import {
   isImageSearchType,
   type SearchResponse,
@@ -26,8 +26,7 @@ import { setActiveTab, showAllTabs } from "../../navigation/navigation";
 import { declaredPages, setResultsMeta } from "../search-helpers";
 import { infiniteScrollOn } from "../streaming/streaming-config";
 import {
-  restoreInfinitePages,
-  setupInfinite,
+  armInfinite,
   teardownInfinite,
 } from "../../../modules/renderer/infinite-scroll/infinite-scroll";
 import {
@@ -65,6 +64,7 @@ export const loadSidebarSuggestions = (
 
 export const prepareResultsUi = (query: string, resolvedType: string): void => {
   const isImageType = isImageSearchType(resolvedType);
+  const seq = state.searchSeq;
 
   state.currentBangQuery = "";
   teardownInfinite();
@@ -98,6 +98,7 @@ export const prepareResultsUi = (query: string, resolvedType: string): void => {
     abortSlotPanels();
   } else {
     void fetchSlotPanels(query).then((panels) => {
+      if (!isCurrentSearch(seq)) return;
       const kp = panels.filter(
         (p) => p.position === SlotPanelPosition.KnowledgePanel,
       );
@@ -160,12 +161,11 @@ export const renderSearchResponse = (
   query: string,
   type: string,
   navigate: Navigate,
-  opts: { fetchGlance: boolean },
+  opts: { fetchGlance: boolean; restorePage?: number },
 ): void => {
+  const seq = state.searchSeq;
   state.currentResults = data.results;
   state.currentData = data;
-  const restorePage = state.restoreInfinitePage;
-  state.restoreInfinitePage = 1;
   state.lastPage = declaredPages(data.totalPages);
 
   const metaText = `About ${data.results.length} results (${(data.totalTime / 1000).toFixed(2)} seconds)`;
@@ -182,6 +182,7 @@ export const renderSearchResponse = (
   } else {
     if (opts.fetchGlance) void fetchGlancePanels(query, data.results);
     void fetchSlotPanels(query, data.results).then((panels) => {
+      if (!isCurrentSearch(seq)) return;
       const kpPanels = panels.filter(
         (p) => p.position === SlotPanelPosition.KnowledgePanel,
       );
@@ -194,8 +195,5 @@ export const renderSearchResponse = (
   }
   const infinite = infiniteScrollOn() && !isImageType;
   renderResults(data.results, { paginate: !infinite });
-  if (infinite) {
-    setupInfinite(type);
-    if (restorePage > 1) void restoreInfinitePages(restorePage);
-  }
+  if (infinite) armInfinite(type, opts.restorePage ?? 1);
 };

@@ -8,9 +8,10 @@ import {
   hasFaviconProviders,
   initFavicon,
   runFaviconChain,
-  acceptFaviconResult,
 } from "../../src/server/extensions/favicon/registry";
 import { ExtensionStoreType } from "../../src/server/types/extension";
+
+const acceptFaviconResult = <T>(result: T): T => result;
 
 type CallLog = { __faviconCalls: string[] };
 const calls = (): string[] => (globalThis as unknown as CallLog).__faviconCalls;

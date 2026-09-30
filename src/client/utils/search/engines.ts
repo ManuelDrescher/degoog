@@ -16,13 +16,21 @@ onWindowEvent("extensions-saved", () => {
 export const getRegistry = async (): Promise<EngineRegistry> => {
   if (cachedRegistry) return cachedRegistry;
   if (!inflightRegistry) {
-    inflightRegistry = fetch(`${getBase()}/api/engines`)
-      .then((res) => res.json() as Promise<EngineRegistry>)
+    const request: Promise<EngineRegistry> = fetch(`${getBase()}/api/engines`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`engines request failed: ${res.status}`);
+        return res.json() as Promise<EngineRegistry>;
+      })
       .then((data) => {
         cachedRegistry = data;
-        inflightRegistry = null;
+        if (inflightRegistry === request) inflightRegistry = null;
         return data;
+      })
+      .catch((err: unknown) => {
+        if (inflightRegistry === request) inflightRegistry = null;
+        throw err;
       });
+    inflightRegistry = request;
   }
   return inflightRegistry;
 };

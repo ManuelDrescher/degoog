@@ -1,5 +1,7 @@
 import type { StoreItem } from "../../../types/store-tab";
 
+const t = window.scopedT("core");
+
 export const UpdatesRow = ({
   item,
   onUpdate,
@@ -28,7 +30,7 @@ export const UpdatesRow = ({
       data-repo-url={item.repoUrl}
       data-item-path={item.path}
       data-type={item.type}
-      aria-label="Update"
+      aria-label={t("settings-page.store.update")}
       onClick={(event) => onUpdate(event.currentTarget as HTMLButtonElement)}
     >
       <i class="fa-solid fa-download"></i>

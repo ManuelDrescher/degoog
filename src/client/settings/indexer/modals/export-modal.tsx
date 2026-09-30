@@ -7,6 +7,7 @@ import { canSaveStream, downloadIndexerExport } from "../download";
 import { orderTypes } from "../api";
 import { mountProgress } from "../progress/progress";
 import { tr } from "../i18n";
+import { borrowModal } from "../../../modules/modals/settings-modal/modal";
 
 interface ExportEls {
   overlay: HTMLElement;
@@ -14,7 +15,6 @@ interface ExportEls {
   bodyEl: HTMLElement;
   statusEl: HTMLElement;
   saveEl: HTMLButtonElement;
-  closeBtn: HTMLElement | null;
 }
 
 const getEls = (): ExportEls | null => {
@@ -25,9 +25,8 @@ const getEls = (): ExportEls | null => {
   const saveEl = document.getElementById(
     "ext-modal-save",
   ) as HTMLButtonElement | null;
-  const closeBtn = document.getElementById("ext-modal-close");
   if (!overlay || !titleEl || !bodyEl || !statusEl || !saveEl) return null;
-  return { overlay, titleEl, bodyEl, statusEl, saveEl, closeBtn };
+  return { overlay, titleEl, bodyEl, statusEl, saveEl };
 };
 
 const _warnKey = (): string =>
@@ -70,17 +69,27 @@ export const openExportModal = (stats: IndexerStats | null): void => {
   els.statusEl.textContent = "";
   els.overlay.style.display = "";
 
-  const close = (): void => {
-    els.overlay.style.display = "none";
-    els.statusEl.textContent = "";
-    clear(els.bodyEl);
-    els.saveEl.onclick = null;
+  let started = false;
+  const start = (type: string): void => {
+    if (started) return;
+    started = true;
+    void runExport(type, els);
   };
-  els.closeBtn?.addEventListener("click", close, { once: true });
+
+  borrowModal({
+    onSave: () => {
+      const sel = els.bodyEl.querySelector<HTMLSelectElement>(
+        "#indexer-export-type",
+      );
+      const type = sel?.value ?? types[0];
+      if (type) start(type);
+    },
+    onClose: () => clear(els.bodyEl),
+  });
 
   const streams = canSaveStream();
   if (types.length === 1 && streams) {
-    void runExport(types[0], els);
+    start(types[0]);
     return;
   }
 
@@ -106,16 +115,4 @@ export const openExportModal = (stats: IndexerStats | null): void => {
   }
 
   els.saveEl.textContent = tr("export-btn");
-  els.saveEl.disabled = false;
-  els.saveEl.hidden = false;
-
-  els.saveEl.onclick = () => {
-    const sel = els.bodyEl.querySelector<HTMLSelectElement>(
-      "#indexer-export-type",
-    );
-    const type = sel?.value ?? types[0];
-    if (!type) return;
-    els.saveEl.onclick = null;
-    void runExport(type, els);
-  };
 };

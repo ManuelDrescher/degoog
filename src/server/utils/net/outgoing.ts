@@ -29,22 +29,48 @@ export function parseOutgoingTransport(raw: string | undefined): string {
   return raw?.trim() || "fetch";
 }
 
-let allowedHosts: Set<string> | null = null;
+const ALLOWED_HOSTS_ENV = "DEGOOG_OUTGOING_ALLOWED_HOSTS";
+const ANY_HOST = "*";
+const SUBDOMAIN_WILDCARD = "*.";
 
-/** @deprecated Legacy outgoing-fetch allowlist. Sign image URLs with ctx.signProxyUrl instead. */
-export function setOutgoingAllowlist(hosts: string[]): void {
-  if (!hosts || hosts.length === 0) {
-    allowedHosts = new Set();
-    return;
-  }
-  const normalized = hosts.map((h) => h.trim().toLowerCase()).filter(Boolean);
-  const extra = process.env.DEGOOG_OUTGOING_ALLOWED_HOSTS ?? "";
-  const fromEnv = extra
+export const parseAllowedHosts = (raw: string | undefined): string[] | null => {
+  const hosts = (raw ?? "")
     .split(",")
     .map((h) => h.trim().toLowerCase())
     .filter(Boolean);
-  allowedHosts = new Set([...normalized, ...fromEnv]);
-}
+  return hosts.length > 0 ? hosts : null;
+};
+
+let _envAllowedHosts: string[] | null | undefined;
+
+const _allowedHosts = (): string[] | null => {
+  if (_envAllowedHosts === undefined) {
+    _envAllowedHosts = parseAllowedHosts(process.env[ALLOWED_HOSTS_ENV]);
+  }
+  return _envAllowedHosts;
+};
+
+const _hostMatches = (host: string, pattern: string): boolean => {
+  if (pattern === ANY_HOST) return true;
+  if (pattern.startsWith(SUBDOMAIN_WILDCARD)) {
+    return host.endsWith(pattern.slice(SUBDOMAIN_WILDCARD.length - 1));
+  }
+  return host === pattern;
+};
+
+export const isUrlAllowedForOutgoing = (
+  url: string,
+  allowed: string[] | null = _allowedHosts(),
+): boolean => {
+  if (!allowed) return true;
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return allowed.some((pattern) => _hostMatches(host, pattern));
+};
 
 let proxyIndex = 0;
 
@@ -83,14 +109,6 @@ export function maskProxy(proxyUrl: string): string {
   }
 }
 
-function parseProxyUrls(raw: string): string[] {
-  if (!raw || typeof raw !== "string") return [];
-  return raw
-    .split("\n")
-    .map((s) => proxyEnv(s.trim()))
-    .filter(Boolean);
-}
-
 function parseProxyUrlsList(rawList: string[]): string[] {
   const out: string[] = [];
   for (const raw of rawList) {
@@ -101,23 +119,6 @@ function parseProxyUrlsList(rawList: string[]): string[] {
     }
   }
   return out;
-}
-
-/** @deprecated Legacy outgoing-fetch allowlist. Sign image URLs with ctx.signProxyUrl instead. */
-export function isUrlAllowedForOutgoing(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
-      return false;
-  } catch (err) {
-    logger.debug("outgoing", `invalid outgoing URL "${url}"`, err);
-    return false;
-  }
-  if (!allowedHosts) return true;
-  if (allowedHosts.size === 0) return false;
-  if (allowedHosts.has("*")) return true;
-  const host = new URL(url).hostname.toLowerCase();
-  return allowedHosts.has(host);
 }
 
 function _buildProxyFetch(
@@ -184,13 +185,17 @@ export async function pickProxyUrl(
 
   const globalEnabled = asBoolean(settings.proxyEnabled);
   const globalProxyUrlsRaw = settings.proxyUrls;
-  const globalUrls = parseProxyUrls(
-    typeof globalProxyUrlsRaw === "string" ? globalProxyUrlsRaw : "",
+  const globalUrls = parseProxyUrlsList(
+    typeof globalProxyUrlsRaw === "string" ? [globalProxyUrlsRaw] : [],
   );
 
-  const overrideUrls = Array.isArray(proxyOverrideRaw)
-    ? parseProxyUrlsList(proxyOverrideRaw)
-    : parseProxyUrls(typeof proxyOverrideRaw === "string" ? proxyOverrideRaw : "");
+  const overrideUrls = parseProxyUrlsList(
+    Array.isArray(proxyOverrideRaw)
+      ? proxyOverrideRaw
+      : typeof proxyOverrideRaw === "string"
+        ? [proxyOverrideRaw]
+        : [],
+  );
 
   const useProxy = proxyOverrideEnabled
     ? overrideUrls.length > 0
@@ -226,8 +231,12 @@ export async function outgoingFetch(
   transportName: string = "fetch",
   ctx?: OutgoingFetchOptions,
 ): Promise<Response> {
-  const { transport, context } = await buildTransportContext(transportName, ctx);
   const host = new URL(url).hostname;
+  if (!isUrlAllowedForOutgoing(url)) {
+    logger.warn("outgoing", `${ALLOWED_HOSTS_ENV} refused -> ${host}`);
+    throw new Error(`Outgoing host not allowed: ${host}`);
+  }
+  const { transport, context } = await buildTransportContext(transportName, ctx);
   if (context.proxyUrl) {
     logger.debug(
       "outgoing",

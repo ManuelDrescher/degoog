@@ -1,5 +1,7 @@
 import { Button } from "../../../../shared/ui/components/primitives/button";
 
+const t = window.scopedT("core");
+
 const REPO_DESC_BEFORE =
   "Add a git repository URL to browse and install plugins, themes, engines, and transports. Set ";
 const REPO_DESC_AFTER = " in the repo’s package.json to show an image next to the URL.";
@@ -7,15 +9,17 @@ const REPO_DESC_AFTER = " in the repo’s package.json to show an image next to 
 export const ReposSection = (): JSX.Element => (
   <section class="store-repos-section settings-section ext-card degoog-panel degoog-panel--ext-card">
     <div class="store-repos-header">
-      <h2 class="settings-section-heading">Repositories</h2>
+      <h2 class="settings-section-heading">
+        {t("settings-page.store.repos-heading")}
+      </h2>
       <div class="header-actions">
         <div class="store-repos-actions">
           <Button variant="secondary" class="store-btn-refresh-all">
-            Refresh all
+            {t("settings-page.store.refresh-all")}
           </Button>
         </div>
         <Button variant="primary" class="store-btn-add">
-          Add repository
+          {t("settings-page.store.add-repo")}
         </Button>
       </div>
     </div>
@@ -23,9 +27,9 @@ export const ReposSection = (): JSX.Element => (
       <input
         type="text"
         class="store-search-input degoog-search-bar degoog-search-bar--square-advanced store-input-url"
-        placeholder="https://github.com/user/repo.git"
+        placeholder={t("settings-page.store.placeholder-url")}
       />
-      <Button variant="primary" class="store-btn-add-confirm" aria-label="Add repository">
+      <Button variant="primary" class="store-btn-add-confirm" aria-label={t("settings-page.store.add-repo")}>
         <i class="fa-solid fa-plus" aria-hidden="true"></i>
       </Button>
       <span class="store-inline-error"></span>

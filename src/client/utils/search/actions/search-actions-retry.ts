@@ -4,7 +4,7 @@ import {
   type SearchResponse,
 } from "../../../../shared/search-types";
 import { getBase } from "../../net/base-url";
-import { state } from "../../../state";
+import { isCurrentSearch, state } from "../../../state";
 import { getEngines } from "../engines";
 import { renderImgEngines } from "../../../modules/filters/image-filters";
 import { renderSidebar } from "../../../modules/renderer/sidebar/render-sidebar";
@@ -20,8 +20,10 @@ export async function retryEngine(
   page = state.currentPage,
 ): Promise<void> {
   if (!state.currentQuery || !state.currentData) return;
+  const seq = state.searchSeq;
 
   const engines = await getEngines();
+  if (!isCurrentSearch(seq)) return;
   const params = buildSearchParams(state.currentQuery, engines, state.currentType, page);
   params.set("engine", engineName);
 
@@ -36,10 +38,15 @@ export async function retryEngine(
           headers: { "Content-Type": "application/json", ...searchAuthHeaders() },
         })
       : await fetch(appendSearchAuthParams(`${getBase()}/api/search/retry?${params.toString()}`));
+    if (!res.ok) {
+      console.warn("[search] engine retry failed", res.status);
+      return;
+    }
     const data = (await res.json()) as SearchResponse & {
       results: ScoredResult[];
       timing?: SearchResponse["engineTimings"][number];
     };
+    if (!isCurrentSearch(seq)) return;
 
     const infinite = infiniteScrollOn() && !isImageSearchType(state.currentType);
     if (state.currentData) {

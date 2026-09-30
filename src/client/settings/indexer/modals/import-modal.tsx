@@ -7,15 +7,10 @@ import { initFileUpload } from "../../../utils/file-upload/file-upload";
 import { fetchEngineTypes, IMPORT_CUSTOM_TYPE } from "../api";
 import { mountProgress, type ProgressUi } from "../progress/progress";
 import { tr } from "../i18n";
+import { borrowModal, closeModal } from "../../../modules/modals/settings-modal/modal";
 
 const CHUNK_BYTES = 8 * 1024 * 1024;
 const PROGRESS_HOST_ID = "indexer-import-progress";
-
-const freshBtn = (btn: HTMLButtonElement): HTMLButtonElement => {
-  const clone = btn.cloneNode(true) as HTMLButtonElement;
-  btn.replaceWith(clone);
-  return clone;
-};
 
 interface StartResponse {
   sessionId?: string;
@@ -111,16 +106,10 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
   const titleEl = document.getElementById("ext-modal-title");
   const bodyEl = document.getElementById("ext-modal-body");
   const statusEl = document.getElementById("ext-modal-status");
-  const staleSave = document.getElementById(
+  const saveEl = document.getElementById(
     "ext-modal-save",
   ) as HTMLButtonElement | null;
-  const staleClose = document.getElementById(
-    "ext-modal-close",
-  ) as HTMLButtonElement | null;
-  if (!overlay || !titleEl || !bodyEl || !statusEl || !staleSave) return;
-
-  const saveEl = freshBtn(staleSave);
-  const closeBtn = staleClose ? freshBtn(staleClose) : null;
+  if (!overlay || !titleEl || !bodyEl || !statusEl || !saveEl) return;
 
   const engineTypes = await fetchEngineTypes();
 
@@ -134,9 +123,6 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
     bodyEl,
   );
   statusEl.textContent = "";
-  saveEl.textContent = tr("import-btn");
-  saveEl.disabled = false;
-  saveEl.hidden = false;
   overlay.style.display = "";
 
   const typeEl = bodyEl.querySelector<HTMLSelectElement>(
@@ -155,16 +141,13 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
   initFileUpload(bodyEl);
 
   let running = false;
-
-  const close = (): void => {
-    overlay.style.display = "none";
-    statusEl.textContent = "";
-    clear(bodyEl);
-    saveEl.removeEventListener("click", onSave);
-  };
-  closeBtn?.addEventListener("click", close, { once: true });
+  let finished = false;
 
   const onSave = async (): Promise<void> => {
+    if (finished) {
+      closeModal();
+      return;
+    }
     if (running) return;
     const sel = bodyEl.querySelector<HTMLSelectElement>("#indexer-import-type");
     const customEl = bodyEl.querySelector<HTMLInputElement>(
@@ -202,11 +185,10 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
         hits: String(data.hits ?? 0),
       });
       onDone();
-      saveEl.removeEventListener("click", onSave);
+      finished = true;
       saveEl.textContent = tr("import-close");
       saveEl.disabled = false;
       saveEl.hidden = false;
-      saveEl.addEventListener("click", close, { once: true });
     } catch {
       statusEl.textContent = "Import failed";
       saveEl.disabled = false;
@@ -216,5 +198,6 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
     }
   };
 
-  saveEl.addEventListener("click", onSave);
+  borrowModal({ onSave: () => void onSave(), onClose: () => clear(bodyEl) });
+  saveEl.textContent = tr("import-btn");
 };

@@ -69,8 +69,7 @@ async function _fetchSuggestions(
     const suggestions = Array.isArray(raw) ? raw : [];
 
     if (!suggestions.length || input.value.trim() !== query) {
-      clear(dropdown);
-      dropdown.style.display = "none";
+      hideAcDropdown(dropdown);
       return;
     }
 
@@ -110,9 +109,7 @@ export function initAutocomplete(
     if (acTimeout) clearTimeout(acTimeout);
     const q = input.value.trim();
     if (!q || q.startsWith("!")) {
-      clear(dropdown);
-      dropdown.style.display = "none";
-      dropdown.parentElement?.classList.remove("ac-open");
+      hideAcDropdown(dropdown);
       return;
     }
     acTimeout = setTimeout(
@@ -122,6 +119,7 @@ export function initAutocomplete(
   });
 
   input.addEventListener("keydown", (e) => {
+    if (e.isComposing) return;
     const items = dropdown.querySelectorAll<HTMLElement>(".ac-item");
     if (!items.length) return;
 

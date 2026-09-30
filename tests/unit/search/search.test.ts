@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { scoreResults, mergeNewResults } from "../../../src/server/search/scoring";
-import type { ScoredResult, SearchResult } from "../../../src/shared/search-types";
+import { scoreResults } from "../../../src/server/search/scoring";
+import type { SearchResult } from "../../../src/shared/search-types";
 
 const result = (
   url: string,
@@ -14,29 +14,8 @@ const result = (
   source,
 });
 
-const scored = (
-  r: SearchResult,
-  score: number,
-  sources: string[],
-): ScoredResult => ({ ...r, score, sources });
-
 describe("search", () => {
-  describe("mergeNewResults", () => {
-    test("merges new results into existing scored list", () => {
-      const existing: ScoredResult[] = [
-        scored(result("https://a.com", "E1"), 10, ["E1"]),
-      ];
-      const newResults = [
-        result("https://b.com", "E2"),
-        result("https://a.com", "E2"),
-      ];
-      const out = mergeNewResults(existing, newResults);
-      expect(out.length).toBe(2);
-      const a = out.find((r) => r.url === "https://a.com");
-      expect(a!.sources).toContain("E1");
-      expect(a!.sources).toContain("E2");
-    });
-
+  describe("scoreResults", () => {
     test("prefers gif imageUrl when merging duplicates and sets isGif", () => {
       const cases: [string, string, boolean][] = [
         ["https://cdn.example.com/a.gif", "https://cdn.example.com/a.gif", true],
@@ -44,31 +23,19 @@ describe("search", () => {
       ];
 
       for (const [newImageUrl, expectedUrl, expectedIsGif] of cases) {
-        const existing = [
-          scored(
-            {
-              ...result("https://a.com", "E1"),
-              imageUrl: "https://cdn.example.com/a.webp",
-            },
-            5,
-            ["E1"],
-          ),
-        ];
-        const newResults = [
+        const out = scoreResults([
           {
-            ...result("https://a.com", "E2"),
-            imageUrl: newImageUrl,
+            results: [
+              { ...result("https://a.com", "E1"), imageUrl: "https://cdn.example.com/a.webp" },
+            ],
           },
-        ];
-
-        const out = mergeNewResults(existing, newResults);
+          { results: [{ ...result("https://a.com", "E2"), imageUrl: newImageUrl }] },
+        ]);
         expect(out[0].imageUrl).toBe(expectedUrl);
         expect(!!out[0].isGif).toBe(expectedIsGif);
       }
     });
-  });
 
-  describe("scoreResults", () => {
     test("merges results from multiple engines", () => {
       const out = scoreResults([
         { results: [result("https://a.com", "E1"), result("https://b.com", "E1")] },

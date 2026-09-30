@@ -5,6 +5,7 @@ import { getInstanceSettings } from "../../../utils/settings/server-settings";
 import { readDomainLists, writeDomainList } from "../../../utils/filtering/domain-lists";
 import { buildFaviconUrl } from "../../../utils/net/proxy-sign";
 import { settingsAuth } from "../../_guards";
+import { settingsLock } from "../../../utils/settings/settings-write";
 
 const router = new Hono();
 
@@ -85,9 +86,12 @@ router.post("/api/settings/domain-action", settingsAuth("POST /api/settings/doma
   const existing = await getInstanceSettings();
   if (!asBoolean(existing[action.flag])) return c.json({ error: "Forbidden" }, 403);
 
-  const next = action.edit((await readDomainLists())[action.list], source, body);
+  const next = await settingsLock(async () => {
+    const edited = action.edit((await readDomainLists())[action.list], source, body);
+    if (typeof edited === "string") await writeDomainList(action.list, edited);
+    return edited;
+  });
   if (typeof next !== "string") return c.json(next, 400);
-  await writeDomainList(action.list, next);
   if (kind === REPLACE_KIND) {
     return c.json({ ok: true, favicon: buildFaviconUrl(_normalizeHostname(body.target ?? "")) });
   }

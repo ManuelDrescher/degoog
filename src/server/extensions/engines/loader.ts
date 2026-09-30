@@ -106,6 +106,7 @@ export const initEngines = async (bust = false): Promise<void> => {
   await primeEngineHosts();
   await (bust ? engineRegistry.reload() : engineRegistry.init());
   _compatEntries = await loadCompatEngines();
+  clearTypeCache();
 };
 
 export const getAllEngineTranslators = (): {

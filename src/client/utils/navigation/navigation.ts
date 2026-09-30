@@ -1,4 +1,3 @@
-import { state } from "../../state";
 import { getBase } from "../net/base-url";
 
 const SETTINGS_RETURN_KEY = "degoog-settings-return";
@@ -62,9 +61,7 @@ export function setActiveTab(type: string): void {
 }
 
 function _updateTabVisibility(tab: HTMLElement): void {
-  const hidden =
-    tab.dataset.bangHidden === "true" || tab.dataset.typeDisabled === "true";
-  tab.style.display = hidden ? "none" : "";
+  tab.style.display = tab.dataset.bangHidden === "true" ? "none" : "";
 }
 
 export function setTabsForBang(matchTypes: string[]): void {
@@ -83,32 +80,3 @@ export function showAllTabs(): void {
     _updateTabVisibility(tab);
   });
 }
-
-export function setTabTypeDisabled(type: string, disabled: boolean): void {
-  document.querySelectorAll<HTMLElement>(".results-tab").forEach((tab) => {
-    const tabType = tab.dataset.type ?? "";
-    if (tabType === type || tabType === `tab:engine:${type}`) {
-      tab.dataset.typeDisabled = disabled ? "true" : "";
-      _updateTabVisibility(tab);
-    }
-  });
-}
-
-export const navigateToSearch = (
-  query: string,
-  type?: string,
-  page?: number,
-): void => {
-  if (state.postMethodEnabled) {
-    sessionStorage.setItem("degoog-post-query", query);
-    if (type && type !== "web") sessionStorage.setItem("degoog-post-type", type);
-    if (page && page > 1) sessionStorage.setItem("degoog-post-page", String(page));
-    window.location.href = `${getBase()}/search`;
-    return;
-  }
-
-  const params = new URLSearchParams({ q: query });
-  if (type && type !== "web") params.set("type", type);
-  if (page && page > 1) params.set("page", String(page));
-  window.location.href = `${getBase()}/search?${params.toString()}`;
-};

@@ -96,6 +96,18 @@ export const DEFAULT_LANGUAGES = [
   "zu",
 ];
 
+export const resolveLanguages = (
+  enabled: boolean,
+  raw: string,
+): string[] => {
+  if (!enabled) return DEFAULT_LANGUAGES;
+  const codes = raw
+    .split(/[\n,]/)
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => /^[a-z]{2,3}$/.test(s));
+  return codes.length > 0 ? codes : DEFAULT_LANGUAGES;
+};
+
 export const _applyRateLimit = async (c: Context): Promise<Response | null> => {
   const settings = await getInstanceSettings();
   const opts: Record<string, string> = {};

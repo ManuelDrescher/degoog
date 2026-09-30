@@ -24,8 +24,7 @@
     },
     "appearance": {
       "heading": "מראה",
-      "desc": "בחרו ערכת נושא.",
-      "save-defaults": "שמור כברירת מחדל עבור המופע"
+      "desc": "בחרו ערכת נושא."
     },
     "theme": {
       "system": "ברירת מחדל של המערכת",
@@ -276,16 +275,9 @@
       "custom-css-label": "CSS מותאם אישית",
       "saved": "נשמר",
       "save-failed-network": "השמירה נכשלה. נסו שוב.",
-      "shortcuts-heading": "קיצורי מקלדת",
-      "shortcuts-desc": "הדליקו קיצורי מקלדת. כבוי מסתיר את מקטע הקיצורים ומנתק הכול.",
-      "shortcuts-enable": "הפעל קיצורי מקלדת",
-      "shortcuts-enable-aria": "הפעל קיצורי מקלדת",
-      "shortcuts-enable-desc": "מיקוד חיפוש, החלפת לשוניות, תנועה בתוצאות. קשרו אותם במקטע הקיצורים.",
       "infinite-scroll-enable": "החלף עימוד בגלילה אינסופית",
       "infinite-scroll-enable-aria": "החלף עימוד בגלילה אינסופית",
       "infinite-scroll-enable-desc": "מסיר הקודם/הבא וטוען את העמוד הבא כשמגיעים לתחתית.",
-      "searx-heading": "שכבת תאימות SearX",
-      "searx-desc": "הריצו מנועי SearXNG בתוך Degoog. בלי תהליך SearXNG שני.",
       "searx-enable": "הפעילו את שכבת התאימות של SearX",
       "searx-enable-desc": "מאפשר להתקין מנועים ממאגר SearXNG בלשונית המנועים.",
       "searx-enable-aria": "הפעילו את שכבת התאימות של SearX",
@@ -338,22 +330,14 @@
       "field-fetch-failed": "לא ניתן לטעון אפשרויות",
       "field-fetch-empty": "לא הוחזרו אפשרויות"
     },
-    "confirm": {
-      "title": "אישור",
-      "cancel": "ביטול",
-      "confirm": "אישור"
-    },
     "extensions": {
       "configure": "הגדר",
       "active": "פעיל",
       "built-in-theme-name": "מובנה",
       "built-in-theme-desc": "המראה ש-Degoog מגיע איתו.",
-      "group-plugins": "תוספים",
-      "group-builtin-commands": "פקודות מובנות",
       "group-transports": "דרכי העברה",
       "group-builtin-transports": "דרכי העברה מובנות",
       "group-themes": "ערכות נושא",
-      "apply-failed": "נכשל",
       "save-defaults": "שמור כברירות מחדל עבור המופע",
       "reset-defaults": "אפס לברירות המחדל של המופע",
       "reset-confirm": "פעולה זו תחליף את בחירות המנועים בדפדפן זה בברירות המחדל של המופע. להמשיך?",
@@ -637,12 +621,10 @@
     },
     "restart": {
       "heading": "נדרש הפעלה מחדש",
-      "desc": "חלק מההרחבות שהתקנתם לא ייטענו עד שהשרת יופעל מחדש.",
       "modal-intro": "ההרחבות האלה לא עושות כלום עד שהשרת מופעל מחדש:",
       "modal-note": "הפעלה מחדש עוצרת את Degoog לכמה שניות. אפשר להפעיל מחדש מאוחר יותר מהגדרות › שרת.",
       "later": "לא עכשיו",
       "button": "הפעל מחדש את השרת",
-      "confirm": "זה מפעיל מחדש את Degoog. חיפושים באמצע נקטעים לכמה שניות. להמשיך?",
       "restarting": "מפעיל מחדש..."
     }
   }

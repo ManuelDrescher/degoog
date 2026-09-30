@@ -111,6 +111,13 @@ export const listEngines = async (): Promise<EngineCatalogEntry[]> => {
   }));
 };
 
+export const readEngineScore = async (id: string): Promise<number> => {
+  const stored = await getSettings(id);
+  const parsed = parseFloat(asString(stored["score"]));
+  const score = Number.isFinite(parsed) ? parsed : 1;
+  return Math.max(score, 0.1);
+};
+
 export const getEngineMap = (): Record<string, SearchEngine> =>
   Object.fromEntries(allEngineEntries().map((e) => [e.id, e.instance]));
 
@@ -140,8 +147,10 @@ export const getEnginesForCustomType = async (
     if (await isDisabled(e.id)) continue;
     if (!honorsImageFilters(e.filters, imageFilter)) continue;
     const types = await resolveEngineTypes(e);
-    if (types.includes(engineType))
-      results.push({ id: e.id, instance: e.instance });
+    if (!types.includes(engineType)) continue;
+    if (engineRequiresConfig(e.instance) && !(await hasRequiredConfig(e)))
+      continue;
+    results.push({ id: e.id, instance: e.instance });
   }
   return results;
 };
@@ -200,9 +209,11 @@ export const getActiveWebEngines = async (
     if (!types.includes("web")) continue;
     if (engineRequiresConfig(e.instance) && !(await hasRequiredConfig(e)))
       continue;
-    const stored = await getSettings(e.id);
-    const score = Math.max(parseFloat(asString(stored["score"])) || 1, 0.1);
-    active.push({ id: e.id, instance: e.instance, score });
+    active.push({
+      id: e.id,
+      instance: e.instance,
+      score: await readEngineScore(e.id),
+    });
   }
   return active;
 };

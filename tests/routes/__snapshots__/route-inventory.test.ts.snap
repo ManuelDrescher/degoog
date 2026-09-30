@@ -250,15 +250,6 @@ exports[`every mounted router exposes the routes it did before search/stream rou
 ]
 `;
 
-exports[`every mounted router exposes the routes it did before searx-engines route list is unchanged 1`] = `
-[
-  "GET /api/searx/engines",
-  "POST /api/searx/install",
-  "POST /api/searx/uninstall",
-  "POST /api/searx/update",
-]
-`;
-
 exports[`every mounted router exposes the routes it did before settings route list is unchanged 1`] = `
 [
   "DELETE /api/settings/shortcuts/source/:id",
@@ -414,7 +405,7 @@ exports[`the admin path is operator-defined, not hardcoded DEGOOG_SETTINGS_PATH 
 
 exports[`route shape invariants the mounted surface totals stay put 1`] = `
 {
-  "totalHandlers": 313,
-  "unique": 254,
+  "totalHandlers": 310,
+  "unique": 250,
 }
 `;

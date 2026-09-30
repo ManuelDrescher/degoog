@@ -1,10 +1,12 @@
 import { renderHtml } from "../../shared/ui/tribute/html";
 import { ResultsMeta } from "./results-meta";
+import { RateLimitedPage } from "./rate-limited-page";
 import { Hono, type Context } from "hono";
 import {
   matchBangCommand,
   type BangMatch,
 } from "../extensions/commands/registry";
+import { clampCommandPage } from "../extensions/commands/command-page";
 import { getDefaultEngineConfig } from "../extensions/engines/catalog";
 import { planEngineBang } from "../search/engine-bang";
 import { build404 } from "../routes/pages/pages";
@@ -69,7 +71,7 @@ const _rateLimited = async (c: Context): Promise<Response | null> => {
   const locale = getLocale(c) ?? "";
   const message = String(t("nojs.rate-limited", undefined, locale));
   return c.html(
-    `<!doctype html><html><head><meta charset="UTF-8"><title>429</title></head><body><p>${message}</p></body></html>`,
+    `<!doctype html>${renderHtml(<RateLimitedPage message={message} />)}`,
     429,
     retryAfter ? { "Retry-After": retryAfter } : undefined,
   );
@@ -251,7 +253,7 @@ router.on(["GET", "POST"], "/nojs/search", async (c) => {
 
   const bang = matchBangCommand(query.q);
   if (bang?.type === "command") {
-    const commandPageNumber = query.page ?? 1;
+    const commandPageNumber = clampCommandPage(query.page);
     const command = await renderNojsCommand(
       bang,
       ip,

@@ -24,8 +24,7 @@
     },
     "appearance": {
       "heading": "Aspetto",
-      "desc": "Scegli un tema.",
-      "save-defaults": "Salva come predefinito dell'istanza"
+      "desc": "Scegli un tema."
     },
     "theme": {
       "system": "Predefinito di sistema",
@@ -276,16 +275,9 @@
       "custom-css-label": "CSS personalizzato",
       "saved": "Salvato",
       "save-failed-network": "Salvataggio non riuscito. Riprova.",
-      "shortcuts-heading": "Scorciatoie",
-      "shortcuts-desc": "Accendi le scorciatoie. Spento nasconde la sezione Scorciatoie e stacca tutto.",
-      "shortcuts-enable": "Abilita scorciatoie",
-      "shortcuts-enable-aria": "Abilita scorciatoie",
-      "shortcuts-enable-desc": "Focus sulla ricerca, cambio scheda, movimento tra i risultati. Le associ nella sezione Scorciatoie.",
       "infinite-scroll-enable": "Sostituisci la paginazione con lo scorrimento infinito",
       "infinite-scroll-enable-aria": "Sostituisci la paginazione con lo scorrimento infinito",
       "infinite-scroll-enable-desc": "Toglie precedente/successivo e carica la pagina dopo quando arrivi in fondo.",
-      "searx-heading": "Livello di compatibilità SearX",
-      "searx-desc": "Fa girare motori SearXNG dentro Degoog. Niente secondo processo SearXNG.",
       "searx-enable": "Abilita il livello di compatibilità SearX",
       "searx-enable-desc": "Permette di installare motori dal repository SearXNG nella scheda Motori.",
       "searx-enable-aria": "Abilita il livello di compatibilità SearX",
@@ -338,22 +330,14 @@
       "field-fetch-failed": "Impossibile caricare le opzioni",
       "field-fetch-empty": "Nessuna opzione restituita"
     },
-    "confirm": {
-      "title": "Conferma",
-      "cancel": "Annulla",
-      "confirm": "Conferma"
-    },
     "extensions": {
       "configure": "Configura",
       "active": "Attivo",
       "built-in-theme-name": "Integrato",
       "built-in-theme-desc": "L'aspetto con cui Degoog arriva.",
-      "group-plugins": "Plugin",
-      "group-builtin-commands": "Comandi integrati",
       "group-transports": "Trasporti",
       "group-builtin-transports": "Trasporti integrati",
       "group-themes": "Temi",
-      "apply-failed": "Operazione non riuscita",
       "save-defaults": "Salva come predefinito dell'istanza",
       "reset-defaults": "Ripristina le impostazioni predefinite dell'istanza",
       "reset-confirm": "Questo sostituisce le tue scelte dei motori su questo browser con quelle predefinite dell'istanza. Continuare?",
@@ -639,12 +623,10 @@
     },
     "restart": {
       "heading": "Riavvio richiesto",
-      "desc": "Alcune delle estensioni che hai installato non si caricano finché il server non riavvia.",
       "modal-intro": "Queste estensioni non fanno niente finché il server non riavvia:",
       "modal-note": "Il riavvio interrompe Degoog per qualche secondo. Puoi riavviare in seguito da Impostazioni › Server.",
       "later": "Non ora",
       "button": "Riavvia il server",
-      "confirm": "Questo riavvia Degoog. Le ricerche in corso si interrompono per qualche secondo. Continuare?",
       "restarting": "Riavvio in corso..."
     }
   }
