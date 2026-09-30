@@ -3,8 +3,8 @@ import {
   FAVICON_SHAPE_SETTING,
   isFaviconShape,
   type FaviconShape,
-} from "../../shared/favicon-shapes";
-import { getInstanceSettings } from "../utils/settings/server-settings";
+} from "../../../shared/favicon-shapes";
+import { getInstanceSettings } from "./server-settings";
 
 export const getFaviconShape = async (): Promise<FaviconShape> => {
   const value = (await getInstanceSettings())[FAVICON_SHAPE_SETTING];

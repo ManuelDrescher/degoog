@@ -1,4 +1,4 @@
-import { FAVICON_SIZE } from "../../favicon/size";
+import { FAVICON_SIZE } from "./size";
 import type { FaviconContext } from "../../types/extension";
 import { asString, getSettings } from "../../utils/settings/plugin-settings";
 import { outgoingFetch, parseOutgoingTransport } from "../../utils/net/outgoing";

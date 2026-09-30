@@ -1,8 +1,8 @@
 import type { ScoredResult } from "../../../shared/search-types";
 import { faviconHostname } from "../../../shared/utils/url";
-import { hasFaviconSource } from "../../favicon/source";
-import { FAVICON_SIZE } from "../../favicon/size";
-import { normalizeFaviconHost } from "../../favicon/host";
+import { hasFaviconSource } from "../../extensions/favicon/source";
+import { FAVICON_SIZE } from "../../extensions/favicon/size";
+import { normalizeFaviconHost } from "../../extensions/favicon/host";
 import type { AutocompleteCacheItem } from "../cache/cache";
 import { signData, verifyData } from "../security/server-key";
 import { getBasePath, getBaseUrl } from "./base-url";

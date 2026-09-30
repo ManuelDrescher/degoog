@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 import { DEGOOG_ENGINE_NAME, type ScoredResult } from "../../shared/search-types";
 import type { Translate } from "../types/extension";
-import { hasFaviconSource } from "../favicon/source";
+import { hasFaviconSource } from "../extensions/favicon/source";
 import { buildFaviconUrl } from "../utils/net/proxy-sign";
 import { DEFAULT_LANGUAGES } from "../utils/search";
 import { logger } from "../utils/logger";

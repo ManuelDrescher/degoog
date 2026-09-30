@@ -23,7 +23,7 @@ import { getPublicUrl } from "../../utils/net/public-url";
 import { FAKE_RESULTS } from "../../../shared/fake-results";
 import { getInstanceSettings } from "../../utils/settings/server-settings";
 import { hasFaviconProviders } from "../../extensions/favicon/registry";
-import { hasFaviconSource } from "../../favicon/source";
+import { hasFaviconSource } from "../../extensions/favicon/source";
 import { DEFAULT_THEME_DIR, getCoreTranslator } from "../../render/theme-assets";
 import {
   applyPagePlaceholders,

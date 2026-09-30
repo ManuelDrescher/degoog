@@ -1,6 +1,6 @@
-import { leasePgPool, type PgConnectionInput, type PgPoolLease } from "../../indexer/db/pg-pool";
-import { logger } from "../../utils/logger";
-import { pruneCutoffs, type FaviconRow, type FaviconStore, type FaviconStoreStats } from "./types";
+import { leasePgPool, type PgConnectionInput, type PgPoolLease } from "../../db/pg-pool";
+import { logger } from "../../../utils/logger";
+import { pruneCutoffs, type FaviconRow, type FaviconStore, type FaviconStoreStats } from "../../types/favicons";
 
 export const FAVICON_PG_SCHEMA = "degoog_favicon";
 export const FAVICON_PG_TABLE = "icons";

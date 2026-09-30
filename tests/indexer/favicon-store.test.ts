@@ -3,12 +3,12 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { faviconDbPath, SqliteFaviconStore } from "../../src/server/favicon/store/sqlite";
-import { PgFaviconStore, FAVICON_PG_SCHEMA } from "../../src/server/favicon/store/postgres";
-import { DAY_MS, isRowFresh } from "../../src/server/favicon/store/types";
-import { faviconStoreConfig } from "../../src/server/favicon/store/config";
+import { faviconDbPath, SqliteFaviconStore } from "../../src/server/indexer/adapters/sqlite/favicons";
+import { PgFaviconStore, FAVICON_PG_SCHEMA } from "../../src/server/indexer/adapters/postgres/favicons";
+import { DAY_MS, isRowFresh } from "../../src/server/indexer/types/favicons";
+import { faviconStoreConfig } from "../../src/server/indexer/config/favicons";
 import { leasePgPool } from "../../src/server/indexer/db/pg-pool";
-import { ICO_BYTES, PNG_BYTES } from "./fixtures";
+import { ICO_BYTES, PNG_BYTES } from "../helpers/favicon-fixtures";
 
 const PG_URL = process.env.DEGOOG_TEST_POSTGRES;
 

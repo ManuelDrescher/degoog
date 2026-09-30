@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import type { FaviconResult } from "../../src/server/types/extension";
 import { fakeFaviconProviders, restoreFaviconProviders } from "../helpers/favicon-providers";
-import { isolateFaviconEnv, type IsolatedEnv } from "./env";
-import { PNG_BYTES, SVG_BYTES } from "./fixtures";
+import { isolateFaviconEnv, type IsolatedEnv } from "../helpers/favicon-env";
+import { PNG_BYTES, SVG_BYTES } from "../helpers/favicon-fixtures";
 
 let env: IsolatedEnv;
 let chainCalls: string[] = [];
@@ -10,10 +10,10 @@ let answer: (host: string) => FaviconResult = () => null;
 
 const settings = await import("../../src/server/utils/settings/server-settings");
 const { initServerKey } = await import("../../src/server/utils/security/server-key");
-const { resolveFaviconBytes, faviconRowKey } = await import("../../src/server/favicon/resolve");
-const { closeFaviconStore, getFaviconStore } = await import("../../src/server/favicon/store");
+const { resolveFaviconBytes, faviconRowKey } = await import("../../src/server/extensions/favicon/resolve");
+const { closeFaviconStore, getFaviconStore } = await import("../../src/server/indexer/store/favicons");
 const { useCache } = await import("../../src/server/utils/cache/cache");
-const { hasFaviconSource } = await import("../../src/server/favicon/source");
+const { hasFaviconSource } = await import("../../src/server/extensions/favicon/source");
 const { buildFaviconUrl } = await import("../../src/server/utils/net/proxy-sign");
 
 beforeAll(async () => {

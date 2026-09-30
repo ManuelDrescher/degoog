@@ -40,7 +40,7 @@ import {
 import { runMigrations } from "./migrations";
 import { runFaviconDefaultsMigration093026 } from "./migrations/2026-09-favicon-defaults-migration";
 import { closeAllDbs } from "./indexer/db/lifecycle";
-import { closeFaviconStore } from "./favicon/store";
+import { closeFaviconStore } from "./indexer/store/favicons";
 import { startQueue, stopQueue } from "./indexer/queue/queue";
 import { logger } from "./utils/logger";
 import { registerServerHandle } from "./utils/server-lifecycle";

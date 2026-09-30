@@ -1,12 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { isolateFaviconEnv, type IsolatedEnv } from "./env";
+import { isolateFaviconEnv, type IsolatedEnv } from "../../helpers/favicon-env";
 
 let env: IsolatedEnv;
 
-const settings = await import("../../src/server/utils/settings/server-settings");
-const { coerceSetting, SETTINGS_SCHEMA } = await import("../../src/server/utils/settings/settings-schema");
-const { faviconShapeAttr, getFaviconShape } = await import("../../src/server/favicon/shape");
-const { FaviconShape } = await import("../../src/shared/favicon-shapes");
+const settings = await import("../../../src/server/utils/settings/server-settings");
+const { coerceSetting, SETTINGS_SCHEMA } = await import("../../../src/server/utils/settings/settings-schema");
+const { faviconShapeAttr, getFaviconShape } = await import("../../../src/server/utils/settings/favicon-shape");
+const { FaviconShape } = await import("../../../src/shared/favicon-shapes");
 
 beforeAll(() => {
   env = isolateFaviconEnv("degoog-favicon-shape-");

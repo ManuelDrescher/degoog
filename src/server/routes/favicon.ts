@@ -1,6 +1,6 @@
 import { Hono, type MiddlewareHandler } from "hono";
-import { normalizeFaviconHost } from "../favicon/host";
-import { resolveFaviconBytes } from "../favicon/resolve";
+import { normalizeFaviconHost } from "../extensions/favicon/host";
+import { resolveFaviconBytes } from "../extensions/favicon/resolve";
 import { readObjectBody } from "../utils/hono";
 import { buildFaviconUrl } from "../utils/net/proxy-sign";
 import { getClientIp } from "../utils/net/request";

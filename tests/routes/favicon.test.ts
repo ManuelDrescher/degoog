@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import type { FaviconResult } from "../../src/server/types/extension";
 import { fakeFaviconProviders, restoreFaviconProviders } from "../helpers/favicon-providers";
-import { isolateFaviconEnv, type IsolatedEnv } from "../favicon/env";
-import { PNG_BYTES } from "../favicon/fixtures";
+import { isolateFaviconEnv, type IsolatedEnv } from "../helpers/favicon-env";
+import { PNG_BYTES } from "../helpers/favicon-fixtures";
 
 let env: IsolatedEnv;
 let answer: (host: string) => FaviconResult = () => null;

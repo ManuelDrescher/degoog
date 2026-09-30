@@ -1,14 +1,10 @@
-import { resolvedPgConnection } from "../../indexer/db/pg-pool";
+import { resolvedPgConnection } from "../db/pg-pool";
 import { logger } from "../../utils/logger";
 import { getInstanceSettings } from "../../utils/settings/server-settings";
-import { faviconStoreConfig, type FaviconStoreConfig } from "./config";
-import { PgFaviconStore } from "./postgres";
-import { SqliteFaviconStore } from "./sqlite";
-import type { FaviconStore } from "./types";
-
-export type { FaviconRow, FaviconStore, FaviconStoreStats } from "./types";
-export { isRowFresh } from "./types";
-export { faviconStoreConfig, type FaviconStoreConfig } from "./config";
+import { faviconStoreConfig, type FaviconStoreConfig } from "../config/favicons";
+import { PgFaviconStore } from "../adapters/postgres/favicons";
+import { SqliteFaviconStore } from "../adapters/sqlite/favicons";
+import type { FaviconStore } from "../types/favicons";
 
 const LOG_TAG = "favicon-store";
 const PRUNE_INTERVAL_MS = 60 * 60 * 1000;

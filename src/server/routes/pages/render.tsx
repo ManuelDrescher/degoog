@@ -41,7 +41,7 @@ import { isPasswordRequired } from "../settings/settings-auth";
 import { readSyncedDefaults } from "../../utils/settings/synced-settings";
 import { buildSettingsNav, buildSettingsTabSelect } from "./settings-nav";
 import { renderHtml } from "../../../shared/ui/tribute/html";
-import { faviconShapeAttr } from "../../favicon/shape";
+import { faviconShapeAttr } from "../../utils/settings/favicon-shape";
 import { ThemeTemplate } from "../../../shared/ui/components/layout/theme-template";
 import {
   DEFAULT_THEME_DIR,

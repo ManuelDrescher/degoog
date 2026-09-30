@@ -1,5 +1,5 @@
 import pkg from "../../../package.json";
-import { faviconShapeAttr } from "../favicon/shape";
+import { faviconShapeAttr } from "../utils/settings/favicon-shape";
 import { getActiveTheme, getActiveThemeDataAttrs } from "../extensions/themes/registry";
 import type { Translate } from "../types/extension";
 import { mintToken } from "../utils/security/link-token";

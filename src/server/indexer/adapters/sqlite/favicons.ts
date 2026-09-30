@@ -1,9 +1,9 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "fs";
 import { join } from "path";
-import { indexerDir } from "../../utils/paths";
-import { logger } from "../../utils/logger";
-import { pruneCutoffs, type FaviconRow, type FaviconStore, type FaviconStoreStats } from "./types";
+import { indexerDir } from "../../../utils/paths";
+import { logger } from "../../../utils/logger";
+import { pruneCutoffs, type FaviconRow, type FaviconStore, type FaviconStoreStats } from "../../types/favicons";
 
 const DB_FILE = "favicon.db";
 const SCHEMA_VERSION = 1;

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { FAVICON_MAX_BYTES, sniffFaviconType, validateFavicon } from "../../src/server/favicon/validate";
+import { FAVICON_MAX_BYTES, sniffFaviconType, validateFavicon } from "../../../src/server/utils/security/favicon-bytes";
 import {
   GIF_BYTES,
   HTML_BYTES,
@@ -8,7 +8,7 @@ import {
   PNG_BYTES,
   SVG_BYTES,
   WEBP_BYTES,
-} from "./fixtures";
+} from "../../helpers/favicon-fixtures";
 
 describe("favicon byte validation", () => {
   test("png and ico are accepted with the type their bytes say", () => {

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "fs";
 import type { Subprocess, Server } from "bun";
 import { logger } from "./logger";
 import { closeAllDbs } from "../indexer/db/lifecycle";
-import { closeFaviconStore } from "../favicon/store";
+import { closeFaviconStore } from "../indexer/store/favicons";
 import { stopQueue } from "../indexer/queue/queue";
 import { clearRestartPending } from "./extension-support/restart-state";
 import { envTruthy } from "../routes/settings/settings-auth";
