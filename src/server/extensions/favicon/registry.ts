@@ -25,6 +25,7 @@ import {
   withTimeout,
 } from "../../utils/net/with-timeout";
 import { buildFaviconContext } from "./context";
+import { forgetFaviconMisses } from "./misses";
 
 interface FaviconEntry {
   id: string;
@@ -154,7 +155,11 @@ export function applyFaviconSettings(
   settings: Record<string, SettingValue>,
 ): void {
   const entry = _all().find((p) => p.id === id);
-  if (entry) _configure(entry, settings);
+  if (!entry) return;
+  _configure(entry, settings);
+  forgetFaviconMisses().catch((err: unknown) => {
+    logger.warn(LOG_TAG, "could not clear cached favicon misses", err);
+  });
 }
 
 export type FaviconAccept<T> = (
@@ -228,4 +233,5 @@ export const getFaviconProviderMetas = async (): Promise<ExtensionMeta[]> => {
 
 export async function initFavicon(bust = false): Promise<void> {
   await (bust ? registry.reload() : registry.init());
+  await forgetFaviconMisses();
 }

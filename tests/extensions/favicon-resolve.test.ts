@@ -13,6 +13,7 @@ const { initServerKey } = await import("../../src/server/utils/security/server-k
 const { resolveFaviconBytes, faviconRowKey } = await import("../../src/server/extensions/favicon/resolve");
 const { closeFaviconStore, getFaviconStore } = await import("../../src/server/indexer/store/favicons");
 const { useCache } = await import("../../src/server/utils/cache/cache");
+const { forgetFaviconMisses } = await import("../../src/server/extensions/favicon/misses");
 const { hasFaviconSource } = await import("../../src/server/extensions/favicon/source");
 const { buildFaviconUrl } = await import("../../src/server/utils/net/proxy-sign");
 
@@ -129,12 +130,21 @@ describe("resolveFaviconBytes with the favicon store", () => {
     expect(chainCalls).toEqual(["stored.test"]);
   });
 
-  test("misses are stored as negative rows", async () => {
+  test("misses never reach the store", async () => {
     answer = () => null;
-    await resolveFaviconBytes("negative.test");
-    const row = await (await getFaviconStore())!.get(faviconRowKey("negative.test"));
-    expect(row).not.toBeNull();
-    expect(row?.data).toBeNull();
+    expect(await resolveFaviconBytes("miss.test")).toBeNull();
+    expect(await (await getFaviconStore())!.get(faviconRowKey("miss.test"))).toBeNull();
+  });
+
+  test("a provider change clears remembered misses so the new chain gets asked", async () => {
+    answer = () => null;
+    expect(await resolveFaviconBytes("late.test")).toBeNull();
+    expect(await resolveFaviconBytes("late.test")).toBeNull();
+    expect(chainCalls).toEqual(["late.test"]);
+    await forgetFaviconMisses();
+    answer = () => ({ data: PNG_BYTES, contentType: "image/png" });
+    expect((await resolveFaviconBytes("late.test"))?.contentType).toBe("image/png");
+    expect(chainCalls).toEqual(["late.test", "late.test"]);
   });
 
   test("with every provider off, saved icons still show and a refresh keeps them", async () => {

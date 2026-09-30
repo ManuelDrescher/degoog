@@ -3,10 +3,10 @@ import { mkdirSync } from "fs";
 import { join } from "path";
 import { indexerDir } from "../../../utils/paths";
 import { logger } from "../../../utils/logger";
-import { pruneCutoffs, type FaviconRow, type FaviconStore, type FaviconStoreStats } from "../../types/favicons";
+import { pruneCutoff, type FaviconRow, type FaviconStore, type FaviconStoreStats } from "../../types/favicons";
 
 const DB_FILE = "favicon.db";
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const LOG_TAG = "favicon-store";
 
 const SCHEMA_DDL = [
@@ -19,6 +19,8 @@ const SCHEMA_DDL = [
   "CREATE INDEX IF NOT EXISTS icons_fetched_at ON icons (fetched_at)",
 ];
 
+const PURGE_MISSES = "DELETE FROM icons WHERE data IS NULL";
+
 interface SqliteRow {
   key: string;
   mime: string | null;
@@ -28,7 +30,6 @@ interface SqliteRow {
 
 interface SqliteStats {
   rows: number;
-  negative: number | null;
   bytes: number | null;
 }
 
@@ -39,7 +40,10 @@ const _migrate = (db: Database): void => {
     .prepare("PRAGMA user_version")
     .get() as { user_version: number };
   for (const sql of SCHEMA_DDL) db.exec(sql);
-  if (version < SCHEMA_VERSION) db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+  if (version < SCHEMA_VERSION) {
+    db.exec(PURGE_MISSES);
+    db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+  }
 };
 
 export class SqliteFaviconStore implements FaviconStore {
@@ -70,11 +74,11 @@ export class SqliteFaviconStore implements FaviconStore {
     const row = this._open()
       .query("SELECT key, mime, data, fetched_at FROM icons WHERE key = ?")
       .get(key) as SqliteRow | null;
-    if (!row) return null;
+    if (!row?.data || !row.mime) return null;
     return {
       key: row.key,
       mime: row.mime,
-      data: row.data ? new Uint8Array(row.data) : null,
+      data: new Uint8Array(row.data),
       fetchedAt: Number(row.fetched_at),
     };
   }
@@ -93,20 +97,19 @@ export class SqliteFaviconStore implements FaviconStore {
   }
 
   async prune(maxAgeDays: number): Promise<number> {
-    const cutoffs = pruneCutoffs(maxAgeDays, Date.now());
     const result = this._open()
-      .query("DELETE FROM icons WHERE fetched_at < ? OR (data IS NULL AND fetched_at < ?)")
-      .run(cutoffs.positive, cutoffs.negative);
+      .query("DELETE FROM icons WHERE fetched_at < ? OR data IS NULL")
+      .run(pruneCutoff(maxAgeDays, Date.now()));
     return result.changes;
   }
 
   async stats(): Promise<FaviconStoreStats> {
     const row = this._open()
       .query(
-        "SELECT COUNT(*) AS rows, SUM(CASE WHEN data IS NULL THEN 1 ELSE 0 END) AS negative, SUM(LENGTH(data)) AS bytes FROM icons",
+        "SELECT COUNT(*) AS rows, SUM(LENGTH(data)) AS bytes FROM icons",
       )
       .get() as SqliteStats;
-    return { rows: row.rows, negative: row.negative ?? 0, bytes: row.bytes ?? 0 };
+    return { rows: row.rows, bytes: row.bytes ?? 0 };
   }
 
   async close(): Promise<void> {

@@ -39,13 +39,19 @@ describe("engine hosts", () => {
     expect(engineHost("google-videos-engine")).toBe("www.google.com");
   });
 
-  test("ignores junk urls, dotless hosts and engines with no id", async () => {
+  test("ignores junk urls and engines with no id", async () => {
     noteEngineHost("broken-engine", "not a url");
     noteEngineHost(undefined, "https://example.com");
-    noteEngineHost("localhost-engine", "http://localhost:8080/search");
     await settle();
     expect(engineHost("broken-engine")).toBeUndefined();
-    expect(engineHost("localhost-engine")).toBeUndefined();
+  });
+
+  test("remembers local hosts and private addresses", async () => {
+    noteEngineHost("localhost-engine", "http://localhost:8080/search");
+    noteEngineHost("lan-engine", "http://192.168.86.233:8181/search");
+    await settle();
+    expect(engineHost("localhost-engine")).toBe("localhost");
+    expect(engineHost("lan-engine")).toBe("192.168.86.233");
   });
 
   test("hosts written to disk survive a restart", async () => {

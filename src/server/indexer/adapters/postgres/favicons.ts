@@ -1,6 +1,6 @@
 import { leasePgPool, type PgConnectionInput, type PgPoolLease } from "../../db/pg-pool";
 import { logger } from "../../../utils/logger";
-import { pruneCutoffs, type FaviconRow, type FaviconStore, type FaviconStoreStats } from "../../types/favicons";
+import { pruneCutoff, type FaviconRow, type FaviconStore, type FaviconStoreStats } from "../../types/favicons";
 
 export const FAVICON_PG_SCHEMA = "degoog_favicon";
 export const FAVICON_PG_TABLE = "icons";
@@ -15,7 +15,6 @@ interface PgRow {
 
 interface PgStats {
   rows: number | string;
-  negative: number | string | null;
   bytes: number | string | null;
 }
 
@@ -48,6 +47,7 @@ export class PgFaviconStore implements FaviconStore {
         CREATE INDEX IF NOT EXISTS icons_fetched_at
         ON ${tx(FAVICON_PG_SCHEMA)}.${tx(FAVICON_PG_TABLE)} (fetched_at)
       `;
+      await tx`DELETE FROM ${tx(FAVICON_PG_SCHEMA)}.${tx(FAVICON_PG_TABLE)} WHERE data IS NULL`;
     });
   }
 
@@ -59,18 +59,18 @@ export class PgFaviconStore implements FaviconStore {
       WHERE key = ${key}
     `;
     const row = rows[0];
-    if (!row) return null;
+    if (!row?.data || !row.mime) return null;
     return {
       key: row.key,
       mime: row.mime,
-      data: row.data ? new Uint8Array(row.data) : null,
+      data: new Uint8Array(row.data),
       fetchedAt: Number(row.fetched_at),
     };
   }
 
   async put(row: FaviconRow): Promise<void> {
     const sql = this._sql();
-    const data = row.data ? Buffer.from(row.data) : null;
+    const data = Buffer.from(row.data);
     await sql`
       INSERT INTO ${sql(FAVICON_PG_SCHEMA)}.${sql(FAVICON_PG_TABLE)} (key, mime, data, fetched_at)
       VALUES (${row.key}, ${row.mime}, ${data}, ${Math.trunc(row.fetchedAt)})
@@ -86,11 +86,10 @@ export class PgFaviconStore implements FaviconStore {
 
   async prune(maxAgeDays: number): Promise<number> {
     const sql = this._sql();
-    const cutoffs = pruneCutoffs(maxAgeDays, Date.now());
     const result = await sql`
       DELETE FROM ${sql(FAVICON_PG_SCHEMA)}.${sql(FAVICON_PG_TABLE)}
-      WHERE fetched_at < ${Math.trunc(cutoffs.positive)}
-        OR (data IS NULL AND fetched_at < ${Math.trunc(cutoffs.negative)})
+      WHERE fetched_at < ${Math.trunc(pruneCutoff(maxAgeDays, Date.now()))}
+        OR data IS NULL
     `;
     return result.count;
   }
@@ -100,14 +99,12 @@ export class PgFaviconStore implements FaviconStore {
     const rows = await sql<PgStats[]>`
       SELECT
         COUNT(*) AS rows,
-        SUM(CASE WHEN data IS NULL THEN 1 ELSE 0 END) AS negative,
         SUM(OCTET_LENGTH(data)) AS bytes
       FROM ${sql(FAVICON_PG_SCHEMA)}.${sql(FAVICON_PG_TABLE)}
     `;
     const row = rows[0];
     return {
       rows: Number(row?.rows ?? 0),
-      negative: Number(row?.negative ?? 0),
       bytes: Number(row?.bytes ?? 0),
     };
   }

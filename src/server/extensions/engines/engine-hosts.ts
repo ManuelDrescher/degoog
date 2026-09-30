@@ -14,7 +14,7 @@ let _hosts: Map<string, string> | null = null;
 let _flushTimer: ReturnType<typeof setTimeout> | null = null;
 
 const _sane = (host: string): boolean =>
-  HOST_SHAPE.test(host) && host.includes(".") && host.length <= MAX_HOST_CHARS;
+  HOST_SHAPE.test(host) && host.length <= MAX_HOST_CHARS;
 
 const _load = async (): Promise<Map<string, string>> => {
   if (_hosts) return _hosts;

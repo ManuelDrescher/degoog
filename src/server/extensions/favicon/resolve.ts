@@ -10,40 +10,35 @@ import { localImageAccess } from "../../utils/security/local-image-access";
 import { fetchWithSafeRedirects } from "../../utils/security/safe-redirects";
 import { signData } from "../../utils/security/server-key";
 import { normalizeFaviconHost } from "./host";
+import { forgetFaviconMiss, isFaviconMiss, noteFaviconMiss } from "./misses";
 import { getFaviconStore, readFaviconStoreConfig } from "../../indexer/store/favicons";
-import { isRowFresh, type FaviconRow } from "../../indexer/types/favicons";
+import { isRowFresh } from "../../indexer/types/favicons";
 import { FAVICON_MAX_BYTES, validateFavicon, type FaviconBytes } from "../../utils/security/favicon-bytes";
 
 const LOG_TAG = "favicon";
 const CACHE_NAMESPACE = "favicon";
-const POSITIVE_TTL_MS = 24 * 60 * 60 * 1000;
-const NEGATIVE_TTL_MS = 60 * 60 * 1000;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 5_000;
 const ROW_KEY_PREFIX = `favicon-row:${FAVICON_SIZE}:`;
 
-type CachedFavicon = { b64: string; contentType: string } | { miss: true };
+type CachedFavicon = { b64: string; contentType: string };
 
 export interface ResolveFaviconOptions {
   refresh?: boolean;
 }
 
-const _cache = useCache<CachedFavicon>(CACHE_NAMESPACE, POSITIVE_TTL_MS);
+const _cache = useCache<CachedFavicon>(CACHE_NAMESPACE, CACHE_TTL_MS);
 const _inflight = new Map<string, Promise<FaviconBytes | null>>();
 
 export const faviconRowKey = (host: string): string => signData(`${ROW_KEY_PREFIX}${host}`);
 
-const _encode = (icon: FaviconBytes | null): CachedFavicon =>
-  icon
-    ? { b64: Buffer.from(icon.data).toString("base64"), contentType: icon.contentType }
-    : { miss: true };
+const _encode = (icon: FaviconBytes): CachedFavicon => ({
+  b64: Buffer.from(icon.data).toString("base64"),
+  contentType: icon.contentType,
+});
 
-const _decode = (cached: CachedFavicon): FaviconBytes | null => {
-  if ("miss" in cached) return null;
-  return validateFavicon(new Uint8Array(Buffer.from(cached.b64, "base64")));
-};
-
-const _fromRow = (row: FaviconRow): FaviconBytes | null =>
-  row.data ? validateFavicon(row.data) : null;
+const _decode = (cached: CachedFavicon): FaviconBytes | null =>
+  validateFavicon(new Uint8Array(Buffer.from(cached.b64, "base64")));
 
 const _fetchIcon = async (url: string): Promise<FaviconBytes | null> => {
   let parsed: URL;
@@ -92,14 +87,18 @@ const _materialize = async (result: NonNullable<FaviconResult>): Promise<Favicon
 };
 
 async function _writeBack(key: string, icon: FaviconBytes | null): Promise<void> {
-  await _cache.set(key, _encode(icon), icon ? POSITIVE_TTL_MS : NEGATIVE_TTL_MS);
+  if (!icon) {
+    await noteFaviconMiss(key);
+    return;
+  }
+  await _cache.set(key, _encode(icon));
   const store = await getFaviconStore();
   if (!store) return;
   try {
     await store.put({
       key,
-      mime: icon?.contentType ?? null,
-      data: icon?.data ?? null,
+      mime: icon.contentType,
+      data: icon.data,
       fetchedAt: Date.now(),
     });
   } catch (err) {
@@ -109,6 +108,7 @@ async function _writeBack(key: string, icon: FaviconBytes | null): Promise<void>
 
 async function _forget(key: string): Promise<void> {
   await _cache.delete(key);
+  await forgetFaviconMiss(key);
   const store = await getFaviconStore();
   if (!store) return;
   try {
@@ -118,20 +118,18 @@ async function _forget(key: string): Promise<void> {
   }
 }
 
-const _fromStore = async (key: string): Promise<{ hit: boolean; icon: FaviconBytes | null }> => {
+const _fromStore = async (key: string): Promise<FaviconBytes | null> => {
   const store = await getFaviconStore();
-  if (!store) return { hit: false, icon: null };
+  if (!store) return null;
   try {
     const row = await store.get(key);
-    if (!row) return { hit: false, icon: null };
+    if (!row) return null;
     const { maxAgeDays } = await readFaviconStoreConfig();
-    if (!isRowFresh(row, maxAgeDays, Date.now())) return { hit: false, icon: null };
-    const icon = _fromRow(row);
-    if (row.data && !icon) return { hit: false, icon: null };
-    return { hit: true, icon };
+    if (!isRowFresh(row, maxAgeDays, Date.now())) return null;
+    return validateFavicon(row.data);
   } catch (err) {
     logger.warn(LOG_TAG, "favicon store read failed", err);
-    return { hit: false, icon: null };
+    return null;
   }
 };
 
@@ -141,12 +139,14 @@ const _lookup = async (host: string, refresh: boolean): Promise<FaviconBytes | n
     await _forget(key);
   } else {
     const cached = await _cache.get(key);
-    if (cached) return _decode(cached);
+    const decoded = cached ? _decode(cached) : null;
+    if (decoded) return decoded;
     const stored = await _fromStore(key);
-    if (stored.hit) {
-      await _cache.set(key, _encode(stored.icon), stored.icon ? POSITIVE_TTL_MS : NEGATIVE_TTL_MS);
-      return stored.icon;
+    if (stored) {
+      await _cache.set(key, _encode(stored));
+      return stored;
     }
+    if (await isFaviconMiss(key)) return null;
   }
   if (!hasFaviconProviders()) return null;
   const icon = await runFaviconChain(host, _materialize);

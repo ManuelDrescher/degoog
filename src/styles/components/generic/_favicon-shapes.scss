@@ -50,7 +50,7 @@ $favicon-shapes: (
     :root[data-favicon-shape="#{$name}"] .degoog-result--favicon,
     .favicon-shape--#{$name} .favicon-shape-tile {
       border-radius: 0;
-      background: var(--bg-hover);
+      background: var(--border);
       clip-path: map-get($shape, clip);
     }
 

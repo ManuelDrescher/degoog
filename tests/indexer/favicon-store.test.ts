@@ -43,23 +43,34 @@ describe("sqlite favicon store", () => {
     const { user_version: version } = db.prepare("PRAGMA user_version").get() as { user_version: number };
     const { journal_mode: mode } = db.prepare("PRAGMA journal_mode").get() as { journal_mode: string };
     db.close();
-    expect(version).toBe(1);
+    expect(version).toBe(2);
     expect(mode).toBe("wal");
   });
 
-  test("round trips positive and negative rows", async () => {
+  test("round trips icons", async () => {
     store = new SqliteFaviconStore();
     const now = Date.now();
     await store.put({ key: "k-png", mime: "image/png", data: PNG_BYTES, fetchedAt: now });
-    await store.put({ key: "k-miss", mime: null, data: null, fetchedAt: now });
     const png = await store.get("k-png");
     expect(png?.mime).toBe("image/png");
     expect(Array.from(png?.data ?? [])).toEqual(Array.from(PNG_BYTES));
     expect(png?.fetchedAt).toBe(now);
-    const miss = await store.get("k-miss");
-    expect(miss?.data).toBeNull();
     expect(await store.get("nope")).toBeNull();
-    expect(await store.stats()).toEqual({ rows: 2, negative: 1, bytes: PNG_BYTES.byteLength });
+    expect(await store.stats()).toEqual({ rows: 1, bytes: PNG_BYTES.byteLength });
+  });
+
+  test("miss rows left by the first schema are purged on open", async () => {
+    const legacy = new Database(faviconDbPath(), { create: true });
+    legacy.exec("CREATE TABLE icons (key TEXT PRIMARY KEY, mime TEXT, data BLOB, fetched_at INTEGER NOT NULL)");
+    legacy.query("INSERT INTO icons (key, mime, data, fetched_at) VALUES (?, ?, ?, ?)").run("k-miss", null, null, Date.now());
+    legacy.query("INSERT INTO icons (key, mime, data, fetched_at) VALUES (?, ?, ?, ?)").run("k-png", "image/png", PNG_BYTES, Date.now());
+    legacy.exec("PRAGMA user_version = 1");
+    legacy.close();
+    store = new SqliteFaviconStore();
+    await store.init();
+    expect(await store.get("k-miss")).toBeNull();
+    expect((await store.get("k-png"))?.mime).toBe("image/png");
+    expect(await store.stats()).toEqual({ rows: 1, bytes: PNG_BYTES.byteLength });
   });
 
   test("put replaces and delete removes", async () => {
@@ -71,18 +82,14 @@ describe("sqlite favicon store", () => {
     expect(await store.get("k")).toBeNull();
   });
 
-  test("prune drops old icons and day old misses", async () => {
+  test("prune drops old icons", async () => {
     store = new SqliteFaviconStore();
     const now = Date.now();
     await store.put({ key: "fresh", mime: "image/png", data: PNG_BYTES, fetchedAt: now });
     await store.put({ key: "old", mime: "image/png", data: PNG_BYTES, fetchedAt: now - 31 * DAY_MS });
-    await store.put({ key: "miss-new", mime: null, data: null, fetchedAt: now - DAY_MS / 2 });
-    await store.put({ key: "miss-old", mime: null, data: null, fetchedAt: now - 2 * DAY_MS });
-    expect(await store.prune(30)).toBe(2);
+    expect(await store.prune(30)).toBe(1);
     expect(await store.get("fresh")).not.toBeNull();
-    expect(await store.get("miss-new")).not.toBeNull();
     expect(await store.get("old")).toBeNull();
-    expect(await store.get("miss-old")).toBeNull();
   });
 });
 
@@ -107,7 +114,6 @@ describe("favicon store settings", () => {
     const now = Date.now();
     expect(isRowFresh({ key: "k", mime: "image/png", data: PNG_BYTES, fetchedAt: now - 29 * DAY_MS }, 30, now)).toBe(true);
     expect(isRowFresh({ key: "k", mime: "image/png", data: PNG_BYTES, fetchedAt: now - 31 * DAY_MS }, 30, now)).toBe(false);
-    expect(isRowFresh({ key: "k", mime: null, data: null, fetchedAt: now - 2 * DAY_MS }, 30, now)).toBe(false);
   });
 });
 
@@ -148,7 +154,7 @@ describe.skipIf(!PG_URL)("postgres favicon store", () => {
   test("round trips, prunes and never shows up as an indexer type", async () => {
     const now = Date.now();
     await store.put({ key: "pg-png", mime: "image/png", data: PNG_BYTES, fetchedAt: now });
-    await store.put({ key: "pg-miss", mime: null, data: null, fetchedAt: now - 2 * DAY_MS });
+    await store.put({ key: "pg-old", mime: "image/png", data: PNG_BYTES, fetchedAt: now - 31 * DAY_MS });
     expect(Array.from((await store.get("pg-png"))?.data ?? [])).toEqual(Array.from(PNG_BYTES));
     expect((await store.get("pg-png"))?.fetchedAt).toBe(now);
     expect(await store.prune(30)).toBe(1);
