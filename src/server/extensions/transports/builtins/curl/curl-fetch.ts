@@ -15,14 +15,12 @@ function buildCurlArgs(
   const method = options.method ?? "GET";
   const args = [
     "-sS",
-    "-L",
-    "--max-redirs",
-    "5",
+    ...(options.redirect === "manual" ? [] : ["-L", "--max-redirs", "5"]),
     "--compressed",
     "--max-time",
     String(timeoutSec),
     "-w",
-    `\n${DELIMITER}%{http_code}`,
+    `\n${DELIMITER}%{http_code}${DELIMITER}%{redirect_url}`,
   ];
 
   if (proxyUrl?.trim()) {
@@ -100,9 +98,13 @@ export async function fetchViaCurl(
   const parts = output.split(`${DELIMITER}`);
   const bodyText = parts[0].replace(/\n$/, "");
   const statusNum = parseInt(parts[1] ?? "502", 10);
+  const location = parts[2]?.trim();
 
   return new Response(bodyText, {
     status: statusNum >= 100 ? statusNum : 502,
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      ...(location ? { Location: location } : {}),
+    },
   });
 }

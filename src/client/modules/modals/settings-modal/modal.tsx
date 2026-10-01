@@ -43,6 +43,12 @@ export interface ModalBorrower {
 
 let borrower: ModalBorrower | null = null;
 
+export const releaseModal = (): void => {
+  const leaving = borrower;
+  borrower = null;
+  leaving?.onClose?.();
+};
+
 export function borrowModal(next: ModalBorrower): void {
   borrower = next;
   _resetSaveButton();
@@ -272,7 +278,7 @@ const _renderFields = (fields: SettingField[], ext: ExtensionMeta): Child => {
 };
 
 export function openModal(ext: ExtensionMeta): void {
-  borrower = null;
+  releaseModal();
   _resetSaveButton();
   currentExt = ext;
   const docs = _ensureDocsButton();
@@ -372,7 +378,7 @@ export function openCustomModal(options: {
   title: string;
   wide?: boolean;
 }): void {
-  borrower = null;
+  releaseModal();
   currentExt = null;
   if (options.wide) {
     document.getElementById("ext-modal")?.classList.add("ext-modal--wide");

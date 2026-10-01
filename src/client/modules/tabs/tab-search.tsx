@@ -40,6 +40,7 @@ import { getBase } from "../../utils/net/base-url";
 import { buildSearchBody, buildSearchParams } from "../../utils/net/url";
 import { appendSearchAuthParams, searchAuthHeaders } from "../../utils/net/request";
 import { getEngines } from "../../utils/search/engines";
+import { MAX_PAGE } from "../../constants";
 
 const t = window.scopedT("themes/degoog");
 
@@ -87,6 +88,10 @@ export async function performTabSearch(
   state.currentBangQuery = "";
   state.currentType = `tab:${tabId}`;
   state.currentPage = page;
+  state.imagePage = page;
+  state.imageLastPage = MAX_PAGE;
+  state.videoPage = page;
+  state.videoLastPage = MAX_PAGE;
   destroyMediaObserver();
   teardownInfinite();
 

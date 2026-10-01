@@ -7,7 +7,7 @@ import { canSaveStream, downloadIndexerExport } from "../download";
 import { orderTypes } from "../api";
 import { mountProgress } from "../progress/progress";
 import { tr } from "../i18n";
-import { borrowModal } from "../../../modules/modals/settings-modal/modal";
+import { borrowModal, releaseModal } from "../../../modules/modals/settings-modal/modal";
 
 interface ExportEls {
   overlay: HTMLElement;
@@ -64,6 +64,7 @@ export const openExportModal = (stats: IndexerStats | null): void => {
 
   const els = getEls();
   if (!els) return;
+  releaseModal();
 
   els.titleEl.textContent = tr("export-modal-title");
   els.statusEl.textContent = "";

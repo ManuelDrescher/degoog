@@ -54,9 +54,7 @@ function _buildCurlArgs(
   const method = (options.method ?? "GET").toUpperCase();
   const args = [
     "-sS",
-    "-L",
-    "--max-redirs",
-    "5",
+    ...(options.redirect === "manual" ? [] : ["-L", "--max-redirs", "5"]),
     "--max-time",
     "30",
   ];
@@ -133,7 +131,10 @@ async function _run(
   return {
     response: new Response(parsed.bodyText, {
       status: parsed.status,
-      headers: { "Content-Type": "text/html; charset=utf-8" },
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        ...(parsed.location ? { Location: parsed.location } : {}),
+      },
     }),
     cookieJarText: parsed.cookieJarText,
   };

@@ -4,7 +4,7 @@ import { ManageBody } from "./manage-body";
 import { ManageRow } from "./manage-row";
 import { tr } from "../i18n";
 import { deleteRows, fetchRows, MANAGE_PAGE_SIZE } from "../api";
-import { borrowModal } from "../../../modules/modals/settings-modal/modal";
+import { borrowModal, releaseModal } from "../../../modules/modals/settings-modal/modal";
 
 export const openManageModal = (
   stats: IndexerStats | null,
@@ -15,6 +15,7 @@ export const openManageModal = (
   const bodyEl = document.getElementById("ext-modal-body");
   const statusEl = document.getElementById("ext-modal-status");
   if (!overlay || !titleEl || !bodyEl || !statusEl) return;
+  releaseModal();
 
   const modal = document.getElementById("ext-modal");
   modal?.classList.add("ext-modal--wide");

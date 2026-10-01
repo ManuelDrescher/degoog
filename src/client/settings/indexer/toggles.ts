@@ -148,12 +148,15 @@ export const wireToggles = async (
     key: string,
   ): void => {
     let revision = 0;
-    checkEl?.addEventListener("change", async () => {
+    let queue: Promise<void> = Promise.resolve();
+    checkEl?.addEventListener("change", () => {
       const sent = checkEl.checked;
       const current = ++revision;
-      if (await _persistField(key, String(sent))) return;
-      if (current === revision) checkEl.checked = !sent;
-      flashError(window.scopedT("core")("settings-page.server.save-failed-network"));
+      queue = queue.then(async () => {
+        if (await _persistField(key, String(sent))) return;
+        if (current === revision) checkEl.checked = !sent;
+        flashError(window.scopedT("core")("settings-page.server.save-failed-network"));
+      });
     });
   };
 

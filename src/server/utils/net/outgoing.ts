@@ -227,17 +227,74 @@ async function buildTransportContext(
   };
 }
 
+const MAX_REDIRECTS = 5;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+
+const _assertAllowed = (url: string, allowed: string[] | null): void => {
+  if (isUrlAllowedForOutgoing(url, allowed)) return;
+  const parsed = new URL(url);
+  const host = parsed.hostname || parsed.protocol;
+  logger.warn("outgoing", `${ALLOWED_HOSTS_ENV} refused -> ${host}`);
+  throw new Error(`Outgoing host not allowed: ${host}`);
+};
+
+const _nextHopOptions = (
+  status: number,
+  options: TransportFetchOptions,
+  crossOrigin: boolean,
+): TransportFetchOptions => {
+  const method = (options.method ?? "GET").toUpperCase();
+  const toGet =
+    status === 303
+      ? method !== "HEAD"
+      : (status === 301 || status === 302) && method === "POST";
+  const next: TransportFetchOptions = toGet
+    ? { ...options, method: "GET", body: undefined }
+    : options;
+  if (!crossOrigin || !next.headers) return next;
+  const headers = Object.fromEntries(
+    Object.entries(next.headers).filter(
+      ([k]) => !["authorization", "cookie"].includes(k.toLowerCase()),
+    ),
+  );
+  return { ...next, headers };
+};
+
+export const fetchWithinAllowlist = async (
+  transport: Pick<Transport, "fetch">,
+  url: string,
+  options: TransportFetchOptions,
+  context: TransportContext,
+  allowed: string[] | null,
+): Promise<Response> => {
+  let current = url;
+  let hopOptions: TransportFetchOptions = { ...options, redirect: "manual" };
+  for (let hop = 0; ; hop++) {
+    const res = await transport.fetch(current, hopOptions, context);
+    const location = res.headers.get("location");
+    if (!REDIRECT_STATUSES.has(res.status) || !location) return res;
+    if (hop >= MAX_REDIRECTS) throw new Error(`Too many redirects: ${url}`);
+    const next = new URL(location, current).href;
+    _assertAllowed(next, allowed);
+    await res.body?.cancel().catch(() => {});
+    hopOptions = _nextHopOptions(
+      res.status,
+      hopOptions,
+      new URL(next).origin !== new URL(current).origin,
+    );
+    current = next;
+  }
+};
+
 export async function outgoingFetch(
   url: string,
   options: TransportFetchOptions = {},
   transportName: string = "fetch",
   ctx?: OutgoingFetchOptions,
 ): Promise<Response> {
+  const allowed = _allowedHosts();
+  _assertAllowed(url, allowed);
   const host = new URL(url).hostname;
-  if (!isUrlAllowedForOutgoing(url)) {
-    logger.warn("outgoing", `${ALLOWED_HOSTS_ENV} refused -> ${host}`);
-    throw new Error(`Outgoing host not allowed: ${host}`);
-  }
   const { transport, context } = await buildTransportContext(transportName, ctx);
   if (context.proxyUrl) {
     logger.debug(
@@ -247,5 +304,9 @@ export async function outgoingFetch(
   } else {
     logger.debug("outgoing", `${transport.name} -> ${host}`);
   }
-  return transport.fetch(url, options, context);
+  const followsRedirects = (options.redirect ?? "follow") === "follow";
+  if (!allowed || !followsRedirects) {
+    return transport.fetch(url, options, context);
+  }
+  return fetchWithinAllowlist(transport, url, options, context, allowed);
 }

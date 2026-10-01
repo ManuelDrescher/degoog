@@ -6,7 +6,9 @@ const HANG_MS = 5000;
 const server = Bun.serve({
   port: 0,
   fetch: async (req) => {
-    if (new URL(req.url).pathname === "/fast") return new Response("hello");
+    const { pathname } = new URL(req.url);
+    if (pathname === "/fast") return new Response("hello");
+    if (pathname === "/hop") return Response.redirect("/fast", 302);
     await Bun.sleep(HANG_MS);
     return new Response("late");
   },
@@ -42,5 +44,18 @@ describe("curl transport abort", () => {
 
     expect(res.status).toBe(200);
     expect(await res.text()).toBe("hello");
+  });
+
+  test("manual redirect mode returns the 3xx with its Location instead of following", async () => {
+    const res = await fetchViaCurl(`${base}/hop`, { redirect: "manual" });
+    expect(res.status).toBe(302);
+    expect(new URL(res.headers.get("location")!, base).pathname).toBe("/fast");
+  });
+
+  test("default mode still follows redirects", async () => {
+    const res = await fetchViaCurl(`${base}/hop`);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("hello");
+    expect(res.headers.get("location")).toBeNull();
   });
 });

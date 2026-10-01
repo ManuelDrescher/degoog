@@ -7,7 +7,7 @@ import { initFileUpload } from "../../../utils/file-upload/file-upload";
 import { fetchEngineTypes, IMPORT_CUSTOM_TYPE } from "../api";
 import { mountProgress, type ProgressUi } from "../progress/progress";
 import { tr } from "../i18n";
-import { borrowModal, closeModal } from "../../../modules/modals/settings-modal/modal";
+import { borrowModal, closeModal, releaseModal } from "../../../modules/modals/settings-modal/modal";
 
 const CHUNK_BYTES = 8 * 1024 * 1024;
 const PROGRESS_HOST_ID = "indexer-import-progress";
@@ -110,6 +110,7 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
     "ext-modal-save",
   ) as HTMLButtonElement | null;
   if (!overlay || !titleEl || !bodyEl || !statusEl || !saveEl) return;
+  releaseModal();
 
   const engineTypes = await fetchEngineTypes();
 

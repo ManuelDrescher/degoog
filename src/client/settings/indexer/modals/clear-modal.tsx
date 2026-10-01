@@ -4,7 +4,7 @@ import { getBase } from "../../../utils/net/base-url";
 import { jsonHeaders } from "../../../utils/net/request";
 import { getStoredToken } from "../../../utils/settings/settings-token";
 import { tr } from "../i18n";
-import { borrowModal, closeModal } from "../../../modules/modals/settings-modal/modal";
+import { borrowModal, closeModal, releaseModal } from "../../../modules/modals/settings-modal/modal";
 
 export const openClearModal = (onCleared: () => void): void => {
   const overlay = document.getElementById("ext-modal-overlay");
@@ -15,6 +15,7 @@ export const openClearModal = (onCleared: () => void): void => {
     "ext-modal-save",
   ) as HTMLButtonElement | null;
   if (!overlay || !titleEl || !bodyEl || !statusEl || !saveEl) return;
+  releaseModal();
 
   titleEl.textContent = tr("clear-modal-title");
   render(<ClearBody />, bodyEl);
