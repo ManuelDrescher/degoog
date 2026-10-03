@@ -94,6 +94,7 @@ export interface PluginContext {
   template: string;
   readFile: (filename: string) => Promise<string>;
   signProxyUrl: (url: string) => string;
+  signFaviconUrl: (url: string) => string;
   fetch?: (url: string, init?: RequestInit) => Promise<Response>;
   /** @deprecated Use `useCache` (async, namespaced, Valkey-backed when enabled). */
   createCache: CreateCache;
@@ -185,6 +186,7 @@ export interface SlotPluginContext {
   results?: ScoredResult[];
   fetch?: (url: string, init?: RequestInit) => Promise<Response>;
   signProxyUrl?: (url: string) => string;
+  signFaviconUrl?: (url: string) => string;
   /** @deprecated Use `useCache` (async, namespaced, Valkey-backed when enabled). */
   createCache: CreateCache;
   useCache: UseCache;

@@ -87,7 +87,7 @@ import type { PluginContext } from "../../types/extension";
 import type { SettingField } from "../../../shared/setting-field";
 import { createCache, useCache } from "../cache/cache";
 import { outgoingFetch } from "../net/outgoing";
-import { buildSignedProxyUrl } from "../net/proxy-sign";
+import { buildSignedProxyUrl, signFaviconUrl } from "../net/proxy-sign";
 import {
   getSettings,
   mergeDefaults,
@@ -156,6 +156,7 @@ export async function initPlugin(
       readFile: (filename: string) =>
         readFile(join(entryPath, filename), "utf-8"),
       signProxyUrl: buildSignedProxyUrl,
+      signFaviconUrl,
       fetch: outgoingFetch as PluginContext["fetch"],
       createCache,
       useCache,

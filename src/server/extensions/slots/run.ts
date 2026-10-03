@@ -13,7 +13,7 @@ import { createCache, useCache } from "../../utils/cache/cache";
 import { logger } from "../../utils/logger";
 import { outgoingFetch } from "../../utils/net/outgoing";
 import { asString, getSettings, isDisabled } from "../../utils/settings/plugin-settings";
-import { buildSignedProxyUrl } from "../../utils/net/proxy-sign";
+import { buildSignedProxyUrl, signFaviconUrl } from "../../utils/net/proxy-sign";
 import { applyFilter, syncVortexSignal } from "../../utils/extension-support/translation-circuit";
 import { SLOT_PLUGIN_TIMEOUT_MS, withTimeout } from "../../utils/net/with-timeout";
 import { slotShowsOn } from "../../utils/extension-support/slot-types";
@@ -29,6 +29,7 @@ export const slotContext = (
   results,
   fetch: outgoingFetch as SlotPluginContext["fetch"],
   signProxyUrl: buildSignedProxyUrl,
+  signFaviconUrl,
   createCache,
   useCache,
   locale,
