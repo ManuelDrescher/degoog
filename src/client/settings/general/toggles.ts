@@ -12,6 +12,7 @@ import {
 import type { ToggleOpts } from "../../types/settings-section";
 
 export const INSTANCE_DEFAULT_VALUE = "";
+export const FOLLOW_INSTANCE_ORIGIN = "follow-instance";
 
 export const SEARCH_OPTION_TOGGLES: ToggleOpts[] = [
   {

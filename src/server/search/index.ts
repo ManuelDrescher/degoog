@@ -110,6 +110,11 @@ const _tellObservers = (
   });
 };
 
+const _abandonedRun = (name: string, id: string | undefined, elapsed: number): CachedEngineRun => {
+  logger.debug("engine", `${name} abandoned after ${elapsed}ms, caller went away`);
+  return { results: [], timing: { name, id, time: elapsed, resultCount: 0 } };
+};
+
 export const searchSingleEngine = async (
   engineName: string,
   query: string,
@@ -192,6 +197,7 @@ export const searchSingleEngine = async (
       () => ac.abort(),
     );
     const elapsed = Math.round(performance.now() - t0);
+    if (signal?.aborted) return _abandonedRun(engine.name, engineSettingsId, elapsed);
     const run: CachedEngineRun = {
       results,
       timing: {
@@ -208,13 +214,7 @@ export const searchSingleEngine = async (
     return run;
   } catch (err) {
     const elapsed = Math.round(performance.now() - t0);
-    if (signal?.aborted) {
-      logger.debug("engine", `${engine.name} abandoned after ${elapsed}ms, caller went away`);
-      return {
-        results: [],
-        timing: { name: engine.name, id: engineSettingsId, time: elapsed, resultCount: 0 },
-      };
-    }
+    if (signal?.aborted) return _abandonedRun(engine.name, engineSettingsId, elapsed);
     const classified = _classifyReject(err);
     logger.warn("engine", `${engine.name} failed after ${elapsed}ms status=${classified.status}`, err);
     const run: CachedEngineRun = {

@@ -9,6 +9,8 @@ import {
   type MountedModal,
 } from "../../../../shared/ui/components/overlay/shell";
 
+const t = window.scopedT("core");
+
 const MODAL_ID = "ext-docs";
 
 let shell: MountedModal | null = null;
@@ -44,7 +46,7 @@ export async function openExtensionDocs(options: {
   _ensureMounted();
   if (shell) {
     shell.title.textContent = options.title;
-    shell.body.textContent = "Loading…";
+    shell.body.textContent = t("settings-page.extensions.docs-loading");
     shell.open();
   }
 

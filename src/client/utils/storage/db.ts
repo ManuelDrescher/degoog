@@ -32,25 +32,58 @@ const _openDB = async (): Promise<IDBDatabase> => {
   return db;
 };
 
+let _connection: Promise<IDBDatabase> | null = null;
+
+const _sharedDB = (): Promise<IDBDatabase> => {
+  _connection ??= _openDB().then(
+    (db) => {
+      const forget = (): void => {
+        db.close();
+        _connection = null;
+      };
+      db.onversionchange = forget;
+      db.onclose = forget;
+      return db;
+    },
+    (err: unknown) => {
+      _connection = null;
+      throw err;
+    },
+  );
+  return _connection;
+};
+
+const _txOnce = async <T>(
+  mode: IDBTransactionMode,
+  exec: (store: IDBObjectStore) => IDBRequest<T>,
+): Promise<T | null> => {
+  const db = await _sharedDB();
+  return new Promise<T | null>((resolve, reject) => {
+    try {
+      const tx = db.transaction(STORE_NAME, mode);
+      const store = tx.objectStore(STORE_NAME);
+      const req = exec(store);
+      req.onsuccess = () => resolve((req.result as T) ?? null);
+      req.onerror = () => reject(req.error);
+    } catch (e) {
+      _connection = null;
+      reject(e instanceof Error ? e : new Error(String(e)));
+    }
+  });
+};
+
 const _runTx = async <T>(
   mode: IDBTransactionMode,
   exec: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T | null> => {
   try {
-    const db = await _openDB();
-    return await new Promise<T | null>((resolve, reject) => {
-      try {
-        const tx = db.transaction(STORE_NAME, mode);
-        const store = tx.objectStore(STORE_NAME);
-        const req = exec(store);
-        req.onsuccess = () => resolve((req.result as T) ?? null);
-        req.onerror = () => reject(req.error);
-      } catch (e) {
-        reject(e instanceof Error ? e : new Error(String(e)));
-      }
-    });
+    return await _txOnce(mode, exec);
   } catch {
-    return null;
+    try {
+      return await _txOnce(mode, exec);
+    } catch {
+      return null;
+    }
   }
 };
 

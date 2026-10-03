@@ -77,7 +77,7 @@ function _ensureDocsButton(): HTMLButtonElement | null {
   docsBtn.type = "button";
   docsBtn.className =
     "btn btn--secondary degoog-btn degoog-btn--secondary ext-docs-btn";
-  docsBtn.textContent = "Docs";
+  docsBtn.textContent = t("settings-page.extensions.docs-button");
   docsBtn.style.display = "none";
   footerEl.insertBefore(docsBtn, footerEl.firstChild);
   docsBtn.addEventListener("click", () => {

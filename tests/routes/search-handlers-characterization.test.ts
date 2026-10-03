@@ -492,4 +492,34 @@ describe("handleRetry", () => {
     expect(indexCalls).toHaveLength(1);
     expect(indexCalls[0].urls).toEqual(["https://alpha.test/1"]);
   });
+
+  test("retry indexes the same URLs as a normal search when the indexer also found one", async () => {
+    const query = uniqueQuery("retryparity");
+    const recall: EngineEntry = {
+      id: "degoog-engine",
+      instance: {
+        name: DEGOOG_ENGINE_NAME,
+        executeSearch: async () => [
+          { ...makeResult("Alpha", 1), source: DEGOOG_ENGINE_NAME },
+          makeResult(DEGOOG_ENGINE_NAME, 9),
+        ],
+      },
+    };
+    harness({
+      engines: [makeEngine("Alpha", 2), recall],
+      settings: { degoogIndexerEnabled: true },
+    });
+    const { handleSearch, handleRetry } = await handlers();
+
+    indexCalls = [];
+    await handleSearch(baseParams(query));
+    const searched = indexCalls.map((c) => c.urls);
+
+    indexCalls = [];
+    await handleRetry({ ...baseParams(query), engineName: "alpha-engine" });
+    const retried = indexCalls.map((c) => c.urls);
+
+    expect(searched).toEqual([["https://alpha.test/1", "https://alpha.test/2"]]);
+    expect(retried).toEqual(searched);
+  });
 });

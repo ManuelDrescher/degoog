@@ -7,6 +7,8 @@ import {
   type StoreStreamPhase,
 } from "../../../../shared/store-stream";
 
+const t = window.scopedT("core");
+
 type Phase = StoreStreamPhase;
 
 export interface ItemKey {
@@ -79,10 +81,10 @@ function applyPhase(
       if (label) label.textContent = `${verb}…`;
     } else if (phase === "ok") {
       el.classList.add("is-ok");
-      if (label) label.textContent = "Done";
+      if (label) label.textContent = t("settings-page.store.progress-done");
     } else {
       el.classList.add("is-failed");
-      if (label) label.textContent = error || "Failed";
+      if (label) label.textContent = error || t("settings-page.store.progress-failed");
       scheduleFailedClear(el, overlay);
     }
   }

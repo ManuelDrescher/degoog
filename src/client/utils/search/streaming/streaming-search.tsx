@@ -182,7 +182,9 @@ export async function performStreamingSearch(
     }
 
     if (resultsMeta) {
-      resultsMeta.textContent = `About ${currentResults.length} results (streaming...)`;
+      resultsMeta.textContent = t("search-templates.status.streaming", {
+        count: String(currentResults.length),
+      });
     }
 
     if (isImageType) {
@@ -237,7 +239,10 @@ export async function performStreamingSearch(
     state.lastPage = declaredPages(data.totalPages);
 
     if (resultsMeta) {
-      resultsMeta.textContent = `About ${currentResults.length} results (${(data.totalTime / 1000).toFixed(2)} seconds)`;
+      resultsMeta.textContent = t("search-templates.status.done", {
+        count: String(currentResults.length),
+        time: (data.totalTime / 1000).toFixed(2),
+      });
     }
 
     if (isImageType) {

@@ -125,6 +125,22 @@ describe("favicon defaults migration 93026", () => {
     expect(readSettings().__schemaVersion).toBe(93026);
   });
 
+  test("a retry after a partial failure never reinstalls a provider the admin removed", async () => {
+    const store = fakeStore();
+    store.failing.add(DUCK);
+    await runFaviconDefaultsMigration093026(store.deps);
+    expect(store.installed.has(GOOGLE)).toBe(true);
+
+    store.installed.delete(GOOGLE);
+    store.failing.clear();
+    clearPluginSettingsCache();
+    await runFaviconDefaultsMigration093026(store.deps);
+
+    expect(store.installs).toEqual([GOOGLE, DUCK, DUCK]);
+    expect(store.installed.has(GOOGLE)).toBe(false);
+    expect(readSettings().__schemaVersion).toBe(93026);
+  });
+
   test("a failing official repo bootstrap never throws and does not bump", async () => {
     const store = fakeStore();
     store.deps.ensureOfficialRepo = async () => {

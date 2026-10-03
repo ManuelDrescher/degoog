@@ -1,4 +1,5 @@
 import type { Child } from "../../../shared/ui/tribute/types";
+import { linkHref } from "../../../shared/utils/url";
 
 export interface MediaPreviewInfoProps {
   title: string;
@@ -21,7 +22,7 @@ export const MediaPreviewInfo = ({
     <h3 class="media-preview-title">{title}</h3>
     <a
       class="media-preview-link"
-      href={url}
+      href={linkHref(url)}
       target={newTab ? "_blank" : undefined}
       rel={newTab ? "noopener" : undefined}
     >

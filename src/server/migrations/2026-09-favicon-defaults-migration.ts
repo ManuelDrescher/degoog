@@ -7,8 +7,10 @@ import { logger } from "../utils/logger";
 import { pluginSettingsFile } from "../utils/paths";
 import {
   didSettingsLoadFail,
+  getMetaList,
   getSchemaVersion,
   getSettings,
+  setMetaList,
   setSchemaVersion,
   setSettings,
 } from "../utils/settings/plugin-settings";
@@ -22,6 +24,7 @@ import { getStoreDir, normalizeRepoUrl } from "../extensions/store/persistence";
 const MIGRATION_VERSION = 93026 as const;
 const CANONICAL_IDS_VERSION = 52028 as const;
 const LOG_TAG = "migrations";
+const DONE_KEY = "__faviconDefaultsDone";
 
 export const FAVICON_DEFAULT_ITEMS = ["favicon/google", "favicon/duckduckgo"] as const;
 
@@ -100,11 +103,16 @@ async function _applyDefaultPriorities(): Promise<void> {
 
 const _installDefaults = async (deps: FaviconMigrationDeps): Promise<boolean> => {
   let ok = true;
+  const done = await getMetaList(DONE_KEY);
   for (const itemPath of FAVICON_DEFAULT_ITEMS) {
+    if (done.includes(itemPath)) continue;
     try {
-      if (await deps.isInstalled(itemPath)) continue;
-      await deps.install(itemPath);
-      logger.info(LOG_TAG, `installed default favicon provider ${itemPath}`);
+      if (!(await deps.isInstalled(itemPath))) {
+        await deps.install(itemPath);
+        logger.info(LOG_TAG, `installed default favicon provider ${itemPath}`);
+      }
+      done.push(itemPath);
+      await setMetaList(DONE_KEY, done);
     } catch (err) {
       ok = false;
       logger.warn(LOG_TAG, `favicon default install failed for ${itemPath}`, err);

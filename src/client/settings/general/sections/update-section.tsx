@@ -16,11 +16,11 @@ export const UpdateSection = (): JSX.Element => (
     <p class="settings-desc">
       <b>{pkg.version}</b>
       {t("settings-page.update-check.desc")}
-      <b id="settings-update-check-newestversion">Unknown</b>
+      <b id="settings-update-check-newestversion">{t("settings-page.update-check.unknown")}</b>
     </p>
     <p class="settings-desc">
       {`${t("settings-page.update-check.last-checked")}:`}
-      <b id="settings-update-check-lastchecked">Never</b>
+      <b id="settings-update-check-lastchecked">{t("settings-page.update-check.never")}</b>
     </p>
     <Button variant="secondary" id="settings-update-check-check">
       {t("settings-page.update-check.check-now-button")}

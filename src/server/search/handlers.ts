@@ -7,7 +7,8 @@ import { resolveSearchOverrides } from "./overrides";
 import { recordIndexBasis } from "./indexing";
 import { getInstanceSettings } from "../utils/settings/server-settings";
 import { asBoolean } from "../utils/settings/plugin-settings";
-import { isRecalled, tagIndexRelation } from "../indexer/store/record";
+import { tagIndexRelation } from "../indexer/store/record";
+import { DEGOOG_ENGINE_NAME } from "../../shared/search-types";
 import { selectActiveEngines } from "./engine-selection";
 import { agreedPageTotal } from "./page-counter";
 import {
@@ -145,15 +146,15 @@ export async function handleRetry(
   );
   const knownRuns = [...(await readActiveRuns(others, scope)), ...liveRuns];
 
-  const merged = scoreResults(
-    await rewriteEngineRuns([
-      ...knownRuns.map(({ engine, run }) => ({
-        results: run.results,
-        multiplier: engine.score,
-      })),
-      { results: newResults, multiplier: retried?.score ?? 1 },
-    ]),
-  );
+  const runs = await rewriteEngineRuns([
+    ...knownRuns.map(({ engine, run }) => ({
+      results: run.results,
+      multiplier: engine.score,
+      name: engine.instance.name,
+    })),
+    { results: newResults, multiplier: retried?.score ?? 1, name: timing.name },
+  ]);
+  const merged = scoreResults(runs);
   const engineTimings = [...knownRuns.map(({ run }) => run.timing), timing];
 
   const settings = await getInstanceSettings();
@@ -162,7 +163,9 @@ export async function handleRetry(
     asBoolean(settings.degoogIndexerEnabled),
     query,
     type,
-    displayMerged.filter((r) => !isRecalled(r)),
+    await applyMergedDomainRules(
+      scoreResults(runs.filter((r) => r.name !== DEGOOG_ENGINE_NAME)),
+    ),
     { lang: resolvedLang, timeFilter: resolvedTime, dateFrom, dateTo, imageFilter },
   );
 

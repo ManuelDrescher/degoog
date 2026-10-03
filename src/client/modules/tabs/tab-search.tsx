@@ -106,7 +106,7 @@ export async function performTabSearch(
   ) as HTMLInputElement | null;
   if (resultsInput) resultsInput.value = query;
   const resultsMeta = document.getElementById("results-meta");
-  if (resultsMeta) resultsMeta.textContent = "Searching...";
+  if (resultsMeta) resultsMeta.textContent = t("search-templates.status.searching");
   const resultsList = document.getElementById("results-list");
   if (resultsList) {
     render(

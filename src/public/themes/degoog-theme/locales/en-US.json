@@ -143,6 +143,18 @@
       "next": "Next",
       "page": "Page {page}",
       "end": "No more results."
+    },
+    "status": {
+      "streaming": "About {count} results (streaming...)",
+      "done": "About {count} results ({time} seconds)",
+      "page": "About {count} results - Page {page}",
+      "searching": "Searching...",
+      "running-command": "Running command..."
+    },
+    "media-preview": {
+      "visit": "Visit page",
+      "watch": "Watch video",
+      "download": "Download"
     }
   },
   "nojs": {

@@ -335,7 +335,7 @@ async function _performBangCommand(
     resultsInput.defaultValue = query;
   }
   const resultsMeta = document.getElementById("results-meta");
-  if (resultsMeta) resultsMeta.textContent = "Running command...";
+  if (resultsMeta) resultsMeta.textContent = t("search-templates.status.running-command");
   const glanceEl = document.getElementById("at-a-glance");
   if (glanceEl) clear(glanceEl);
   const resultsList = document.getElementById("results-list");
@@ -424,7 +424,10 @@ async function _performBangCommand(
         if (sidebarMedia) clear(sidebarMedia);
       }
       if (resultsMeta)
-        resultsMeta.textContent = `About ${data.results?.length ?? 0} results (${((data.totalTime ?? 0) / 1000).toFixed(2)} seconds)`;
+        resultsMeta.textContent = t("search-templates.status.done", {
+          count: String(data.results?.length ?? 0),
+          time: ((data.totalTime ?? 0) / 1000).toFixed(2),
+        });
       if (isMedia) renderImgEngines(data.engineTimings ?? []);
       state.currentPage = page;
       const infinite = (await fetchStreamingConfig()).infiniteScroll && !isMedia;

@@ -35,7 +35,9 @@ export const uuidCommand: BangCommand = {
     const uuids = Array.from({ length: count }, () => crypto.randomUUID());
     return {
       title: this.t!("uuid.title"),
-      html: renderUuidList(uuids, context?.nojs ? undefined : this.t!("uuid.copy")),
+      html: context?.nojs
+        ? renderUuidList(uuids)
+        : renderUuidList(uuids, this.t!("uuid.copy"), this.t!("uuid.copied")),
     };
   },
 };

@@ -83,7 +83,9 @@
       "desc": " is installed. Newest available is ",
       "check-now-button": "Check now",
       "open-link-button": "See release",
-      "last-checked": "Last checked"
+      "last-checked": "Last checked",
+      "unknown": "Unknown",
+      "never": "Never"
     },
     "server": {
       "config": {
@@ -266,7 +268,7 @@
       "rate-limit-suggest-defaults": "Defaults: 60 requests per 20s, 120 per min per IP.",
       "ac-debounce": "Autocomplete delay (ms)",
       "request-body-max": "Max request body (KB)",
-      "request-body-max-desc": "Caps the size of public search, autocomplete and panel requests. Leave empty for no extra limit.",
+      "request-body-max-desc": "Caps the size of public search, autocomplete and panel requests. Leave empty to use the instance default of 3 MB, or whatever DEGOOG_BODY_SIZE is set to.",
       "domain-management-heading": "Domain management",
       "domain-management-desc": "Block, replace, or score domains on every result.",
       "domain-block-desc": "Hide results from these domains. One per line. Subdomains come along for free. Wrap a line in /slashes/ for regex. You can paste a uBlock Origin filter list. Comments and rules that do not name a domain are ignored.",
@@ -470,7 +472,12 @@
       "compat-note-native": "Once installed they behave like any other engine. Score, safe search, bangs, proxies and transports all apply.",
       "compat-note-upstream": "Upstream wrote the engine, not Degoog. It can break when the site it scrapes changes.",
       "compat-note-updates": "Files download on demand. Update pulls the latest code from upstream.",
-      "compat-note-needs": "Some engines want an API key, or extra software on the server. The list says which."
+      "compat-note-needs": "Some engines want an API key, or extra software on the server. The list says which.",
+      "docs-button": "Docs",
+      "docs-loading": "Loading…",
+      "docs-empty": "(Empty README)",
+      "docs-error": "Failed to load docs.",
+      "plugins-search-placeholder": "Search plugins…"
     },
     "errors": {
       "load-extensions": "Failed to load extensions.",
@@ -639,7 +646,10 @@
       "uninstall-message": "Uninstall this {type}?",
       "remove-repo-title": "Remove repository?",
       "remove-repo-message": "Remove this repository? You must uninstall any installed items first.",
-      "failed-load-store": "Failed to load store."
+      "failed-load-store": "Failed to load store.",
+      "progress-done": "Done",
+      "progress-failed": "Failed",
+      "refresh-hint": "Refresh to get latest"
     },
     "wizard": {
       "next": "Next",

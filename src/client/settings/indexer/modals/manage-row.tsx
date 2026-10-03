@@ -1,5 +1,6 @@
 import { tr } from "../i18n";
 import type { IndexerHitRow } from "../../../../shared/indexer";
+import { linkHref } from "../../../../shared/utils/url";
 
 export const ManageRow = ({ row }: { row: IndexerHitRow }): JSX.Element => (
   <tr>
@@ -20,7 +21,7 @@ export const ManageRow = ({ row }: { row: IndexerHitRow }): JSX.Element => (
     <td>{row.query_norm}</td>
     <td>{row.engine_type}</td>
     <td>
-      <a href={row.url} target="_blank" rel="noopener noreferrer">
+      <a href={linkHref(row.url)} target="_blank" rel="noopener noreferrer">
         {row.title || row.url}
       </a>
     </td>

@@ -6,6 +6,8 @@ import { jsonHeaders } from "../../utils/net/request";
 import { getStoredToken } from "../../utils/settings/settings-token";
 import { initDragOrder } from "../../utils/dom/drag-order";
 
+const t = window.scopedT("core");
+
 const _priority = (plugin: ExtensionMeta): number => {
   const v = plugin.settings["priority"];
   const n = parseInt(typeof v === "string" ? v : "0", 10);
@@ -66,7 +68,7 @@ export function initPluginsTab(allExtensions: AllExtensions): void {
         <input
           type="text"
           class="degoog-search-bar degoog-search-bar--square-advanced plugins-search-input"
-          placeholder="Search plugins…"
+          placeholder={t("settings-page.extensions.plugins-search-placeholder")}
           value=""
           onInput={(event) => {
             const cardsHost = container.querySelector<HTMLElement>(

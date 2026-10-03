@@ -123,15 +123,28 @@ export const getSchemaVersion = async (): Promise<number> => {
   return typeof version === "number" ? version : 0;
 };
 
-export function setSchemaVersion(version: number): Promise<void> {
+function _setMeta(key: `__${string}`, value: unknown): Promise<void> {
   return writeLock(async () => {
     const store = await load();
-    (store as Record<string, unknown>)[SCHEMA_VERSION_KEY] = version;
+    (store as Record<string, unknown>)[key] = value;
     await persist(store);
     cache = store;
     loadFailed = false;
-    await publishInvalidate(INVALIDATE_SCOPE.PLUGIN_SETTINGS, SCHEMA_VERSION_KEY);
+    await publishInvalidate(INVALIDATE_SCOPE.PLUGIN_SETTINGS, key);
   });
+}
+
+export function setSchemaVersion(version: number): Promise<void> {
+  return _setMeta(SCHEMA_VERSION_KEY, version);
+}
+
+export const getMetaList = async (key: `__${string}`): Promise<string[]> => {
+  const value = ((await load()) as Record<string, unknown>)[key];
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+};
+
+export function setMetaList(key: `__${string}`, values: string[]): Promise<void> {
+  return _setMeta(key, values);
 }
 
 export const getAllSettings = async (): Promise<PluginSettingsStore> => {

@@ -30,6 +30,7 @@ import { logger } from "../../utils/logger";
 import { settingsAuth } from "../_guards";
 import { buildSignedProxyUrl, proxyMarkdownImages } from "../../utils/net/proxy-sign";
 import type { RepoInfo } from "../../types/store";
+import { CSP_HEADER, SVG_CSP } from "../../utils/security/content-policy";
 
 const router = new Hono();
 
@@ -129,6 +130,7 @@ router.get("/api/store/repos/:repoSlug/asset", settingsAuth(), async (c) => {
           : "image/jpeg";
   return c.body(await file.arrayBuffer(), 200, {
     "Content-Type": contentType,
+    ...(ext === ".svg" ? { [CSP_HEADER]: SVG_CSP } : {}),
   });
 });
 

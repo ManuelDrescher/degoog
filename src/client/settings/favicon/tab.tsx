@@ -28,10 +28,6 @@ const _priority = (provider: ExtensionMeta): number => {
   return isNaN(n) ? UNRANKED_PRIORITY : n;
 };
 
-const _switchTab = (tab: string): void => {
-  document.querySelector<HTMLButtonElement>(`[data-tab="${tab}"]`)?.click();
-};
-
 const _savePriorities = async (list: HTMLElement): Promise<void> => {
   const cards = Array.from(list.querySelectorAll<HTMLElement>(".ext-card"));
   const total = cards.length;
@@ -162,13 +158,6 @@ export function initFaviconTab(allExtensions: AllExtensions): void {
 
   _wireShapePicker(container);
   void _mountDegoogCard(container);
-
-  container
-    .querySelector<HTMLButtonElement>("[data-switch-tab]")
-    ?.addEventListener("click", (e) => {
-      const tab = (e.currentTarget as HTMLButtonElement).dataset.switchTab;
-      if (tab) _switchTab(tab);
-    });
 
   const cardsEl = container.querySelector<HTMLElement>(`.${CARDS_CLASS}`);
   if (!cardsEl) return;

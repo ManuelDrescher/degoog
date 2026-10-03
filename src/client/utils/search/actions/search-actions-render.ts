@@ -39,6 +39,8 @@ import { imgFilterRecord } from "../../net/url";
 import { getBase } from "../../net/base-url";
 import { fetchSidebarSuggestions } from "../sidebar/sidebar-suggestions";
 
+const t = window.scopedT("themes/degoog");
+
 type Navigate = (query: string) => void;
 
 let sidebarSuggestionsController: AbortController | null = null;
@@ -91,7 +93,7 @@ export const prepareResultsUi = (query: string, resolvedType: string): void => {
   }
   syncMediaPreviewPanel(isImageType);
   const resultsMeta = document.getElementById("results-meta");
-  if (resultsMeta) resultsMeta.textContent = "Searching...";
+  if (resultsMeta) resultsMeta.textContent = t("search-templates.status.searching");
   clearSlotPanels();
   if (isImageType) {
     abortGlancePanels();

@@ -282,16 +282,6 @@ export async function initEnginesTab(
     container,
   );
 
-  container
-    .querySelector<HTMLButtonElement>("[data-switch-tab]")
-    ?.addEventListener("click", (e) => {
-      const tab = (e.currentTarget as HTMLButtonElement).dataset.switchTab;
-      if (tab)
-        document
-          .querySelector<HTMLButtonElement>(`[data-tab="${tab}"]`)
-          ?.click();
-    });
-
   if (_orderSavedHandler) {
     window.removeEventListener(TAB_ORDER_SAVED, _orderSavedHandler);
   }

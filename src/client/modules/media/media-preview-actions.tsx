@@ -1,4 +1,7 @@
 import { buttonClass } from "../../../shared/ui/components/primitives/button";
+import { linkHref } from "../../../shared/utils/url";
+
+const t = window.scopedT("themes/degoog");
 
 export const MediaPreviewActions = ({
   url,
@@ -16,11 +19,11 @@ export const MediaPreviewActions = ({
   <>
     <a
       class={buttonClass("primary", "media-preview-visit")}
-      href={url}
+      href={linkHref(url)}
       target={newTab ? "_blank" : undefined}
       rel={newTab ? "noopener" : undefined}
     >
-      {isVideo ? "Watch video" : "Visit page"}
+      {isVideo ? t("search-templates.media-preview.watch") : t("search-templates.media-preview.visit")}
     </a>
     {!isVideo && downloadUrl ? (
       <a
@@ -28,7 +31,7 @@ export const MediaPreviewActions = ({
         href={downloadUrl}
         download={downloadFilename}
       >
-        Download
+        {t("search-templates.media-preview.download")}
       </a>
     ) : null}
   </>

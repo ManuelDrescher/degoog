@@ -14,10 +14,17 @@ export const settingsAuth = (route?: string): MiddlewareHandler =>
     return next();
   };
 
+export const DEFAULT_BODY_SIZE_KB = 3072;
+
+export const envBodySizeKb = (raw: string | undefined = process.env.DEGOOG_BODY_SIZE): number => {
+  const kb = parseInt(raw?.trim() ?? "", 10);
+  return Number.isFinite(kb) && kb >= 0 ? kb : DEFAULT_BODY_SIZE_KB;
+};
+
 const _requestBodyMaxBytes = async (): Promise<number> => {
   const settings = await getInstanceSettings();
   const kb = parseInt(asString(settings.requestBodyMaxKb), 10);
-  return Number.isFinite(kb) && kb > 0 ? kb * 1024 : 0;
+  return (Number.isFinite(kb) && kb > 0 ? kb : envBodySizeKb()) * 1024;
 };
 
 export const publicBodyLimit: MiddlewareHandler = async (c, next) => {

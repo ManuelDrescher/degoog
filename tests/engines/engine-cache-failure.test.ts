@@ -18,9 +18,15 @@ const HIT: SearchResult = {
   source: ENGINE_NAME,
 };
 
+let swallowAbort: AbortController | null = null;
+
 const engine: SearchEngine = {
   name: ENGINE_NAME,
-  executeSearch: async () => [HIT],
+  executeSearch: async () => {
+    if (!swallowAbort) return [HIT];
+    swallowAbort.abort();
+    return [];
+  },
 };
 
 let keyFails = false;
@@ -77,5 +83,22 @@ describe("searchSingleEngine cache isolation", () => {
     expect(run.results).toEqual([HIT]);
     expect(run.timing.status).toBe(THREAT_LEVEL.OK);
     expect(saved).toBe(1);
+  });
+
+  test("an engine that swallows the caller's abort and returns nothing is not cached", async () => {
+    keyFails = false;
+    readFails = false;
+    saved = 0;
+    swallowAbort = new AbortController();
+    try {
+      const run = await searchSingleEngine(
+        "flaky", "hello", 1, "any", undefined, undefined, undefined, undefined, swallowAbort.signal,
+      );
+      expect(run.results).toEqual([]);
+      expect(run.timing.status).toBeUndefined();
+      expect(saved).toBe(0);
+    } finally {
+      swallowAbort = null;
+    }
   });
 });

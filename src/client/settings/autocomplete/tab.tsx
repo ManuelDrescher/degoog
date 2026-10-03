@@ -6,10 +6,6 @@ import type { AllExtensions } from "../../types/extension";
 
 const t = window.scopedT("core");
 
-const _switchTab = (tab: string): void => {
-  document.querySelector<HTMLButtonElement>(`[data-tab="${tab}"]`)?.click();
-};
-
 export function initAutocompleteTab(allExtensions: AllExtensions): void {
   const container = document.getElementById("autocomplete-content");
   if (!container) return;
@@ -28,11 +24,4 @@ export function initAutocompleteTab(allExtensions: AllExtensions): void {
     ),
     container,
   );
-
-  container
-    .querySelector<HTMLButtonElement>("[data-switch-tab]")
-    ?.addEventListener("click", (e) => {
-      const tab = (e.currentTarget as HTMLButtonElement).dataset.switchTab;
-      if (tab) _switchTab(tab);
-    });
 }

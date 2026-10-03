@@ -10,6 +10,18 @@ const MAX_REQUESTS_MAX = 1000;
 
 type RateLimitOptions = Record<string, string | undefined>;
 
+export const rateLimitOptionsFrom = (
+  settings: Record<string, string | string[] | boolean | undefined>,
+): RateLimitOptions => {
+  const opts: RateLimitOptions = {};
+  for (const [k, v] of Object.entries(settings)) {
+    if (typeof v === "boolean") opts[k] = v ? "true" : "false";
+    else if (Array.isArray(v)) opts[k] = v[0] ?? "";
+    else opts[k] = v ?? "";
+  }
+  return opts;
+};
+
 const _parseNum = (
   value: string | undefined,
   min: number,

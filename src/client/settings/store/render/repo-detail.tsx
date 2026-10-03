@@ -35,7 +35,7 @@ export const RepoDetail = ({ repo, statusByUrl }: RepoDetailProps): JSX.Element 
           {formatRelativeTime(repo.lastFetched)}
           {repo.error ? <span class="store-repo-error">{repo.error}</span> : null}
           {behind > 0 ? (
-            <span class="store-repo-updates-note" title="Refresh to get latest">
+            <span class="store-repo-updates-note" title={t("settings-page.store.refresh-hint")}>
               {behind === 1
                 ? t("settings-page.store.updates-one")
                 : t("settings-page.store.updates-many", { count: String(behind) })}

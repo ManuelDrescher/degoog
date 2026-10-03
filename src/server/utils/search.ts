@@ -2,7 +2,7 @@ import { Context } from "hono";
 import { getDefaultEngineConfig } from "../extensions/engines/catalog";
 import { listEngineIds } from "../extensions/engines/loader";
 import type { EngineConfig } from "../types/search";
-import { checkRateLimit } from "./security/rate-limit";
+import { checkRateLimit, rateLimitOptionsFrom } from "./security/rate-limit";
 import { getClientIp } from "./net/request";
 import { getInstanceSettings } from "./settings/server-settings";
 
@@ -110,10 +110,7 @@ export const resolveLanguages = (
 
 export const _applyRateLimit = async (c: Context): Promise<Response | null> => {
   const settings = await getInstanceSettings();
-  const opts: Record<string, string> = {};
-  for (const [k, v] of Object.entries(settings)) {
-    opts[k] = typeof v === "string" ? v : Array.isArray(v) ? (v[0] ?? "") : "";
-  }
+  const opts = rateLimitOptionsFrom(settings);
   if (opts.rateLimitEnabled !== "true") return null;
   const ip = getClientIp(c) ?? "unknown";
   const result = checkRateLimit(ip, opts);

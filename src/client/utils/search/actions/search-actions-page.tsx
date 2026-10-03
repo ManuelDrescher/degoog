@@ -67,7 +67,10 @@ export async function goToPage(pageNum: number): Promise<void> {
         `${getBase()}/search?${urlParams.toString()}`,
       );
     }
-    const metaText = `About ${state.currentResults.length} results - Page ${state.currentPage}`;
+    const metaText = t("search-templates.status.page", {
+      count: String(state.currentResults.length),
+      page: String(state.currentPage),
+    });
     setResultsMeta(metaText);
     abortGlancePanels();
     clearSlotPanels();

@@ -4,9 +4,9 @@ import { GeneralContent } from "./general-content";
 import { WIZARD_SECTION_ID } from "./sections/wizard-section";
 import { fetchWizardDisabled } from "../../modules/wizard/server";
 import { PublicSettingsTop } from "./public-settings-top";
-import { INSTANCE_DEFAULT_VALUE, PREF_TOGGLES } from "./toggles";
+import { FOLLOW_INSTANCE_ORIGIN, INSTANCE_DEFAULT_VALUE, PREF_TOGGLES } from "./toggles";
 import { ENGINE_ORIGIN_DISPLAY, THEME_KEY } from "../../constants";
-import { idbDel, idbGet, idbSet } from "../../utils/storage/db";
+import { idbGet, idbSet } from "../../utils/storage/db";
 import { ENGINE_ORIGIN_DISPLAY_VALUES } from "../../../shared/engine-origins";
 import { resetDefaults, saveDefaults } from "../../utils/storage/sync";
 import { SYNC_KEYS } from "../../../shared/sync";
@@ -20,6 +20,7 @@ import { getStoredToken } from "../../utils/settings/settings-token";
 const t = window.scopedT("core");
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+const UNKNOWN_VERSION = "Unknown";
 
 const _bound = new WeakSet<HTMLElement>();
 
@@ -45,8 +46,11 @@ async function getNewestRelease(fresh = false): Promise<string> {
   } catch (err) {
     console.debug("[settings] update check failed", err);
   }
-  return "Unknown";
+  return UNKNOWN_VERSION;
 }
+
+const _versionLabel = (version: string): string =>
+  version === UNKNOWN_VERSION ? t("settings-page.update-check.unknown") : version;
 
 export async function initAppearanceSettings(): Promise<void> {
   const themeSelect = document.getElementById(
@@ -80,8 +84,10 @@ export async function initAppearanceSettings(): Promise<void> {
         : INSTANCE_DEFAULT_VALUE;
     _bindOnce(originSelect, "change", async () => {
       const value = originSelect.value;
-      if (value === INSTANCE_DEFAULT_VALUE) await idbDel(ENGINE_ORIGIN_DISPLAY);
-      else await idbSet(ENGINE_ORIGIN_DISPLAY, value);
+      await idbSet(
+        ENGINE_ORIGIN_DISPLAY,
+        value === INSTANCE_DEFAULT_VALUE ? FOLLOW_INSTANCE_ORIGIN : value,
+      );
       window.dispatchEvent(new Event("extensions-saved"));
     });
   }
@@ -168,7 +174,7 @@ async function initVersionChecker(): Promise<void> {
     latestDate = new Date();
     localStorage.setItem("last-update-check", latestDate.toUTCString());
     const newCheck = await getNewestRelease();
-    if (newestVersionEl) newestVersionEl.textContent = newCheck;
+    if (newestVersionEl) newestVersionEl.textContent = _versionLabel(newCheck);
     localStorage.setItem("last-update-check-version", newCheck);
   }
 
@@ -184,18 +190,18 @@ async function initVersionChecker(): Promise<void> {
 
   const latestVersion = localStorage.getItem("last-update-check-version");
   if (latestVersion && newestVersionEl)
-    newestVersionEl.textContent = latestVersion;
+    newestVersionEl.textContent = _versionLabel(latestVersion);
 
   _bindOnce(checkNowBtn, "click", async () => {
     const newest = await getNewestRelease(true);
-    if (newestVersionEl) newestVersionEl.textContent = newest;
+    if (newestVersionEl) newestVersionEl.textContent = _versionLabel(newest);
     localStorage.setItem("last-update-check-version", newest);
     const newLatest = new Date();
     localStorage.setItem("last-update-check", newLatest.toUTCString());
     if (lastCheckedEl)
       lastCheckedEl.textContent = newLatest.toLocaleDateString();
     if (
-      newest != "Unknown" &&
+      newest != UNKNOWN_VERSION &&
       isUpdateAvailable(pkg.version, newest) &&
       newAvailableEl
     )

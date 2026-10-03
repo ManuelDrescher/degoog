@@ -1,12 +1,38 @@
 import { readFile } from "fs/promises";
-import { timingSafeEqual } from "crypto";
+import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { logger } from "../logger";
 import { settingsTokensFile } from "../paths";
 import { writeJsonAtomic } from "../storage/atomic-json";
 
 export const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
+const PASSWORDS_FINGERPRINT_KEY = "__passwords";
+
 const _validTokens = new Map<string, number>();
+let _passwordsFingerprint: string | null = null;
+
+export const explicitSettingsPasswords = (): string[] =>
+  (process.env.DEGOOG_SETTINGS_PASSWORDS ?? "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+const _hashPasswords = (salt: string): string =>
+  scryptSync([...explicitSettingsPasswords()].sort().join("\n"), salt, 32).toString("hex");
+
+const _freshFingerprint = (): string => {
+  const salt = randomBytes(16).toString("hex");
+  return `${salt}:${_hashPasswords(salt)}`;
+};
+
+const _fingerprintMatches = (stored: string): boolean => {
+  const [salt, hash] = stored.split(":");
+  if (!salt || !hash) return false;
+  return _safeEqual(_hashPasswords(salt), hash);
+};
+
+const _currentFingerprint = (): string =>
+  (_passwordsFingerprint ??= _freshFingerprint());
 
 let _persistTimer: ReturnType<typeof setTimeout> | null = null;
 let _persisting = false;
@@ -18,7 +44,10 @@ const _persistNow = async (): Promise<void> => {
   }
   _persisting = true;
   try {
-    await writeJsonAtomic(settingsTokensFile(), Object.fromEntries(_validTokens));
+    await writeJsonAtomic(settingsTokensFile(), {
+      [PASSWORDS_FINGERPRINT_KEY]: _currentFingerprint(),
+      ...Object.fromEntries(_validTokens),
+    });
   } catch (e) {
     logger.warn(
       "settings-auth",
@@ -40,10 +69,19 @@ const schedulePersist = (): void => {
 const _loadPersistedTokens = async (): Promise<void> => {
   try {
     const raw = await readFile(settingsTokensFile(), "utf-8");
-    const data = JSON.parse(raw) as Record<string, number>;
+    const data = JSON.parse(raw) as Record<string, number | string>;
+    const stored = data[PASSWORDS_FINGERPRINT_KEY];
+    if (typeof stored === "string" && !_fingerprintMatches(stored)) {
+      logger.info("settings-auth", "settings passwords changed since the last run, signing everybody out");
+      schedulePersist();
+      return;
+    }
+    if (typeof stored === "string") _passwordsFingerprint = stored;
+    else schedulePersist();
     const now = Date.now();
     let loaded = 0;
     for (const [token, expiresAt] of Object.entries(data)) {
+      if (token === PASSWORDS_FINGERPRINT_KEY) continue;
       if (typeof expiresAt === "number" && expiresAt > now) {
         _validTokens.set(token, expiresAt);
         loaded++;

@@ -10,6 +10,7 @@ import { getClientIp, isHttpsRequest } from "../../utils/net/request";
 import {
   TOKEN_TTL_MS,
   checkAuthRate,
+  explicitSettingsPasswords,
   forgiveAuthAttempt,
   generateSettingsToken,
   passwordMatches,
@@ -39,13 +40,7 @@ export const envTruthy = (name: string): boolean => {
 export const isDangerouslyNoPassword = (): boolean =>
   envTruthy("DEGOOG_DANGEROUSLY_NO_PASSWORD");
 
-const _explicitPasswords = (): string[] => {
-  const raw = process.env.DEGOOG_SETTINGS_PASSWORDS ?? "";
-  return raw
-    .split(",")
-    .map((p) => p.trim())
-    .filter(Boolean);
-};
+const _explicitPasswords = explicitSettingsPasswords;
 
 export const hasGeneratedDefaultSettingsPassword = (): boolean =>
   _explicitPasswords().length === 0 && !isDangerouslyNoPassword();

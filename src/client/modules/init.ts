@@ -203,10 +203,12 @@ export async function init(): Promise<void> {
     e.preventDefault();
     e.stopPropagation();
     const uuid = btn.dataset.uuid;
+    btn.dataset.label ??= btn.textContent ?? "";
+    const label = btn.dataset.label;
     const done = (): void => {
-      btn.textContent = "Copied!";
+      if (btn.dataset.copied) btn.textContent = btn.dataset.copied;
       setTimeout(() => {
-        btn.textContent = "Copy";
+        btn.textContent = label;
       }, 1500);
     };
     void copyTextToClipboard(uuid).then((ok) => {

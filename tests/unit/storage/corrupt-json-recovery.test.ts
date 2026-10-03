@@ -85,6 +85,49 @@ describe("server-settings survives a corrupt file", () => {
   });
 });
 
+describe("a corrupt server-settings.json fails closed", () => {
+  const guardStatus = async (): Promise<number> => {
+    const { Hono } = await import("hono");
+    const { guardApiKey } = await import("../../../src/server/utils/security/api-key-guard");
+    const app = new Hono();
+    app.get("/x", async (c) => (await guardApiKey(c, "apiKeySearchEnabled")) ?? c.text("ok"));
+    return (await app.request("http://localhost/x")).status;
+  };
+
+  test("search is refused, across restarts, until an admin saves settings", async () => {
+    await writeFile(join(dir, "server-settings.json"), CORRUPT, "utf-8");
+    const mod = await import("../../../src/server/utils/settings/server-settings");
+    const { settingsLock } = await import("../../../src/server/utils/settings/settings-write");
+    mod.clearServerSettingsCache();
+
+    expect(await mod.didServerSettingsLoadFail()).toBe(true);
+    expect(await guardStatus()).toBe(401);
+
+    mod.clearServerSettingsCache();
+    expect(await mod.didServerSettingsLoadFail()).toBe(true);
+    expect(await guardStatus()).toBe(401);
+
+    await mod.updateInstanceSettings({ apiSecretKey: "internal-boot-write" });
+    mod.clearServerSettingsCache();
+    expect(await mod.didServerSettingsLoadFail()).toBe(true);
+
+    await settingsLock(() => mod.updateInstanceSettings({ rateLimitEnabled: true }));
+    expect(await mod.didServerSettingsLoadFail()).toBe(false);
+    expect(await guardStatus()).toBe(200);
+
+    mod.clearServerSettingsCache();
+    expect(await mod.didServerSettingsLoadFail()).toBe(false);
+    expect((await mod.getInstanceSettings()).rateLimitEnabled).toBe(true);
+  });
+
+  test("a first boot with no file at all is not treated as corrupt", async () => {
+    const mod = await import("../../../src/server/utils/settings/server-settings");
+    mod.clearServerSettingsCache();
+    expect(await mod.didServerSettingsLoadFail()).toBe(false);
+    expect(await guardStatus()).toBe(200);
+  });
+});
+
 describe("the store catalogue survives a corrupt repos.json", () => {
   test("installed extensions are recoverable after a read and write cycle", async () => {
     const path = join(dir, "repos.json");

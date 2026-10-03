@@ -1,5 +1,6 @@
 import { asBoolean } from "./plugin-settings";
 import {
+  acknowledgeServerSettingsRecovery,
   getInstanceSettings,
   setInstanceSettings,
   type ServerSettingValue,
@@ -116,7 +117,14 @@ const _compatToggled = (
  * I guess you could use another mutex for the `after` callback, but that's just as stupid sooo... yeah, 
  * this is what we get instead.
  */
-export const settingsLock = createMutex();
+const _settingsMutex = createMutex();
+
+export const settingsLock = <T>(fn: () => Promise<T>): Promise<T> =>
+  _settingsMutex(async () => {
+    const out = await fn();
+    await acknowledgeServerSettingsRecovery();
+    return out;
+  });
 
 const _listSnapshot = async (
   body: Record<string, string>,

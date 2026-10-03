@@ -15,6 +15,8 @@ import { searchAuthHeaders, appendSearchAuthParams } from "../../net/request";
 import { infiniteScrollOn } from "../streaming/streaming-config";
 import { mergeEngineTimings, mergeScoredResults } from "../engine-stats/engine-stats";
 
+const t = window.scopedT("themes/degoog");
+
 export async function retryEngine(
   engineName: string,
   page = state.currentPage,
@@ -65,7 +67,10 @@ export async function retryEngine(
 
       const resultsMeta = document.getElementById("results-meta");
       if (resultsMeta)
-        resultsMeta.textContent = `About ${state.currentResults.length} results (${((state.currentData?.totalTime ?? 0) / 1000).toFixed(2)} seconds)`;
+        resultsMeta.textContent = t("search-templates.status.done", {
+          count: String(state.currentResults.length),
+          time: ((state.currentData?.totalTime ?? 0) / 1000).toFixed(2),
+        });
 
       renderResults(state.currentResults, { paginate: !infinite });
     }

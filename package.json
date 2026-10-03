@@ -1,6 +1,6 @@
 {
   "name": "degoog",
-  "version": "1.0.0-beta.6",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "bun run --watch src/server/index.ts",
@@ -18,7 +18,7 @@
   "dependencies": {
     "cheerio": "1.2.0",
     "postgres": "3.4.9",
-    "dompurify": "3.4.13",
+    "dompurify": "3.4.16",
     "hono": "4.13.8",
     "immutable": "5.1.9",
     "ioredis": "6.0.0",
@@ -37,10 +37,10 @@
     "typescript-eslint": "8.66.0"
   },
   "resolutions": {
-    "brace-expansion": "5.0.9",
+    "brace-expansion": "5.0.12",
     "flatted": "3.4.2",
     "picomatch": "4.0.4",
-    "undici": "7.29.0",
-    "ip-address": "10.4.0"
+    "undici": "7.30.0",
+    "ip-address": "10.7.2"
   }
 }

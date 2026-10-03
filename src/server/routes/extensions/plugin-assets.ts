@@ -12,6 +12,7 @@ import {
 import { rewritePluginPaths, rewriteThemePaths } from "../../utils/extension-support/extension-id";
 import { TTL_MS } from "../../utils/cache/cache";
 import { routeSuffix } from "../../utils/net/route-path";
+import { CSP_HEADER, SVG_CSP } from "../../utils/security/content-policy";
 
 const NO_CACHE = "no-cache";
 const STATIC_ASSET_CACHE = `public, max-age=${Math.floor(TTL_MS / 1000)}`;
@@ -59,6 +60,7 @@ router.get("/plugins/:folder/*", async (c) => {
   if (!(await file.exists())) return c.notFound();
   c.header("Content-Type", mime);
   c.header("Cache-Control", "no-cache");
+  if (ext === ".svg") c.header(CSP_HEADER, SVG_CSP);
 
   if (ext === ".js" || ext === ".mjs") {
     const ns = getPluginNamespace(folder);
@@ -92,6 +94,7 @@ router.get("/themes/:folder/*", async (c) => {
   if (!(await file.exists())) return c.notFound();
   c.header("Content-Type", mime);
   c.header("Cache-Control", cacheFor(ext));
+  if (ext === ".svg") c.header(CSP_HEADER, SVG_CSP);
 
   if (ext === ".js" || ext === ".mjs") {
     const ns = `themes/${folder}`;

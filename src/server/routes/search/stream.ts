@@ -155,6 +155,10 @@ router.get("/api/search/stream", async (c) => {
             attempt: 0,
           });
         },
+      ).map((run, i) =>
+        run.catch((err: unknown) => {
+          logger.warn("search-stream", `${rawActiveEngines[i].instance.name} failed mid-stream`, err);
+        }),
       );
 
       void Promise.all(enginePromises)
@@ -177,7 +181,10 @@ router.get("/api/search/stream", async (c) => {
             dateTo,
             imageFilter,
           },
-        );
+        ).catch((err: unknown) => {
+          logger.warn("search-stream", "indexing failed, finishing the stream without it", err);
+          return [] as string[];
+        });
 
         _send("done", {
           totalTime,

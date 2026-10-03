@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { getClientIp } from "../../utils/net/request";
-import { checkRateLimit } from "../../utils/security/rate-limit";
+import { checkRateLimit, rateLimitOptionsFrom } from "../../utils/security/rate-limit";
 import { getInstanceSettings } from "../../utils/settings/server-settings";
 
 const router = new Hono();
@@ -9,10 +9,7 @@ router.get("/api/rate-limit/test", async (c) => {
   if (process.env.LOG_LEVEL !== "debug") return;
 
   const settings = await getInstanceSettings();
-  const opts: Record<string, string> = {};
-  for (const [k, v] of Object.entries(settings)) {
-    opts[k] = typeof v === "string" ? v : Array.isArray(v) ? (v[0] ?? "") : "";
-  }
+  const opts = rateLimitOptionsFrom(settings);
   if (opts.rateLimitEnabled !== "true") {
     return c.json({ rateLimitEnabled: false });
   }

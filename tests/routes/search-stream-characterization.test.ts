@@ -66,6 +66,7 @@ const harness = (opts: {
   engines?: EngineEntry[];
   settings?: Record<string, unknown>;
   indexReturns?: string[];
+  indexThrows?: boolean;
 }): void => {
   const engines = opts.engines ?? [];
   const active = engines.map((e) => ({
@@ -110,6 +111,7 @@ const harness = (opts: {
       results: ScoredResult[],
     ) => {
       indexCalls.push({ enabled, urls: results.map((r) => r.url) });
+      if (opts.indexThrows) throw new Error("indexer database went away");
       return opts.indexReturns ?? [];
     },
   }));
@@ -362,5 +364,22 @@ describe("GET /api/search/stream auto-retry", () => {
 
     expect(attemptsByEngine.Flaky).toBe(1);
     expect(events.filter((e) => e.event === "engine-retry")).toHaveLength(0);
+  });
+});
+
+describe("GET /api/search/stream failure isolation", () => {
+  test("a failing indexer still ends the stream with done, timings and page total", async () => {
+    harness({
+      engines: [makeEngine("Alpha", 2, 4), makeEngine("Beta", 1, 4)],
+      settings: { degoogIndexerEnabled: "true" },
+      indexThrows: true,
+    });
+    const events = await readEvents(await call(uniqueQuery("indexer-down")));
+
+    expect(events.map((e) => e.event)).toEqual(["engine-result", "engine-result", "done"]);
+    const done = events.at(-1)!.data;
+    expect(done.indexedUrls).toEqual([]);
+    expect((done.engineTimings as unknown[]).length).toBe(2);
+    expect(done.totalPages).toBe(4);
   });
 });

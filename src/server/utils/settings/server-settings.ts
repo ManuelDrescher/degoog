@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { existsSync } from "fs";
 import { logger } from "../logger";
 import { serverSettingsFile } from "../paths";
 import { writeJsonAtomic } from "../storage/atomic-json";
@@ -21,6 +22,7 @@ interface ServerSettings {
   wizard: boolean;
   instanceId: string;
   settings: Record<string, ServerSettingValue>;
+  corruptRecoveredAt?: string;
 }
 
 const _defaults = (): ServerSettings => ({
@@ -49,6 +51,7 @@ const _persist = async (settings: ServerSettings): Promise<void> => {
 
 export const readServerSettings = async (): Promise<ServerSettings> => {
   if (_cache) return _cache;
+  const existed = existsSync(serverSettingsFile());
   const parsed = await readJsonOrQuarantine<Partial<ServerSettings>>(
     "server-settings",
     serverSettingsFile(),
@@ -56,6 +59,14 @@ export const readServerSettings = async (): Promise<ServerSettings> => {
 
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     const fresh = _defaults();
+    if (existed) {
+      fresh.corruptRecoveredAt = new Date().toISOString();
+      logger.error(
+        "server-settings",
+        "server-settings.json was unreadable, so search and autocomplete refuse every request " +
+          "until it is restored by hand or an admin saves settings again.",
+      );
+    }
     await _persist(fresh).catch((e) =>
       logger.error(
         "server-settings",
@@ -79,6 +90,9 @@ export const readServerSettings = async (): Promise<ServerSettings> => {
       !Array.isArray(parsed.settings)
         ? (parsed.settings as Record<string, ServerSettingValue>)
         : {},
+    ...(typeof parsed.corruptRecoveredAt === "string"
+      ? { corruptRecoveredAt: parsed.corruptRecoveredAt }
+      : {}),
   };
   if (!parsed.instanceId) {
     await _persist(merged).catch((err) =>
@@ -109,6 +123,8 @@ export const writeServerSettings = async (
       !Array.isArray(patch.settings)
         ? patch.settings
         : current.settings,
+    corruptRecoveredAt:
+      "corruptRecoveredAt" in patch ? patch.corruptRecoveredAt : current.corruptRecoveredAt,
   };
   await _persist(next);
   _cache = next;
@@ -139,4 +155,13 @@ export const updateInstanceSettings = async (
 export const getInstanceId = async (): Promise<string> => {
   const s = await readServerSettings();
   return s.instanceId;
+};
+
+export const didServerSettingsLoadFail = async (): Promise<boolean> =>
+  !!(await readServerSettings()).corruptRecoveredAt;
+
+export const acknowledgeServerSettingsRecovery = async (): Promise<void> => {
+  if (!(await didServerSettingsLoadFail())) return;
+  await writeServerSettings({ corruptRecoveredAt: undefined });
+  logger.info("server-settings", "settings saved by an admin, search and autocomplete are open again");
 };
