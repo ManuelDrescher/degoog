@@ -7,7 +7,10 @@ import {
   type BangMatch,
 } from "../extensions/commands/registry";
 import { clampCommandPage } from "../extensions/commands/command-page";
-import { getDefaultEngineConfig } from "../extensions/engines/catalog";
+import {
+  getDefaultEngineBangConfig,
+  getDefaultEngineConfig,
+} from "../extensions/engines/catalog";
 import { planEngineBang } from "../search/engine-bang";
 import { build404 } from "../routes/pages/pages";
 import { handleRetry, handleSearch } from "../search/handlers";
@@ -149,7 +152,7 @@ const _runSearch = async (
   if (bang?.type === "engine") {
     const plan = await planEngineBang(
       bang.engineId,
-      getDefaultEngineConfig(),
+      getDefaultEngineBangConfig(),
       query.type || undefined,
     );
     if (!plan) return _outcome({ results: [], totalTime: 0 }, false);

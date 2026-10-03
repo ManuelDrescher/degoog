@@ -3,7 +3,11 @@ import { GateNote } from "./gate-note";
 import { TakeoverResultItem } from "./takeover-result";
 import { Context, Hono } from "hono";
 import { SETTINGS_TABS } from "../../../shared/settings-tabs";
-import { getDefaultEngineConfig, listEngines } from "../../extensions/engines/catalog";
+import {
+  getDefaultEngineBangConfig,
+  getDefaultEngineConfig,
+  listEngines,
+} from "../../extensions/engines/catalog";
 import { getThemeHtml } from "../../extensions/themes/registry";
 import * as cache from "../../utils/cache/cache";
 import { getLocale } from "../../utils/hono";
@@ -217,6 +221,7 @@ router.get("/api/engines", async (c) => {
   return c.json({
     engines: await listEngines(),
     defaults: getDefaultEngineConfig(),
+    bangDefaults: getDefaultEngineBangConfig(),
   });
 });
 

@@ -77,6 +77,8 @@ export interface ExtensionMeta {
   compatibilityLayer?: string;
   extensionDocsAvailable?: boolean;
   defaultEnabled?: boolean;
+  defaultBangEnabled?: boolean;
+  bangShortcut?: string;
   defaultFeedUrls?: string[];
   isClientExposed?: boolean;
   requiresNewerVersion?: boolean;
@@ -230,6 +232,7 @@ export interface CommandContext {
   signProxyUrl?: (url: string) => string;
   nojs?: boolean;
   engines?: EngineConfig;
+  bangs?: EngineConfig;
 }
 
 export interface BangCommand {

@@ -33,6 +33,7 @@ import { getRestartState } from "../../../utils/extension-support/restart-state"
 import { requestRestart } from "../../../utils/server-lifecycle";
 import { settingsAuth } from "../../_guards";
 import { trimBigFields } from "./trim-big-fields";
+import type { DefaultEngines } from "../../../types/search";
 
 const router = new Hono();
 
@@ -151,7 +152,7 @@ router.get("/api/settings/default-engines", settingsAuth("GET /api/settings/defa
 });
 
 router.post("/api/settings/default-engines", settingsAuth("POST /api/settings/default-engines"), async (c) => {
-  const body = await readObjectBody<Record<string, boolean>>(c);
+  const body = await readObjectBody<DefaultEngines>(c);
   if (!body) return c.json({ error: "Invalid JSON" }, 400);
   await writeJsonAtomic(defaultEnginesFile(), body);
   return c.json({ ok: true });

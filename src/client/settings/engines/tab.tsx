@@ -6,12 +6,17 @@ import { Icon } from "../../../shared/ui/components/primitives/icon";
 import { ExtGroup } from "../../../shared/ui/components/extensions/ext-group";
 import { CompatSection } from "./compat/compat-section";
 import { EngineCard } from "./engine-card";
+import { paintEngineBang } from "./engine-bang";
 import { engineTypes } from "./engine-types";
 import { primaryType } from "../../../shared/search-types";
 import { idbGet, idbSet } from "../../utils/storage/db";
-import { SETTINGS_KEY, TAB_ORDER_SAVED } from "../../constants";
+import {
+  ENGINE_BANGS_KEY,
+  SETTINGS_KEY,
+  TAB_ORDER_SAVED,
+} from "../../constants";
 import { resetDefaults } from "../../utils/storage/sync";
-import { ENGINE_SYNC_KEYS } from "../../../shared/sync";
+import { ENGINE_BANGS_FIELD, ENGINE_SYNC_KEYS } from "../../../shared/sync";
 import { confirmModal } from "../../modules/modals/confirm-modal/confirm";
 import { openModal } from "../../modules/modals/settings-modal/modal";
 import type { AllExtensions, ExtensionMeta } from "../../types/extension";
@@ -32,11 +37,15 @@ let _orderSavedHandler: (() => void) | null = null;
 
 let _toggleWrites: Promise<void> = Promise.resolve();
 
-const _persistToggle = (id: string, checked: boolean): Promise<void> => {
+const _persistToggle = (
+  key: string,
+  id: string,
+  checked: boolean,
+): Promise<void> => {
   _toggleWrites = _toggleWrites
     .then(async () => {
-      const saved = (await idbGet<EngineRecord>(SETTINGS_KEY)) ?? {};
-      await idbSet(SETTINGS_KEY, { ...saved, [id]: checked });
+      const saved = (await idbGet<EngineRecord>(key)) ?? {};
+      await idbSet(key, { ...saved, [id]: checked });
     })
     .catch((err: unknown) => {
       console.warn("[settings] engine toggle save failed", err);
@@ -107,6 +116,13 @@ export async function initEnginesTab(
     ...defaultsFromEngines,
     ...savedEnginesMap,
   };
+  const savedBangs = (await idbGet<EngineRecord>(ENGINE_BANGS_KEY)) ?? {};
+  const bangMap: EngineRecord = {
+    ...Object.fromEntries(
+      allExtensions.engines.map((e) => [e.id, e.defaultBangEnabled !== false]),
+    ),
+    ...savedBangs,
+  };
 
   const layers = allowConfigure ? await enabledLayers() : [];
   const rawGroups = _groupByType(allExtensions.engines);
@@ -119,10 +135,27 @@ export async function initEnginesTab(
   const onToggle =
     (engine: ExtensionMeta) =>
     (event: Event): void => {
-      const checked = (event.currentTarget as HTMLInputElement).checked;
-      enabledMap[engine.id] = checked;
-      void _persistToggle(engine.id, checked);
+      const on = (event.currentTarget as HTMLInputElement).checked;
+      const wakeBang = on && !enabledMap[engine.id] && !bangMap[engine.id];
+      enabledMap[engine.id] = on;
+      void _persistToggle(SETTINGS_KEY, engine.id, on);
+      if (wakeBang) {
+        bangMap[engine.id] = true;
+        void _persistToggle(ENGINE_BANGS_KEY, engine.id, true);
+      }
+      paintEngineBang(container, engine.id, on, bangMap[engine.id], wakeBang);
     };
+
+  const onToggleBang = (engine: ExtensionMeta) => (): void => {
+    bangMap[engine.id] = !bangMap[engine.id];
+    void _persistToggle(ENGINE_BANGS_KEY, engine.id, bangMap[engine.id]);
+    paintEngineBang(
+      container,
+      engine.id,
+      enabledMap[engine.id] !== false,
+      bangMap[engine.id],
+    );
+  };
 
   const _saveDefaults = async (): Promise<void> => {
     const btn = document.getElementById("save-default-engines");
@@ -130,11 +163,12 @@ export async function initEnginesTab(
       const res = await fetch(`${getBase()}/api/settings/default-engines`, {
         method: "POST",
         headers: jsonHeaders(getStoredToken),
-        body: JSON.stringify(enabledMap),
+        body: JSON.stringify({ ...enabledMap, [ENGINE_BANGS_FIELD]: bangMap }),
       });
       if (!res.ok)
         throw new Error(`default engines save failed: ${res.status}`);
       await idbSet(SETTINGS_KEY, enabledMap);
+      await idbSet(ENGINE_BANGS_KEY, bangMap);
       if (btn) {
         const prev = btn.textContent;
         btn.textContent = t("settings-page.server.saved");
@@ -215,8 +249,10 @@ export async function initEnginesTab(
               key={engine.id}
               engine={engine}
               enabled={enabledMap[engine.id] !== false}
+              bangEnabled={bangMap[engine.id] !== false}
               allowConfigure={allowConfigure}
               onToggle={onToggle(engine)}
+              onToggleBang={onToggleBang(engine)}
               onConfigure={() => openModal(engine)}
             />
           ))}

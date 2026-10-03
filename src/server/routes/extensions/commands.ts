@@ -5,15 +5,21 @@ import {
 } from "../../extensions/commands/registry";
 import { clampCommandPage } from "../../extensions/commands/command-page";
 import { getEngineSearchTypes } from "../../extensions/engines/catalog";
-import { planEngineBang } from "../../search/engine-bang";
+import { parseEngineBangs, planEngineBang } from "../../search/engine-bang";
 import { handleSearch } from "../../search/handlers";
 import type { CommandResult } from "../../types/extension";
-import type { SearchBody, SearchParams, SearchType } from "../../types/search";
+import type {
+  EngineConfig,
+  SearchBody,
+  SearchParams,
+  SearchType,
+} from "../../types/search";
 import { getLocale, readObjectBody } from "../../utils/hono";
 import { logger } from "../../utils/logger";
 import { isDisabled } from "../../utils/settings/plugin-settings";
 import { buildSignedProxyUrl } from "../../utils/net/proxy-sign";
-import { _applyRateLimit, parseEngineConfig } from "../../utils/search";
+import { _applyRateLimit } from "../../utils/search";
+import { ENGINE_BANGS_FIELD } from "../../../shared/sync";
 import { guardApiKey } from "../../utils/security/api-key-guard";
 import { parseSearchBody, parseSearchRequest } from "../search/parsers";
 import { publicBodyLimit } from "../_guards";
@@ -24,7 +30,9 @@ const router = new Hono();
 
 router.get("/api/commands", async (c) => {
   return c.json(
-    await getCommandsApiResponse(parseEngineConfig(new URL(c.req.url).searchParams)),
+    await getCommandsApiResponse(
+      parseEngineBangs(c.req.query(ENGINE_BANGS_FIELD)),
+    ),
   );
 });
 
@@ -33,11 +41,12 @@ type CommandRequest = {
   type: string | undefined;
   page: unknown;
   search: Omit<SearchParams, "query">;
+  bangs: EngineConfig;
 };
 
 const _runCommand = async (
   c: Context,
-  { q, type, page: rawPage, search }: CommandRequest,
+  { q, type, page: rawPage, search, bangs }: CommandRequest,
 ): Promise<Response> => {
   if (!q) return c.json({ error: "Missing query parameter 'q'" }, 400);
 
@@ -61,7 +70,7 @@ const _runCommand = async (
     const authRes = await guardApiKey(c, "apiKeySearchEnabled");
     if (authRes) return authRes;
     const requestedType = type?.trim().replace(/^tab:engine:/, "") || undefined;
-    const plan = await planEngineBang(match.engineId, search.engines, requestedType);
+    const plan = await planEngineBang(match.engineId, bangs, requestedType);
     if (!plan) return c.json({ error: "This engine is disabled" }, 403);
     const searchTypes = await getEngineSearchTypes(match.engineId);
     const response = await handleSearch({
@@ -99,6 +108,7 @@ const _runCommand = async (
       page,
       signProxyUrl: buildSignedProxyUrl,
       engines: search.engines,
+      bangs,
     });
   } catch (err) {
     logger.error("plugin", `command ${match.commandId} failed`, err);
@@ -131,6 +141,7 @@ router.get("/api/command", async (c) => {
     type: c.req.query("type"),
     page: c.req.query("page"),
     search,
+    bangs: parseEngineBangs(c.req.query(ENGINE_BANGS_FIELD)),
   });
 });
 
@@ -142,6 +153,7 @@ router.post("/api/command", publicBodyLimit, async (c) => {
     type: body.type,
     page: body.page,
     search: parseSearchBody(body),
+    bangs: parseEngineBangs(body.bangs),
   });
 });
 

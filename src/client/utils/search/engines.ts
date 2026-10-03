@@ -1,5 +1,5 @@
 import { idbGet } from "../storage/db";
-import { SETTINGS_KEY } from "../../constants";
+import { ENGINE_BANGS_KEY, SETTINGS_KEY } from "../../constants";
 import { getBase } from "../net/base-url";
 import { onWindowEvent } from "../dom/window-event";
 import type { EngineRegistry } from "../../types/extension";
@@ -44,6 +44,21 @@ export const getEngines = async (): Promise<EngineRecord> => {
   }
   return merged;
 };
+
+export const getEngineBangs = async (): Promise<EngineRecord> => {
+  const saved = (await idbGet<EngineRecord>(ENGINE_BANGS_KEY)) ?? {};
+  const reg = await getRegistry();
+  const merged: EngineRecord = {};
+  for (const { id } of reg.engines) {
+    merged[id] = saved[id] ?? reg.bangDefaults?.[id] ?? true;
+  }
+  return merged;
+};
+
+export const enabledIds = (record: EngineRecord): string[] =>
+  Object.entries(record)
+    .filter(([, on]) => on)
+    .map(([id]) => id);
 
 const _typesForEngine = (engine: {
   searchTypes?: string[];

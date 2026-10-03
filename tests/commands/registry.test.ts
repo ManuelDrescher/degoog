@@ -51,7 +51,7 @@ describe("commands registry", () => {
     expect(matchBangCommand("foo!help")).toBeNull();
   });
 
-  test("engine shortcuts follow the engines the caller has on", async () => {
+  test("engine shortcuts follow the bangs the caller allows", async () => {
     const on = await getFilteredCommandRegistry({ [DEGOOG_ENGINE_ID]: true });
     expect(on.map((c) => c.trigger)).toContain("degoog");
     const off = await getFilteredCommandRegistry({ [DEGOOG_ENGINE_ID]: false });

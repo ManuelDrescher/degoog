@@ -7,7 +7,7 @@ import { canSaveStream, downloadIndexerExport } from "../download";
 import { orderTypes } from "../api";
 import { mountProgress } from "../progress/progress";
 import { tr } from "../i18n";
-import { borrowModal, releaseModal } from "../../../modules/modals/settings-modal/modal";
+import { borrowModal, claimModal } from "../../../modules/modals/settings-modal/modal";
 
 interface ExportEls {
   overlay: HTMLElement;
@@ -32,7 +32,11 @@ const getEls = (): ExportEls | null => {
 const _warnKey = (): string =>
   window.isSecureContext ? "export-memory-warning" : "export-insecure-warning";
 
-const runExport = async (type: string, els: ExportEls): Promise<void> => {
+const runExport = async (
+  type: string,
+  els: ExportEls,
+  owns: () => boolean,
+): Promise<void> => {
   els.saveEl.hidden = true;
   clear(els.bodyEl);
   const bar = mountProgress(els.bodyEl);
@@ -41,7 +45,7 @@ const runExport = async (type: string, els: ExportEls): Promise<void> => {
   await downloadIndexerExport(type, {
     headers: authHeaders(getStoredToken),
     onStatus: (text) => {
-      if (text) {
+      if (text && owns()) {
         els.statusEl.textContent = text;
         bar.finish(true);
       }
@@ -52,7 +56,7 @@ const runExport = async (type: string, els: ExportEls): Promise<void> => {
     },
   });
 
-  if (!els.statusEl.textContent) {
+  if (owns() && !els.statusEl.textContent) {
     bar.finish();
     bar.label(tr("export-done"));
   }
@@ -64,7 +68,7 @@ export const openExportModal = (stats: IndexerStats | null): void => {
 
   const els = getEls();
   if (!els) return;
-  releaseModal();
+  const owns = claimModal();
 
   els.titleEl.textContent = tr("export-modal-title");
   els.statusEl.textContent = "";
@@ -74,7 +78,7 @@ export const openExportModal = (stats: IndexerStats | null): void => {
   const start = (type: string): void => {
     if (started) return;
     started = true;
-    void runExport(type, els);
+    void runExport(type, els, owns);
   };
 
   borrowModal({

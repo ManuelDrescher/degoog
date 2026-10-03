@@ -29,7 +29,13 @@ import {
 } from "../../../../shared/search-types";
 import { abortAcReq, hideAcDropdown } from "../../autocomplete/autocomplete";
 import { triggerUovadipasqua } from "../../app/uovadipasqua";
-import { getEngines, getKnownSearchTypePrefixes } from "../engines";
+import {
+  enabledIds,
+  getEngineBangs,
+  getEngines,
+  getKnownSearchTypePrefixes,
+} from "../engines";
+import { ENGINE_BANGS_FIELD } from "../../../../shared/sync";
 import { setActiveTab, setTabsForBang } from "../../navigation/navigation";
 import { Pagination } from "../../pagination/pagination";
 import {
@@ -63,11 +69,10 @@ onWindowEvent("extensions-saved", () => {
 });
 
 const _fetchCommands = async (): Promise<Command[]> => {
-  const engines = await getEngines();
-  const params = new URLSearchParams(
-    Object.entries(engines).map(([id, on]) => [id, String(on)]),
-  );
-  const key = params.toString();
+  const bangs = await getEngineBangs();
+  const key = new URLSearchParams({
+    [ENGINE_BANGS_FIELD]: enabledIds(bangs).join(","),
+  }).toString();
   if (commandsCache?.key === key) return commandsCache.commands;
   try {
     const res = await fetch(`${getBase()}/api/commands?${key}`, { cache: "no-store" });

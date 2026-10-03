@@ -1,6 +1,8 @@
 import { isOriginDisplay } from "./engine-origins";
 
 export const ENGINES_KEY = "engines";
+export const ENGINE_BANGS_KEY = "engine_bangs";
+export const ENGINE_BANGS_FIELD = "bangs";
 export const THEME_KEY = "theme";
 export const OPEN_IN_NEW_TAB_KEY = "open_in_new_tab";
 export const DISPLAY_ENGINE_PERFORMANCE = "display_engine_performance";
@@ -28,7 +30,7 @@ const GENERAL_SYNC_KEYS = [
   ENGINE_ORIGIN_DISPLAY,
 ] as const;
 
-export const ENGINE_SYNC_KEYS = [ENGINES_KEY] as const;
+export const ENGINE_SYNC_KEYS = [ENGINES_KEY, ENGINE_BANGS_KEY] as const;
 
 export const SYNC_KEYS = [...GENERAL_SYNC_KEYS, ...ENGINE_SYNC_KEYS] as const;
 const THEME_VALUES = ["system", "light", "dark"] as const;
@@ -45,7 +47,8 @@ const isEngineRecord = (v: unknown): boolean =>
 export const isValidSyncValue = (key: string, value: unknown): boolean => {
   if (key === THEME_KEY) return isThemeValue(value);
   if (key === ENGINE_ORIGIN_DISPLAY) return isOriginDisplay(value);
-  if (key === ENGINES_KEY) return isEngineRecord(value);
+  if (key === ENGINES_KEY || key === ENGINE_BANGS_KEY)
+    return isEngineRecord(value);
   if ((GENERAL_SYNC_KEYS as readonly string[]).includes(key))
     return typeof value === "boolean";
   return false;

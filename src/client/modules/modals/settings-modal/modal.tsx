@@ -42,11 +42,19 @@ export interface ModalBorrower {
 }
 
 let borrower: ModalBorrower | null = null;
+let lease = 0;
 
 export const releaseModal = (): void => {
   const leaving = borrower;
   borrower = null;
+  lease += 1;
   leaving?.onClose?.();
+};
+
+export const claimModal = (): (() => boolean) => {
+  releaseModal();
+  const mine = lease;
+  return () => lease === mine;
 };
 
 export function borrowModal(next: ModalBorrower): void {
@@ -365,6 +373,7 @@ export function openModal(ext: ExtensionMeta): void {
 export function closeModal(): void {
   const leaving = borrower;
   borrower = null;
+  lease += 1;
   disposeOptionsFields();
   if (overlay) overlay.style.display = "none";
   currentExt = null;

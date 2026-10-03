@@ -1,5 +1,5 @@
 import type { SearchEngine } from "../../types/extension";
-import type { EngineConfig, ImageFilter } from "../../types/search";
+import type { DefaultEngines, EngineConfig, ImageFilter } from "../../types/search";
 import type { SettingField } from "../../../shared/setting-field";
 import {
   asString,
@@ -10,6 +10,8 @@ import {
 } from "../../utils/settings/plugin-settings";
 import { defaultEnginesFile } from "../../utils/paths";
 import { readFileSync } from "fs";
+import { ENGINE_BANGS_FIELD } from "../../../shared/sync";
+import { isRecord } from "../../../shared/utils/is-record";
 import { logger } from "../../utils/logger";
 import { getInstanceSettings } from "../../utils/settings/server-settings";
 import { DEGOOG_ENGINE_ID } from "./builtins/degoog";
@@ -218,10 +220,10 @@ export const getActiveWebEngines = async (
   return active;
 };
 
-const _loadDefaultEngineOverrides = (): Record<string, boolean> => {
+const _loadDefaultEngineOverrides = (): DefaultEngines => {
   try {
     const raw = readFileSync(defaultEnginesFile(), "utf-8");
-    return JSON.parse(raw) as Record<string, boolean>;
+    return JSON.parse(raw) as DefaultEngines;
   } catch {
     logger.debug(
       "engines",
@@ -236,13 +238,25 @@ export const getDefaultEngineConfig = (): Record<string, boolean> => {
   const overrides = _loadDefaultEngineOverrides();
   return Object.fromEntries(
     allEngineEntries().map((e: AnyEngineEntry) => {
-      if (e.id in overrides) return [e.id, overrides[e.id]];
+      const override = overrides[e.id];
+      if (typeof override === "boolean") return [e.id, override];
       const instance = engineMap[e.id];
       const disabledByDefault =
         instance &&
         (engineRequiresConfig(instance) || e.disabledByDefault === true);
       return [e.id, !disabledByDefault];
     }),
+  );
+};
+
+export const getDefaultEngineBangConfig = (): Record<string, boolean> => {
+  const bangs = _loadDefaultEngineOverrides()[ENGINE_BANGS_FIELD];
+  const overrides = isRecord(bangs) ? bangs : {};
+  return Object.fromEntries(
+    allEngineEntries().map((e: AnyEngineEntry) => [
+      e.id,
+      overrides[e.id] !== false,
+    ]),
   );
 };
 

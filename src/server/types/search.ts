@@ -58,9 +58,12 @@ export interface ImageFilter {
   nsfw?: ImgNsfw;
 }
 
+export type DefaultEngines = Record<string, boolean | Record<string, boolean>>;
+
 export interface SearchBody {
   query: string;
   engines: string[];
+  bangs?: string[];
   type?: string;
   page?: number;
   time?: string;

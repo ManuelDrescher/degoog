@@ -17,6 +17,8 @@ import { defaultEnginesFile } from "../paths";
 import { writeJsonAtomic } from "../storage/atomic-json";
 import { logger } from "../logger";
 import { isRecord } from "../../../shared/utils/is-record";
+import { ENGINE_BANGS_FIELD } from "../../../shared/sync";
+import type { DefaultEngines } from "../../types/search";
 
 const TAG = "settings-backup";
 const MARKER_PREFIX = "__";
@@ -31,7 +33,7 @@ export type ExtensionsBackup = {
   repos: string[];
   installed: BackupExtensionItem[];
   settings: Record<string, Record<string, SettingValue>>;
-  defaultEngines: Record<string, boolean> | null;
+  defaultEngines: DefaultEngines | null;
 };
 
 export type ExtensionsRestoreResult = {
@@ -64,10 +66,18 @@ const _readEngineMap = (value: unknown): Record<string, boolean> => {
   );
 };
 
-const _readDefaultEngines = async (): Promise<Record<string, boolean>> => {
+const _readDefaultEnginesFile = (value: unknown): DefaultEngines => {
+  const engines: DefaultEngines = _readEngineMap(value);
+  if (isRecord(value) && isRecord(value[ENGINE_BANGS_FIELD])) {
+    engines[ENGINE_BANGS_FIELD] = _readEngineMap(value[ENGINE_BANGS_FIELD]);
+  }
+  return engines;
+};
+
+const _readDefaultEngines = async (): Promise<DefaultEngines> => {
   try {
     const raw = await readFile(defaultEnginesFile(), "utf-8");
-    return _readEngineMap(JSON.parse(raw));
+    return _readDefaultEnginesFile(JSON.parse(raw));
   } catch (err) {
     logger.debug(TAG, "no default engines file to export", err);
     return {};
@@ -125,7 +135,7 @@ export const readExtensionsBackup = (value: unknown): ExtensionsBackup => {
     installed: _readItems(value.installed),
     settings: _readSettings(value.settings),
     defaultEngines: isRecord(value.defaultEngines)
-      ? _readEngineMap(value.defaultEngines)
+      ? _readDefaultEnginesFile(value.defaultEngines)
       : null,
   };
 };
@@ -178,7 +188,7 @@ const _restoreItems = async (
 };
 
 const _restoreDefaultEngines = async (
-  overrides: Record<string, boolean> | null,
+  overrides: DefaultEngines | null,
 ): Promise<void> => {
   if (!overrides) return;
   await writeJsonAtomic(defaultEnginesFile(), overrides);

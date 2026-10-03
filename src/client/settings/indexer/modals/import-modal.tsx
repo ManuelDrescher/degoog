@@ -7,7 +7,7 @@ import { initFileUpload } from "../../../utils/file-upload/file-upload";
 import { fetchEngineTypes, IMPORT_CUSTOM_TYPE } from "../api";
 import { mountProgress, type ProgressUi } from "../progress/progress";
 import { tr } from "../i18n";
-import { borrowModal, closeModal, releaseModal } from "../../../modules/modals/settings-modal/modal";
+import { borrowModal, claimModal, closeModal } from "../../../modules/modals/settings-modal/modal";
 
 const CHUNK_BYTES = 8 * 1024 * 1024;
 const PROGRESS_HOST_ID = "indexer-import-progress";
@@ -110,9 +110,10 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
     "ext-modal-save",
   ) as HTMLButtonElement | null;
   if (!overlay || !titleEl || !bodyEl || !statusEl || !saveEl) return;
-  releaseModal();
+  const owns = claimModal();
 
   const engineTypes = await fetchEngineTypes();
+  if (!owns()) return;
 
   titleEl.textContent = tr("import-modal-title");
   render(
@@ -143,16 +144,15 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
 
   let running = false;
   let finished = false;
-  let owned = true;
 
   const showSave = (): void => {
-    if (!owned) return;
+    if (!owns()) return;
     saveEl.disabled = false;
     saveEl.hidden = false;
   };
 
   const setStatus = (text: string): void => {
-    if (owned) statusEl.textContent = text;
+    if (owns()) statusEl.textContent = text;
   };
 
   const onSave = async (): Promise<void> => {
@@ -191,7 +191,7 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
         return;
       }
       onDone();
-      if (!owned) return;
+      if (!owns()) return;
       setStatus(
         tr("import-done", {
           type,
@@ -212,10 +212,7 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
 
   borrowModal({
     onSave: () => void onSave(),
-    onClose: () => {
-      owned = false;
-      clear(bodyEl);
-    },
+    onClose: () => clear(bodyEl),
   });
   saveEl.textContent = tr("import-btn");
 };

@@ -4,7 +4,7 @@ import { getBase } from "../../../utils/net/base-url";
 import { jsonHeaders } from "../../../utils/net/request";
 import { getStoredToken } from "../../../utils/settings/settings-token";
 import { tr } from "../i18n";
-import { borrowModal, closeModal, releaseModal } from "../../../modules/modals/settings-modal/modal";
+import { borrowModal, claimModal, closeModal } from "../../../modules/modals/settings-modal/modal";
 
 export const openClearModal = (onCleared: () => void): void => {
   const overlay = document.getElementById("ext-modal-overlay");
@@ -15,12 +15,18 @@ export const openClearModal = (onCleared: () => void): void => {
     "ext-modal-save",
   ) as HTMLButtonElement | null;
   if (!overlay || !titleEl || !bodyEl || !statusEl || !saveEl) return;
-  releaseModal();
+  const owns = claimModal();
 
   titleEl.textContent = tr("clear-modal-title");
   render(<ClearBody />, bodyEl);
   statusEl.textContent = "";
   overlay.style.display = "";
+
+  const _fail = (): void => {
+    if (!owns()) return;
+    statusEl.textContent = "Failed";
+    saveEl.disabled = false;
+  };
 
   const confirmClear = async (): Promise<void> => {
     const input = bodyEl.querySelector<HTMLInputElement>(
@@ -38,15 +44,13 @@ export const openClearModal = (onCleared: () => void): void => {
         body: JSON.stringify({ confirm: true }),
       });
       if (!res.ok) {
-        statusEl.textContent = "Failed";
-        saveEl.disabled = false;
+        _fail();
         return;
       }
-      closeModal();
+      if (owns()) closeModal();
       onCleared();
     } catch {
-      statusEl.textContent = "Failed";
-      saveEl.disabled = false;
+      _fail();
     }
   };
 

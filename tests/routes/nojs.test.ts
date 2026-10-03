@@ -957,6 +957,7 @@ interface BangHarness {
   match: BangMatch | null;
   disabled?: boolean;
   engineOn?: boolean;
+  bangOn?: boolean;
   results?: ScoredResult[];
 }
 
@@ -966,12 +967,14 @@ const bangHarness = ({
   match,
   disabled = false,
   engineOn = true,
+  bangOn = true,
   results = [],
 }: BangHarness): void => {
   searchCalls.length = 0;
   mock.module(CATALOG_MOD, () => ({
     ...catalogReal,
     getDefaultEngineConfig: () => ({ "fake-engine": engineOn }),
+    getDefaultEngineBangConfig: () => ({ "fake-engine": bangOn }),
   }));
   mock.module(SERVER_SETTINGS_MOD, () => ({
     ...serverSettingsReal,
@@ -1002,15 +1005,25 @@ describe("nojs bang commands", () => {
     mock.module(CATALOG_MOD, () => catalogReal);
   });
 
-  test("an engine bang for a disabled engine searches nothing", async () => {
+  test("an engine bang the instance turned off searches nothing", async () => {
     bangHarness({
       match: { type: "engine", engineId: "fake-engine", query: "kittens" },
-      engineOn: false,
+      bangOn: false,
       results: [makeResult()],
     });
     const html = await text("/nojs/search?q=!fake%20kittens");
     expect(searchCalls).toHaveLength(0);
     expect(html).not.toContain("First result");
+  });
+
+  test("an engine bang still works when the engine is off by default", async () => {
+    bangHarness({
+      match: { type: "engine", engineId: "fake-engine", query: "kittens" },
+      engineOn: false,
+      results: [makeResult()],
+    });
+    await text("/nojs/search?q=!fake%20kittens");
+    expect(searchCalls).toHaveLength(1);
   });
 
   test("an engine bang for an admin disabled engine searches nothing", async () => {
