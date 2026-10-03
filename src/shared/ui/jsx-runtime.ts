@@ -7,8 +7,6 @@ import type {
   VNode,
 } from "./tribute/types";
 
-export const FRAGMENT_TAG = "#frag";
-
 export const Fragment = (props: { children?: Child }): FragmentNode => ({
   k: "frag",
   children: normalizeChildren(props.children),
@@ -48,14 +46,6 @@ export const jsx = (
       rendered.key = String(key);
     }
     return rendered;
-  }
-
-  if (tag === FRAGMENT_TAG) {
-    return {
-      k: "frag",
-      children: normalizeChildren(props.children as Child),
-      ...(key !== undefined ? { key: String(key) } : {}),
-    };
   }
 
   const { children, static: isStatic, ...rest } = props;

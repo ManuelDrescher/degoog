@@ -74,6 +74,16 @@ export class SqliteAdapter implements IndexerAdapter {
     return this._openDb(safeSlug(type));
   }
 
+  private _stmt(cache: Map<string, Statement>, type: string, sql: string): Statement {
+    const key = safeSlug(type);
+    let stmt = cache.get(key);
+    if (!stmt) {
+      stmt = this._db(type).prepare(sql);
+      cache.set(key, stmt);
+    }
+    return stmt;
+  }
+
   discoverTypes(): string[] {
     try {
       return readdirSync(indexerDir())
@@ -123,16 +133,8 @@ export class SqliteAdapter implements IndexerAdapter {
   async writeBatch(type: string, rows: IndexRow[], now: number, window: number): Promise<void> {
     this._holds.dropStale();
     const db = this._db(type);
-    let upsertUrl = this._upsertUrlStmts.get(type);
-    if (!upsertUrl) {
-      upsertUrl = db.prepare(UPSERT_URL);
-      this._upsertUrlStmts.set(type, upsertUrl);
-    }
-    let upsertHit = this._upsertHitStmts.get(type);
-    if (!upsertHit) {
-      upsertHit = db.prepare(UPSERT_HIT);
-      this._upsertHitStmts.set(type, upsertHit);
-    }
+    const upsertUrl = this._stmt(this._upsertUrlStmts, type, UPSERT_URL);
+    const upsertHit = this._stmt(this._upsertHitStmts, type, UPSERT_HIT);
     const tx = db.transaction((batch: IndexRow[]) => {
       for (const row of batch) {
         const urlIdRow = upsertUrl!.get(urlParams(row, now, now)) as { id: number };
@@ -159,12 +161,7 @@ export class SqliteAdapter implements IndexerAdapter {
 
   async queryExact(type: string, queryNorm: string, limit: number, offset = 0): Promise<UrlRow[]> {
     try {
-      const db = this._db(type);
-      let stmt = this._exactQs.get(type);
-      if (!stmt) {
-        stmt = db.prepare(EXACT_SQL);
-        this._exactQs.set(type, stmt);
-      }
+      const stmt = this._stmt(this._exactQs, type, EXACT_SQL);
       return stmt.all(queryNorm, type, limit, offset) as UrlRow[];
     } catch (err) {
       logger.warn("indexer", `queryExact failed for type=${type}`, err);
@@ -176,12 +173,7 @@ export class SqliteAdapter implements IndexerAdapter {
     const ftsQuery = buildFtsQuery(queryNorm);
     if (!ftsQuery) return [];
     try {
-      const db = this._db(type);
-      let stmt = this._fuzzyQs.get(type);
-      if (!stmt) {
-        stmt = db.prepare(FUZZY_SQL);
-        this._fuzzyQs.set(type, stmt);
-      }
+      const stmt = this._stmt(this._fuzzyQs, type, FUZZY_SQL);
       return stmt.all(
         ftsQuery,
         type,
@@ -255,23 +247,14 @@ export class SqliteAdapter implements IndexerAdapter {
     offset: number,
   ): Promise<IndexerHitRow[]> {
     try {
-      const db = this._db(type);
       const term = q?.trim();
       const params: Record<string, string | number> = { $limit: limit + offset, $offset: 0 };
       if (term) {
-        let stmt = this._listSearchQs.get(type);
-        if (!stmt) {
-          stmt = db.prepare(LIST_SEARCH_SQL);
-          this._listSearchQs.set(type, stmt);
-        }
+        const stmt = this._stmt(this._listSearchQs, type, LIST_SEARCH_SQL);
         params.$term = `%${escapeLike(term.toLowerCase())}%`;
         return (stmt.all(params) as IndexerHitRow[]).slice(offset);
       }
-      let stmt = this._listAllQs.get(type);
-      if (!stmt) {
-        stmt = db.prepare(LIST_ALL_SQL);
-        this._listAllQs.set(type, stmt);
-      }
+      const stmt = this._stmt(this._listAllQs, type, LIST_ALL_SQL);
       return (stmt.all(params) as IndexerHitRow[]).slice(offset);
     } catch (err) {
       logger.warn("indexer", `listHitsForType failed for type=${type}`, err);
@@ -281,21 +264,12 @@ export class SqliteAdapter implements IndexerAdapter {
 
   async countHitsForType(type: string, q: string | undefined): Promise<number> {
     try {
-      const db = this._db(type);
       const term = q?.trim();
       if (term) {
-        let stmt = this._countSearchQs.get(type);
-        if (!stmt) {
-          stmt = db.prepare(COUNT_SEARCH_SQL);
-          this._countSearchQs.set(type, stmt);
-        }
+        const stmt = this._stmt(this._countSearchQs, type, COUNT_SEARCH_SQL);
         return (stmt.get({ $term: `%${escapeLike(term.toLowerCase())}%` }) as { c: number }).c;
       }
-      let stmt = this._countAllQs.get(type);
-      if (!stmt) {
-        stmt = db.prepare(COUNT_ALL_SQL);
-        this._countAllQs.set(type, stmt);
-      }
+      const stmt = this._stmt(this._countAllQs, type, COUNT_ALL_SQL);
       return (stmt.get() as { c: number }).c;
     } catch (err) {
       logger.warn("indexer", `countHitsForType failed for type=${type}`, err);
@@ -305,12 +279,7 @@ export class SqliteAdapter implements IndexerAdapter {
 
   async sampleRows(type: string, limit: number): Promise<ExportRow[]> {
     try {
-      const db = this._db(type);
-      let stmt = this._sampleQs.get(type);
-      if (!stmt) {
-        stmt = db.prepare(`${EXPORT_SELECT_SQL} ORDER BY h.last_seen DESC LIMIT ?`);
-        this._sampleQs.set(type, stmt);
-      }
+      const stmt = this._stmt(this._sampleQs, type, `${EXPORT_SELECT_SQL} ORDER BY h.last_seen DESC LIMIT ?`);
       return stmt.all(limit) as ExportRow[];
     } catch (err) {
       logger.warn("indexer", `sampleRows failed for type=${type}`, err);

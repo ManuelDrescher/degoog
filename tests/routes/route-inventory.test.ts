@@ -23,7 +23,6 @@ const MODULES = [
   "search",
   "search-bar",
   "search/stream",
-  "searx-engines",
   "settings",
   "settings-auth",
   "settings-backup",

@@ -1,5 +1,5 @@
 import { idbGet } from "../storage/db";
-import { SETTINGS_KEY } from "../../constants";
+import { ENGINE_BANGS_KEY, SETTINGS_KEY } from "../../constants";
 import { getBase } from "../net/base-url";
 import { onWindowEvent } from "../dom/window-event";
 import type { EngineRegistry } from "../../types/extension";
@@ -16,13 +16,21 @@ onWindowEvent("extensions-saved", () => {
 export const getRegistry = async (): Promise<EngineRegistry> => {
   if (cachedRegistry) return cachedRegistry;
   if (!inflightRegistry) {
-    inflightRegistry = fetch(`${getBase()}/api/engines`)
-      .then((res) => res.json() as Promise<EngineRegistry>)
+    const request: Promise<EngineRegistry> = fetch(`${getBase()}/api/engines`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`engines request failed: ${res.status}`);
+        return res.json() as Promise<EngineRegistry>;
+      })
       .then((data) => {
         cachedRegistry = data;
-        inflightRegistry = null;
+        if (inflightRegistry === request) inflightRegistry = null;
         return data;
+      })
+      .catch((err: unknown) => {
+        if (inflightRegistry === request) inflightRegistry = null;
+        throw err;
       });
+    inflightRegistry = request;
   }
   return inflightRegistry;
 };
@@ -36,6 +44,21 @@ export const getEngines = async (): Promise<EngineRecord> => {
   }
   return merged;
 };
+
+export const getEngineBangs = async (): Promise<EngineRecord> => {
+  const saved = (await idbGet<EngineRecord>(ENGINE_BANGS_KEY)) ?? {};
+  const reg = await getRegistry();
+  const merged: EngineRecord = {};
+  for (const { id } of reg.engines) {
+    merged[id] = saved[id] ?? reg.bangDefaults?.[id] ?? true;
+  }
+  return merged;
+};
+
+export const enabledIds = (record: EngineRecord): string[] =>
+  Object.entries(record)
+    .filter(([, on]) => on)
+    .map(([id]) => id);
 
 const _typesForEngine = (engine: {
   searchTypes?: string[];

@@ -1,5 +1,6 @@
 import { getBase } from "../../utils/net/base-url";
-import { getStoredToken } from "../settings/settings";
+import { jsonHeaders } from "../../utils/net/request";
+import { getStoredToken } from "../../utils/settings/settings-token";
 
 const SERVER_SETTINGS_URL = "/api/server-settings";
 
@@ -28,14 +29,10 @@ export const fetchWizardDisabled = async (): Promise<boolean> =>
   (await _readServerWizard())?.disabled === true;
 
 export const patchServerWizard = async (wizard: boolean): Promise<void> => {
-  const token = getStoredToken();
   try {
     await fetch(`${getBase()}${SERVER_SETTINGS_URL}`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { "x-settings-token": token } : {}),
-      },
+      headers: jsonHeaders(getStoredToken),
       body: JSON.stringify({ wizard }),
     });
   } catch (err) {

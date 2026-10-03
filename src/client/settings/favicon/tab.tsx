@@ -20,8 +20,6 @@ const t = window.scopedT("core");
 
 const CARDS_CLASS = "ext-cards--orderable";
 
-const _ordered = new WeakSet<HTMLElement>();
-
 const UNRANKED_PRIORITY = -1;
 
 const _priority = (provider: ExtensionMeta): number => {
@@ -173,8 +171,7 @@ export function initFaviconTab(allExtensions: AllExtensions): void {
     });
 
   const cardsEl = container.querySelector<HTMLElement>(`.${CARDS_CLASS}`);
-  if (!cardsEl || _ordered.has(cardsEl)) return;
-  _ordered.add(cardsEl);
+  if (!cardsEl) return;
   initDragOrder(cardsEl, {
     itemSelector: ".ext-card",
     handleSelector: "[data-drag-handle]",

@@ -35,7 +35,7 @@ export const ItemCard = ({ item }: { item: StoreItem }): JSX.Element => {
         "data-first-screenshot-url": firstUrl,
         role: "button",
         tabindex: "0",
-        "aria-label": "View screenshots",
+        "aria-label": t("settings-page.store.view-screenshots-aria"),
       }
     : {};
   const subLabel = _subLabel(item);

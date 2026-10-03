@@ -77,6 +77,8 @@ export interface ExtensionMeta {
   compatibilityLayer?: string;
   extensionDocsAvailable?: boolean;
   defaultEnabled?: boolean;
+  defaultBangEnabled?: boolean;
+  bangShortcut?: string;
   defaultFeedUrls?: string[];
   isClientExposed?: boolean;
   requiresNewerVersion?: boolean;
@@ -92,6 +94,7 @@ export interface PluginContext {
   template: string;
   readFile: (filename: string) => Promise<string>;
   signProxyUrl: (url: string) => string;
+  signFaviconUrl: (url: string) => string;
   fetch?: (url: string, init?: RequestInit) => Promise<Response>;
   /** @deprecated Use `useCache` (async, namespaced, Valkey-backed when enabled). */
   createCache: CreateCache;
@@ -183,6 +186,7 @@ export interface SlotPluginContext {
   results?: ScoredResult[];
   fetch?: (url: string, init?: RequestInit) => Promise<Response>;
   signProxyUrl?: (url: string) => string;
+  signFaviconUrl?: (url: string) => string;
   /** @deprecated Use `useCache` (async, namespaced, Valkey-backed when enabled). */
   createCache: CreateCache;
   useCache: UseCache;
@@ -230,6 +234,7 @@ export interface CommandContext {
   signProxyUrl?: (url: string) => string;
   nojs?: boolean;
   engines?: EngineConfig;
+  bangs?: EngineConfig;
 }
 
 export interface BangCommand {

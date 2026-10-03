@@ -26,6 +26,7 @@ type ValkeyClient = {
   subscribe: (channel: string) => Promise<unknown>;
   on: (event: string, cb: (...args: unknown[]) => void) => void;
   quit: () => Promise<unknown>;
+  disconnect: () => void;
   duplicate: () => ValkeyClient;
   status: string;
   get: (key: string) => Promise<string | null>;
@@ -67,6 +68,14 @@ const _loadClient = async (url: string): Promise<ValkeyClient | null> => {
   }
 };
 
+function _disconnect(client: ValkeyClient | null): void {
+  try {
+    client?.disconnect();
+  } catch (err) {
+    logger.debug(NS, "valkey disconnect failed", err);
+  }
+}
+
 const _fallBackToDisk = async (): Promise<void> => {
   const started = await startDiskBus(_notifyRemote);
   if (!started) _initPromise = null;
@@ -103,9 +112,7 @@ export const initValkey = async (instanceId: string): Promise<void> => {
       const [channel, message] = args as [string, string];
       if (channel !== _channel) return;
       try {
-        const payload = JSON.parse(message) as InvalidatePayload;
-        if (payload.origin === PROCESS_ORIGIN) return;
-        for (const h of _handlers) h(payload);
+        _notifyRemote(JSON.parse(message));
       } catch (err) {
         logger.error(NS, "invalid invalidate payload", err);
       }
@@ -117,6 +124,8 @@ export const initValkey = async (instanceId: string): Promise<void> => {
       logger.info(NS, `valkey connected, channel=${_channel}`);
     } catch (err) {
       logger.error(NS, "valkey subscribe failed; falling back to disk", err);
+      _disconnect(_publisher);
+      _disconnect(_subscriber);
       _publisher = null;
       _subscriber = null;
       _channel = null;

@@ -59,26 +59,22 @@ export const parseRateLimitOptions = (
 const store = new Map<string, number[]>();
 const MAX_IPS = 100_000;
 
-const _pruneAndCount = (
-  timestamps: number[],
-  now: number,
-  burstWindowSec: number,
-  longWindowSec: number,
-): { burstCount: number; longCount: number; oldestInBurst: number | null } => {
-  const longCutoff = now - longWindowSec * 1000;
-  const burstCutoff = now - burstWindowSec * 1000;
-  let burstCount = 0;
-  let longCount = 0;
-  let oldestInBurst: number | null = null;
-  for (const t of timestamps) {
-    if (t < longCutoff) continue;
-    longCount++;
-    if (t >= burstCutoff) {
-      burstCount++;
-      if (oldestInBurst === null || t < oldestInBurst) oldestInBurst = t;
+const _burstStart = (timestamps: number[], burstCutoff: number): number => {
+  let i = timestamps.length;
+  while (i > 0 && timestamps[i - 1] >= burstCutoff) i--;
+  return i;
+};
+
+const _evictOldest = (): void => {
+  let oldestKey: string | null = null;
+  let oldestFirst = Infinity;
+  for (const [k, ts] of store) {
+    if (ts.length > 0 && ts[0] < oldestFirst) {
+      oldestFirst = ts[0];
+      oldestKey = k;
     }
   }
-  return { burstCount, longCount, oldestInBurst };
+  if (oldestKey !== null) store.delete(oldestKey);
 };
 
 export const checkRateLimit = (
@@ -97,39 +93,21 @@ export const checkRateLimit = (
   let timestamps = store.get(key);
   if (!timestamps) {
     timestamps = [];
-    if (store.size >= MAX_IPS) {
-      let oldestKey: string | null = null;
-      let oldestMin = Infinity;
-      for (const [k, ts] of store) {
-        const minT = Math.min(...ts);
-        if (minT < oldestMin) {
-          oldestMin = minT;
-          oldestKey = k;
-        }
-      }
-      if (oldestKey !== null) store.delete(oldestKey);
-    }
+    if (store.size >= MAX_IPS) _evictOldest();
     store.set(key, timestamps);
   }
 
   timestamps.push(now);
   const longCutoff = now - longWindowSec * 1000;
-  while (timestamps.length > 0 && timestamps[0] < longCutoff) {
-    timestamps.shift();
+  let expired = 0;
+  while (expired < timestamps.length && timestamps[expired] < longCutoff) {
+    expired++;
   }
-  if (timestamps.length === 0) {
-    store.delete(key);
-    return { allowed: true };
-  }
+  const keep = Math.max(burstMax, longMax) + 1;
+  const drop = Math.max(expired, timestamps.length - keep);
+  if (drop > 0) timestamps.splice(0, drop);
 
-  const { burstCount, longCount, oldestInBurst } = _pruneAndCount(
-    timestamps,
-    now,
-    burstWindowSec,
-    longWindowSec,
-  );
-
-  if (longCount > longMax) {
+  if (timestamps.length > longMax) {
     const retryAfterSec = Math.max(
       1,
       Math.ceil((timestamps[0] + longWindowSec * 1000 - now) / 1000),
@@ -137,14 +115,12 @@ export const checkRateLimit = (
     return { allowed: false, retryAfterSec };
   }
 
-  if (burstCount > burstMax) {
-    const retryAfterSec =
-      oldestInBurst !== null
-        ? Math.max(
-            1,
-            Math.ceil((oldestInBurst + burstWindowSec * 1000 - now) / 1000),
-          )
-        : burstWindowSec;
+  const burstStart = _burstStart(timestamps, now - burstWindowSec * 1000);
+  if (timestamps.length - burstStart > burstMax) {
+    const retryAfterSec = Math.max(
+      1,
+      Math.ceil((timestamps[burstStart] + burstWindowSec * 1000 - now) / 1000),
+    );
     return { allowed: false, retryAfterSec };
   }
 

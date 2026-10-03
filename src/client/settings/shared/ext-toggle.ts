@@ -1,4 +1,6 @@
 import { getBase } from "../../utils/net/base-url";
+import { jsonHeaders } from "../../utils/net/request";
+import { getStoredToken } from "../../utils/settings/settings-token";
 import { flashError, flashSuccess } from "./flash-msg";
 
 const t = window.scopedT("core");
@@ -22,7 +24,7 @@ export const extToggleHandler = (
           `${getBase()}/api/extensions/${encodeURIComponent(id)}/settings`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: jsonHeaders(getStoredToken),
             body: JSON.stringify({ disabled: intended ? "" : "true" }),
           },
         );

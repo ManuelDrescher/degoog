@@ -25,8 +25,7 @@
     },
     "appearance": {
       "heading": "Apparence",
-      "desc": "Choisissez un thème.",
-      "save-defaults": "Enregistrer comme valeur par défaut de l'instance"
+      "desc": "Choisissez un thème."
     },
     "theme": {
       "system": "Par défaut du système",
@@ -282,16 +281,9 @@
       "custom-css-label": "CSS personnalisé",
       "saved": "Enregistré",
       "save-failed-network": "Échec de l'enregistrement. Réessayez.",
-      "shortcuts-heading": "Raccourcis clavier",
-      "shortcuts-desc": "Allumez les raccourcis clavier. Désactivé, la section Raccourcis disparaît et tout est délié.",
-      "shortcuts-enable": "Activer les raccourcis clavier",
-      "shortcuts-enable-aria": "Activer les raccourcis clavier",
-      "shortcuts-enable-desc": "Focus recherche, changement d'onglet, déplacement dans les résultats. Liez-les dans la section Raccourcis.",
       "infinite-scroll-enable": "Remplacer la pagination par le défilement infini",
       "infinite-scroll-enable-aria": "Remplacer la pagination par le défilement infini",
       "infinite-scroll-enable-desc": "Enlève précédent/suivant et charge la page suivante en bas de page.",
-      "searx-heading": "Couche de compatibilité SearX",
-      "searx-desc": "Faites tourner des moteurs SearXNG dans Degoog. Pas de second processus SearXNG.",
       "searx-enable": "Activer la couche de compatibilité SearX",
       "searx-enable-desc": "Permet d'installer des moteurs depuis le dépôt SearXNG dans l'onglet Moteurs.",
       "searx-enable-aria": "Activer la couche de compatibilité SearX",
@@ -344,22 +336,14 @@
       "field-fetch-failed": "Impossible de charger les options",
       "field-fetch-empty": "Aucune option renvoyée"
     },
-    "confirm": {
-      "title": "Confirmer",
-      "cancel": "Annuler",
-      "confirm": "Confirmer"
-    },
     "extensions": {
       "configure": "Configurer",
       "active": "Actif",
       "built-in-theme-name": "Intégré",
       "built-in-theme-desc": "L'apparence livrée avec Degoog.",
-      "group-plugins": "Plugins",
-      "group-builtin-commands": "Commandes intégrées",
       "group-transports": "Transports",
       "group-builtin-transports": "Transports intégrés",
       "group-themes": "Thèmes",
-      "apply-failed": "Échec",
       "save-defaults": "Enregistrer comme valeur par défaut de l'instance",
       "reset-defaults": "Réinitialiser aux valeurs par défaut de l'instance",
       "reset-confirm": "Cela remplace vos choix de moteurs sur ce navigateur par les valeurs par défaut de l'instance. Continuer ?",
@@ -373,6 +357,9 @@
       "status-configured": "Configuré",
       "status-needs-config": "Configuration requise",
       "extra-types": "Types supplémentaires :",
+      "bang-on-title": "{bang} cherche uniquement avec ce moteur. Cliquez pour le désactiver.",
+      "bang-off-title": "{bang} est désactivé. Cliquez pour l'activer.",
+      "bang-only": "Désactivé dans les recherches normales, fonctionne toujours avec {bang}.",
       "requires-newer-version": "Nécessite une version plus récente de Degoog",
       "no-engines": "Aucun moteur installé. L'onglet {store} est là où ils vivent.",
       "no-engines-store": "Boutique",
@@ -508,6 +495,7 @@
       "clear-modal-desc": "Supprime définitivement toutes les lignes de l'index local. Tapez CLEAR pour confirmer.",
       "clear-confirm": "Vider",
       "clear-cancel": "Annuler",
+      "clear-failed": "Impossible de vider l'index",
       "save-error": "Échec de l'enregistrement des paramètres de l'indexeur.",
       "disabled": "L'indexeur est désactivé. Activez-le dans les paramètres Serveur."
     },
@@ -643,12 +631,10 @@
     },
     "restart": {
       "heading": "Redémarrage requis",
-      "desc": "Certaines des extensions que vous avez installées ne se chargeront pas tant que le serveur n'a pas redémarré.",
       "modal-intro": "Ces extensions ne font rien tant que le serveur n'a pas redémarré :",
       "modal-note": "Le redémarrage arrête Degoog pendant quelques secondes. Vous pouvez redémarrer plus tard depuis Paramètres › Serveur.",
       "later": "Pas maintenant",
       "button": "Redémarrer le serveur",
-      "confirm": "Ceci redémarre Degoog. Les recherches en cours sont coupées quelques secondes. Continuer ?",
       "restarting": "Redémarrage..."
     }
   }

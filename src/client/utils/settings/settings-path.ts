@@ -36,3 +36,27 @@ export function isSettingsPathname(pathname: string): boolean {
   const root = getSettingsRoot();
   return normalized === root || normalized.startsWith(`${root}/`);
 }
+
+export function switchSettingsTab(value: string, updateUrl = true): void {
+  document
+    .querySelectorAll<HTMLElement>(".settings-tab-panel")
+    .forEach((p) => p.classList.remove("active"));
+  document.getElementById(`tab-${value}`)?.classList.add("active");
+  document.querySelectorAll<HTMLElement>(".settings-nav-item").forEach((b) => {
+    b.classList.toggle("active", b.dataset.tab === value);
+  });
+  const select = document.getElementById(
+    "settings-tab-select",
+  ) as HTMLSelectElement | null;
+  if (select) select.value = value;
+
+  if (updateUrl) {
+    const root = getSettingsRoot();
+    const path = value === "general" ? root : `${root}/${value}`;
+    window.history.replaceState({}, "", path);
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("settings-tab-changed", { detail: value }),
+  );
+}

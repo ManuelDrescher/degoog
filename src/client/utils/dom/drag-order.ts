@@ -14,10 +14,18 @@ const clearTween = (el: HTMLElement): void => {
   el.style.transform = "";
 };
 
+const _configs = new WeakMap<HTMLElement, DragOrderConfig>();
+
 export const initDragOrder = (
   list: HTMLElement,
-  config: DragOrderConfig,
+  initialConfig: DragOrderConfig,
 ): void => {
+  const wired = _configs.has(list);
+  _configs.set(list, initialConfig);
+  if (wired) return;
+
+  const current = (): DragOrderConfig => _configs.get(list) ?? initialConfig;
+
   let dragged: HTMLElement | null = null;
   let pointerId = -1;
   let startY = 0;
@@ -25,7 +33,7 @@ export const initDragOrder = (
   let active = false;
 
   const items = (): HTMLElement[] =>
-    Array.from(list.querySelectorAll<HTMLElement>(config.itemSelector));
+    Array.from(list.querySelectorAll<HTMLElement>(current().itemSelector));
 
   const glueToPointer = (clientY: number): void => {
     if (!dragged) return;
@@ -112,16 +120,16 @@ export const initDragOrder = (
 
     if (moved && item) {
       settle(item);
-      config.onReorder(list, item);
+      current().onReorder(list, item);
     }
   };
 
   list.addEventListener("pointerdown", (e: PointerEvent) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     const target = e.target as HTMLElement;
-    const handle = target.closest(config.handleSelector);
+    const handle = target.closest(current().handleSelector);
     if (!handle || !list.contains(handle)) return;
-    const item = handle.closest<HTMLElement>(config.itemSelector);
+    const item = handle.closest<HTMLElement>(current().itemSelector);
     if (!item) return;
 
     e.preventDefault();
@@ -150,15 +158,15 @@ export const initDragOrder = (
     dragged = null;
 
     settle(item);
-    config.onReorder(list, item);
+    current().onReorder(list, item);
   };
 
   list.addEventListener("keydown", (e: KeyboardEvent) => {
     if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
     const target = e.target as HTMLElement;
-    const handle = target.closest(config.handleSelector);
+    const handle = target.closest(current().handleSelector);
     if (!handle || !list.contains(handle)) return;
-    const item = handle.closest<HTMLElement>(config.itemSelector);
+    const item = handle.closest<HTMLElement>(current().itemSelector);
     if (!item) return;
 
     e.preventDefault();

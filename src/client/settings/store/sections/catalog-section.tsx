@@ -1,27 +1,31 @@
+const t = window.scopedT("core");
+
 const FILTERS = [
-  { class: "store-filter-type", label: "Filter by type", hidden: false },
-  { class: "store-filter-subtype", label: "Filter by sub-type", hidden: true },
+  { class: "store-filter-type", labelKey: "settings-page.store.filter-type-aria", hidden: false },
+  { class: "store-filter-subtype", labelKey: "settings-page.store.filter-subtype-aria", hidden: true },
   { class: "store-filter-status", label: "Filter by install status", hidden: false },
 ];
 
 export const CatalogSection = (): JSX.Element => (
   <section class="store-catalog-section settings-section">
     <div class="store-catalog-header">
-      <h2 class="settings-section-heading">Catalog</h2>
+      <h2 class="settings-section-heading">
+        {t("settings-page.store.catalog-heading")}
+      </h2>
     </div>
     <div class="store-updates-panel degoog-accordion" style="display:none"></div>
     <div class="store-filter-bar">
       <input
         type="text"
         class="store-search-input degoog-search-bar degoog-search-bar--square-advanced"
-        placeholder="Search Extensions…"
+        placeholder={t("settings-page.store.search-placeholder")}
         id="store-search-input"
       />
       <div class="store-filter-bar-dropdowns">
         {FILTERS.map((filter) => (
           <select
             class={`store-filter-select ${filter.class}`}
-            aria-label={filter.label}
+            aria-label={filter.labelKey ? t(filter.labelKey) : filter.label}
             style={filter.hidden ? "display:none" : undefined}
           ></select>
         ))}

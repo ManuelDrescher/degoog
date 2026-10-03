@@ -2,6 +2,8 @@ import { render } from "../../../shared/ui/tribute/dom";
 import { PluginCard } from "./plugin-card";
 import type { AllExtensions, ExtensionMeta } from "../../types/extension";
 import { getBase } from "../../utils/net/base-url";
+import { jsonHeaders } from "../../utils/net/request";
+import { getStoredToken } from "../../utils/settings/settings-token";
 import { initDragOrder } from "../../utils/dom/drag-order";
 
 const _priority = (plugin: ExtensionMeta): number => {
@@ -21,7 +23,7 @@ const _savePriorities = async (group: HTMLElement): Promise<void> => {
         `${getBase()}/api/extensions/${encodeURIComponent(id)}/settings`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: jsonHeaders(getStoredToken),
           body: JSON.stringify({ priority: String(total - 1 - i) }),
         },
       );

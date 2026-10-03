@@ -17,6 +17,7 @@ import {
   writeReposData,
 } from "../extensions/store/persistence";
 import { slugFromUrl } from "../extensions/store/repo-ops";
+import { canonicalInstalledFolder } from "../extensions/store/item-specs";
 import {
   readServerSettings,
   writeServerSettings,
@@ -383,14 +384,16 @@ const renameItemDirs = async (repoPkgs: RepoPkg[]): Promise<void> => {
   }
 };
 
+const KEEPS_TRAILING_SLASH = new Set<ExtensionStoreType>([
+  ExtensionStoreType.Theme,
+  ExtensionStoreType.Autocomplete,
+]);
+
 const expectedInstalledAs = (item: ReposData["installed"][number]): string => {
-  if (item.type === ExtensionStoreType.Theme) {
-    return makeExtID(folderNameForItem(item.repoUrl, item.itemPath), "theme");
-  }
-  if (item.type === ExtensionStoreType.Autocomplete) {
-    return makeExtID(folderNameForItem(item.repoUrl, item.itemPath), "autocomplete");
-  }
-  return folderNameForItem(item.repoUrl, item.itemPath.replace(/\/$/, ""));
+  const itemPath = KEEPS_TRAILING_SLASH.has(item.type)
+    ? item.itemPath
+    : item.itemPath.replace(/\/$/, "");
+  return canonicalInstalledFolder(item.type, folderNameForItem(item.repoUrl, itemPath));
 };
 
 const syncInstalledAs = (data: ReposData): boolean => {

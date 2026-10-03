@@ -1,18 +1,20 @@
 import type { StoreItem } from "../../../types/store-tab";
 
+const t = window.scopedT("core");
+
 export function pluginTypeLabel(type: string): string {
-  if (type === "command") return "Bang";
-  if (type === "slot") return "Slot";
-  if (type === "search-result-tab") return "Search tab";
-  if (type === "searchBarAction") return "Search bar";
+  if (type === "command") return t("settings-page.store.plugin-type-bang");
+  if (type === "slot") return t("settings-page.store.plugin-type-slot");
+  if (type === "search-result-tab")
+    return t("settings-page.store.plugin-type-search-tab");
+  if (type === "searchBarAction")
+    return t("settings-page.store.plugin-type-search-bar");
   return type.charAt(0).toUpperCase() + type.slice(1).replace(/-/g, " ");
 }
 
 export function engineTypeLabel(type: string): string {
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
-
-const t = window.scopedT("core");
 
 type StoreItemType = StoreItem["type"];
 

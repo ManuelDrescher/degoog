@@ -9,7 +9,6 @@ import {
 } from "../../src/server/extensions/compatibility-layer/fourget/npt-key";
 import {
   FOURGET_OPT_PREFIX,
-  isDriven,
   optionFields,
   overridesFrom,
   type FourGetFilters,
@@ -142,9 +141,6 @@ describe("4get getfilters mapping", () => {
   });
 
   test("date and search filters are driven, not configured", () => {
-    expect(isDriven({ option: "_DATE" })).toBe(true);
-    expect(isDriven({ option: "_SEARCH" })).toBe(true);
-    expect(isDriven({ option: { a: "A" } })).toBe(false);
     const keys = optionFields(FILTERS).map((field) => field.key);
     expect(keys).not.toContain(`${FOURGET_OPT_PREFIX}newer`);
     expect(keys).not.toContain(`${FOURGET_OPT_PREFIX}q`);

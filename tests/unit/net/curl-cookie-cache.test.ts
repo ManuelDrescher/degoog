@@ -50,6 +50,26 @@ describe("curl-cookie-cache", () => {
     expect(parsed.cookieJarText).toBe(jar);
   });
 
+  test("parseCurlStdoutWithCookieJar reads the redirect location after the status", () => {
+    const statusDelim = randomUUID();
+    const cookieDelim = randomUUID();
+    const stdout = `\n${statusDelim}302 https://example.com/next\n${cookieDelim}\n${COOKIE_JAR_HEADER}`;
+
+    const parsed = parseCurlStdoutWithCookieJar(stdout, statusDelim, cookieDelim);
+    expect(parsed.status).toBe(302);
+    expect(parsed.location).toBe("https://example.com/next");
+  });
+
+  test("parseCurlStdoutWithCookieJar has no location without a redirect", () => {
+    const statusDelim = randomUUID();
+    const cookieDelim = randomUUID();
+    const stdout = `ok\n${statusDelim}200 \n${cookieDelim}\n${COOKIE_JAR_HEADER}`;
+
+    const parsed = parseCurlStdoutWithCookieJar(stdout, statusDelim, cookieDelim);
+    expect(parsed.status).toBe(200);
+    expect(parsed.location).toBeNull();
+  });
+
   test("parseCurlStdoutWithCookieJar returns null jar when delimiter absent", () => {
     const statusDelim = randomUUID();
     const cookieDelim = randomUUID();
@@ -73,7 +93,7 @@ describe("curl-cookie-cache", () => {
       .map((arg, i) => (arg === "-" ? i : -1))
       .filter((i) => i >= 0);
     expect(dashIndexes.length).toBe(2);
-    expect(args).toContain(`\n${statusDelim}%{http_code}\n${cookieDelim}\n`);
+    expect(args).toContain(`\n${statusDelim}%{http_code} %{redirect_url}\n${cookieDelim}\n`);
   });
 });
 

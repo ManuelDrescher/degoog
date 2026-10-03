@@ -39,11 +39,9 @@ import {
 } from "./utils/security/content-policy";
 import { runMigrations } from "./migrations";
 import { runFaviconDefaultsMigration093026 } from "./migrations/2026-09-favicon-defaults-migration";
-import { closeAllDbs } from "./indexer/db/lifecycle";
-import { closeFaviconStore } from "./indexer/store/favicons";
-import { startQueue, stopQueue } from "./indexer/queue/queue";
+import { startQueue } from "./indexer/queue/queue";
 import { logger } from "./utils/logger";
-import { registerServerHandle } from "./utils/server-lifecycle";
+import { drainServer, registerServerHandle } from "./utils/server-lifecycle";
 import { getTransportWsHandlers } from "./extensions/transports/ws-registry";
 import {
   ANSI_BLUE,
@@ -198,11 +196,7 @@ const initExtensionRegistries = async (): Promise<void> => {
 
 const shutdown = (signal: string): void => {
   logger.info("server", `received ${signal}, shutting down`);
-  stopQueue()
-    .finally(async () => {
-      await Promise.allSettled([closeAllDbs(), closeFaviconStore()]);
-      process.exit(0);
-    });
+  void drainServer().then(() => process.exit(0));
 };
 
 process.on("SIGTERM", () => shutdown("SIGTERM"));

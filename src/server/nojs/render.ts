@@ -16,6 +16,7 @@ import {
   textDirection,
   themeCssLink,
 } from "../render/theme-assets";
+import { sub } from "../render/substitute";
 import { isNojsCssCheckOn } from "./settings";
 import { loadNojsTemplate } from "./templates";
 
@@ -36,13 +37,12 @@ export const prefixRootRelativeUrls = (
   html: string,
   prefix: string,
 ): string =>
-  prefix ? html.replace(_rootRelativeUrl(prefix), `$1${prefix}/`) : html;
+  prefix
+    ? html.replace(_rootRelativeUrl(prefix), (_match, open: string) => `${open}${prefix}/`)
+    : html;
 
 const NOJS_STYLESHEET = `<link rel="stylesheet" href="/public/nojs.css?v=${pkg.version}">`;
 const FONTAWESOME_STYLESHEET = `<link rel="stylesheet" href="/public/icons/fontawesome/css/all.min.css?v=${pkg.version}">`;
-
-export const sub = (html: string, key: string, value: string): string =>
-  html.replaceAll(key, () => value);
 
 export const getNojsTranslator = async (): Promise<Translate> => {
   const baseT = await getDefaultThemeTranslator();

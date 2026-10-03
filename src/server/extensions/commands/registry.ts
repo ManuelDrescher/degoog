@@ -12,7 +12,7 @@ import {
   isDisabled,
 } from "../../utils/settings/plugin-settings";
 import { bootCircuitFromPath } from "../../utils/extension-support/translation-circuit";
-import { getDefaultEngineConfig, getEngineMap as getSearchEngineMap } from "../engines/catalog";
+import { getDefaultEngineBangConfig, getEngineMap as getSearchEngineMap } from "../engines/catalog";
 import { pluginsDir } from "../../utils/paths";
 import { createRegistry } from "../registry-factory";
 import { isEngineBangAllowed } from "../../search/engine-bang";
@@ -73,6 +73,7 @@ const registry = createRegistry<CommandEntry>({
       instance,
     };
   },
+  reset: () => seenTriggers.clear(),
   onLoad: async (entry, { entryPath, folderName, source }) => {
     if (seenTriggers.has(entry.trigger)) return false;
     seenTriggers.add(entry.trigger);
@@ -117,15 +118,11 @@ async function loadAliases(): Promise<void> {
 
 export async function initPlugins(): Promise<void> {
   await loadAliases();
-  commandSourceMap.clear();
-  seenTriggers.clear();
   await registry.init();
 }
 
 export async function reloadCommands(bust = false): Promise<void> {
   await loadAliases();
-  commandSourceMap.clear();
-  seenTriggers.clear();
   await (bust ? registry.reload() : registry.refresh());
 }
 
@@ -215,7 +212,7 @@ export function getCommandRegistry(): CommandRegistryEntry[] {
 }
 
 export async function getFilteredCommandRegistry(
-  engines: EngineConfig = getDefaultEngineConfig(),
+  bangs: EngineConfig = getDefaultEngineBangConfig(),
 ): Promise<CommandRegistryEntry[]> {
   const full = getCommandRegistry();
   const configuredTriggers = new Set<string>();
@@ -231,7 +228,7 @@ export async function getFilteredCommandRegistry(
   );
 
   for (const [shortcut, engineId] of getEngineShortcuts()) {
-    if (!(await isEngineBangAllowed(engineId, engines))) continue;
+    if (!(await isEngineBangAllowed(engineId, bangs))) continue;
     configuredTriggers.add(shortcut);
   }
 
@@ -242,10 +239,10 @@ type CommandApiEntry = CommandRegistryEntry & {
   naturalLanguage: boolean;
 };
 
-export async function getCommandsApiResponse(engines?: EngineConfig): Promise<{
+export async function getCommandsApiResponse(bangs?: EngineConfig): Promise<{
   commands: CommandApiEntry[];
 }> {
-  const full = await getFilteredCommandRegistry(engines);
+  const full = await getFilteredCommandRegistry(bangs);
   const commands: CommandApiEntry[] = await Promise.all(
     full.map(async (entry) => {
       const naturalLanguage = entry.id

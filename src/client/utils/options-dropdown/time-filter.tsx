@@ -6,15 +6,17 @@ import { performSearch } from "../search/actions/search-actions-perform";
 import { getBase } from "../net/base-url";
 import { isImageSearchType } from "../../../shared/search-types";
 
+const t = window.scopedT("themes/degoog");
+
 const TIME_ANY = "any";
-const TIME_LABELS: Record<string, string> = {
-  [TIME_ANY]: "Any time",
-  hour: "Hour",
-  day: "24 hours",
-  week: "Week",
-  month: "Month",
-  year: "Year",
-  custom: "Custom",
+const TIME_LABELS: Record<string, () => string> = {
+  [TIME_ANY]: () => t("search-templates.tabs.any-time"),
+  hour: () => t("search-templates.tabs.hour"),
+  day: () => t("search-templates.tabs.day"),
+  week: () => t("search-templates.tabs.week"),
+  month: () => t("search-templates.tabs.month"),
+  year: () => t("search-templates.tabs.year"),
+  custom: () => "Custom",
 };
 
 const TOOLS_OPEN_KEY = "degoog-tools-open";
@@ -23,11 +25,21 @@ const TOOLS_PIN_EVENT = "degoog-tools-pin";
 
 let _langDisplayNames: Intl.DisplayNames | null = null;
 
+function _createDisplayNames(): Intl.DisplayNames {
+  const locale = document.documentElement.lang;
+  if (locale) {
+    try {
+      return new Intl.DisplayNames([locale, "en"], { type: "language" });
+    } catch (err) {
+      console.debug("[tools] unsupported page locale", err);
+    }
+  }
+  return new Intl.DisplayNames(["en"], { type: "language" });
+}
+
 function getLangName(code: string): string {
   try {
-    if (!_langDisplayNames) {
-      _langDisplayNames = new Intl.DisplayNames(["en"], { type: "language" });
-    }
+    if (!_langDisplayNames) _langDisplayNames = _createDisplayNames();
     return _langDisplayNames.of(code) ?? code;
   } catch {
     return code;
@@ -91,8 +103,9 @@ export function initOptionsDropdown(): void {
 
   function updateValueLabels(): void {
     if (timeValEl) {
-      timeValEl.textContent =
-        TIME_LABELS[state.currentTimeFilter] ?? TIME_LABELS[TIME_ANY];
+      timeValEl.textContent = (
+        TIME_LABELS[state.currentTimeFilter] ?? TIME_LABELS[TIME_ANY]
+      )();
       timeValEl.classList.toggle(
         "tools-field-value--set",
         state.currentTimeFilter !== TIME_ANY,
@@ -101,7 +114,7 @@ export function initOptionsDropdown(): void {
     if (langValEl) {
       langValEl.textContent = state.currentLanguage
         ? getLangName(state.currentLanguage)
-        : "Any";
+        : t("search-templates.tabs.any");
       langValEl.classList.toggle(
         "tools-field-value--set",
         !!state.currentLanguage,
@@ -188,7 +201,7 @@ export function initOptionsDropdown(): void {
       const codes = data.languages ?? [];
 
       const items = [
-        { code: "", label: "Any language" },
+        { code: "", label: t("search-templates.tabs.any-language") },
         ...codes.map((c) => ({ code: c, label: getLangName(c) })),
       ];
       items.sort((a, b) => {

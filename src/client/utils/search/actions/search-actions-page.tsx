@@ -3,7 +3,7 @@ import { NoResults } from "../../../../shared/ui/components/feedback/no-results"
 import { SkeletonImageGrid } from "../../../animations/skeleton/skeleton-image-grid";
 import { SkeletonResults } from "../../../animations/skeleton/skeleton-results";
 import { isImageSearchType, type SearchResponse } from "../../../../shared/search-types";
-import { state } from "../../../state";
+import { beginSearch, isCurrentSearch, state } from "../../../state";
 import { fetchResultsPage } from "../../net/url";
 import { getBase } from "../../net/base-url";
 import { clearSlotPanels } from "../../../modules/renderer/render-slots";
@@ -17,6 +17,8 @@ import {
 } from "../search-utils";
 import { declaredPages, setResultsMeta } from "../search-helpers";
 
+const t = window.scopedT("themes/degoog");
+
 export async function goToPage(pageNum: number): Promise<void> {
   if (pageNum === state.currentPage) return;
   if (state.currentBangQuery) {
@@ -24,6 +26,7 @@ export async function goToPage(pageNum: number): Promise<void> {
     return performBangSearch(state.currentBangQuery, state.currentType, pageNum);
   }
 
+  const seq = beginSearch();
   window.scrollTo({ top: 0, behavior: "auto" });
   teardownInfinite();
 
@@ -39,8 +42,9 @@ export async function goToPage(pageNum: number): Promise<void> {
   if (pagination) clear(pagination);
   try {
     const res = await fetchResultsPage(state.currentType, pageNum);
-
+    if (!res.ok) throw new Error(`page request failed: ${res.status}`);
     const data = (await res.json()) as SearchResponse;
+    if (!isCurrentSearch(seq)) return;
     state.currentResults = data.results;
     state.currentData = data;
     state.currentPage = pageNum;
@@ -79,9 +83,10 @@ export async function goToPage(pageNum: number): Promise<void> {
     window.scrollTo({ top: 0, behavior: "auto" });
   } catch (err) {
     console.error("[search] page failed", err);
+    if (!isCurrentSearch(seq)) return;
     if (resultsList)
       render(
-        <NoResults>Search failed. Please try again.</NoResults>,
+        <NoResults>{t("search-templates.search-failed")}</NoResults>,
         resultsList,
       );
   }

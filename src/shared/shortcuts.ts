@@ -71,7 +71,7 @@ export const parseShortcutsMap = (
   const result: Record<string, ShortcutBinding> = {};
   for (const [id, binding] of Object.entries(value)) {
     const action = actionById.get(id);
-    if (!action) return null;
+    if (!action) continue;
     const normalized = _normalizeBinding(action, binding);
     if (!normalized) return null;
     result[id] = normalized;

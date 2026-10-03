@@ -208,6 +208,13 @@ export const searchSingleEngine = async (
     return run;
   } catch (err) {
     const elapsed = Math.round(performance.now() - t0);
+    if (signal?.aborted) {
+      logger.debug("engine", `${engine.name} abandoned after ${elapsed}ms, caller went away`);
+      return {
+        results: [],
+        timing: { name: engine.name, id: engineSettingsId, time: elapsed, resultCount: 0 },
+      };
+    }
     const classified = _classifyReject(err);
     logger.warn("engine", `${engine.name} failed after ${elapsed}ms status=${classified.status}`, err);
     const run: CachedEngineRun = {

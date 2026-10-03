@@ -9,6 +9,7 @@ export const COOKIE_JAR_HEADER =
 interface CurlStdoutParts {
   bodyText: string;
   status: number;
+  location: string | null;
   cookieJarText: string | null;
 }
 
@@ -47,7 +48,7 @@ export const appendCurlCookieStdoutDelimiters = (
     "-c",
     "-",
     "-w",
-    `\n${statusDelimiter}%{http_code}\n${cookieDelimiter}\n`,
+    `\n${statusDelimiter}%{http_code} %{redirect_url}\n${cookieDelimiter}\n`,
   );
 };
 
@@ -69,15 +70,19 @@ export const parseCurlStdoutWithCookieJar = (
 
   const statusIdx = head.lastIndexOf(statusDelimiter);
   if (statusIdx < 0) {
-    return { bodyText: head, status: 502, cookieJarText };
+    return { bodyText: head, status: 502, location: null, cookieJarText };
   }
 
   const bodyText = head.slice(0, statusIdx).replace(/\n$/, "");
-  const status = parseInt(head.slice(statusIdx + statusDelimiter.length), 10);
+  const tail = head.slice(statusIdx + statusDelimiter.length).trim();
+  const status = parseInt(tail, 10);
+  const spaceIdx = tail.indexOf(" ");
+  const location = spaceIdx >= 0 ? tail.slice(spaceIdx + 1).trim() : "";
 
   return {
     bodyText,
     status: status >= 100 && status <= 599 ? status : 502,
+    location: location || null,
     cookieJarText,
   };
 };

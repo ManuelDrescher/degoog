@@ -1,5 +1,9 @@
 import { saveField, saveBatch } from "../../utils/settings/settings-api";
-import { bindFieldSaveBtn, createFieldSaveBtn } from "../shared/field-save";
+import {
+  bindFieldSaveBtn,
+  createFieldSaveBtn,
+  markFieldDirty,
+} from "../shared/field-save";
 import { flashError, flashSuccess } from "../shared/flash-msg";
 import { setIndexerNavVisible } from "../indexer/nav";
 import { OVERSIZED_CLASS } from "../shared/oversized";
@@ -141,7 +145,7 @@ export const injectFieldSaveBtns = (getToken: () => string | null): void => {
     if (field.classList.contains(OVERSIZED_CLASS)) continue;
     const btn = createFieldSaveBtn();
     field.insertAdjacentElement("afterend", btn);
-    field.addEventListener("input", () => { btn.hidden = false; });
+    field.addEventListener("input", () => markFieldDirty(btn));
     if (field instanceof HTMLInputElement && field.type === "number") {
       field.addEventListener("keydown", (e) => {
         if (e.key === "Enter") { e.preventDefault(); btn.click(); }
@@ -155,7 +159,7 @@ export const injectFieldSaveBtns = (getToken: () => string | null): void => {
     const btn = createFieldSaveBtn();
     rlSearchGroup.appendChild(btn);
     rlSearchGroup.querySelectorAll<HTMLInputElement>('input[type="number"]').forEach((input) => {
-      input.addEventListener("input", () => { btn.hidden = false; });
+      input.addEventListener("input", () => markFieldDirty(btn));
       input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") { e.preventDefault(); btn.click(); }
       });
@@ -168,7 +172,7 @@ export const injectFieldSaveBtns = (getToken: () => string | null): void => {
     const btn = createFieldSaveBtn();
     rlSuggestGroup.appendChild(btn);
     rlSuggestGroup.querySelectorAll<HTMLInputElement>('input[type="number"]').forEach((input) => {
-      input.addEventListener("input", () => { btn.hidden = false; });
+      input.addEventListener("input", () => markFieldDirty(btn));
       input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") { e.preventDefault(); btn.click(); }
       });
@@ -180,7 +184,7 @@ export const injectFieldSaveBtns = (getToken: () => string | null): void => {
   if (scoreSection) {
     const btn = createFieldSaveBtn();
     scoreSection.insertAdjacentElement("afterend", btn);
-    const markDirty = (): void => { btn.hidden = false; };
+    const markDirty = (): void => markFieldDirty(btn);
     new MutationObserver(markDirty).observe(scoreSection, { childList: true, subtree: true });
     document.getElementById("settings-domain-score-add")?.addEventListener("click", markDirty);
     bindFieldSaveBtn(btn, () => saveField("domainScoreList", serializeScoreRows(), getToken));

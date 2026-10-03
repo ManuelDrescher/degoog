@@ -470,6 +470,31 @@ describe("nojs results layout matches the real page", () => {
     expect(header).not.toContain('id="results-search-clear-btn"');
   });
 
+  test("a new query from the header keeps the active filters but not the page", async () => {
+    harness({ settings: enabled(), results: [makeResult()] });
+    const html = await text(
+      "/nojs/search?q=hello&type=news&time=week&lang=de&dateFrom=2024-01-01&dateTo=2024-02-01&page=3",
+    );
+    const header = await sliceById(html, "results-header");
+    for (const [name, value] of [
+      ["type", "news"],
+      ["time", "week"],
+      ["lang", "de"],
+      ["dateFrom", "2024-01-01"],
+      ["dateTo", "2024-02-01"],
+    ]) {
+      expect(header).toContain(`<input type="hidden" name="${name}" value="${value}">`);
+    }
+    expect(header).not.toContain('name="page"');
+    expect(header.match(/name="q"/g)).toHaveLength(1);
+  });
+
+  test("the header carries no hidden filters on a plain query", async () => {
+    harness({ settings: enabled(), results: [makeResult()] });
+    const header = await sliceById(await text("/nojs/search?q=hello"), "results-header");
+    expect(header).not.toContain('type="hidden"');
+  });
+
   test("the result card keeps the markup the real theme ships", async () => {
     fakeFaviconProviders(true);
     harness({
@@ -932,6 +957,7 @@ interface BangHarness {
   match: BangMatch | null;
   disabled?: boolean;
   engineOn?: boolean;
+  bangOn?: boolean;
   results?: ScoredResult[];
 }
 
@@ -941,12 +967,14 @@ const bangHarness = ({
   match,
   disabled = false,
   engineOn = true,
+  bangOn = true,
   results = [],
 }: BangHarness): void => {
   searchCalls.length = 0;
   mock.module(CATALOG_MOD, () => ({
     ...catalogReal,
     getDefaultEngineConfig: () => ({ "fake-engine": engineOn }),
+    getDefaultEngineBangConfig: () => ({ "fake-engine": bangOn }),
   }));
   mock.module(SERVER_SETTINGS_MOD, () => ({
     ...serverSettingsReal,
@@ -977,15 +1005,25 @@ describe("nojs bang commands", () => {
     mock.module(CATALOG_MOD, () => catalogReal);
   });
 
-  test("an engine bang for a disabled engine searches nothing", async () => {
+  test("an engine bang the instance turned off searches nothing", async () => {
     bangHarness({
       match: { type: "engine", engineId: "fake-engine", query: "kittens" },
-      engineOn: false,
+      bangOn: false,
       results: [makeResult()],
     });
     const html = await text("/nojs/search?q=!fake%20kittens");
     expect(searchCalls).toHaveLength(0);
     expect(html).not.toContain("First result");
+  });
+
+  test("an engine bang still works when the engine is off by default", async () => {
+    bangHarness({
+      match: { type: "engine", engineId: "fake-engine", query: "kittens" },
+      engineOn: false,
+      results: [makeResult()],
+    });
+    await text("/nojs/search?q=!fake%20kittens");
+    expect(searchCalls).toHaveLength(1);
   });
 
   test("an engine bang for an admin disabled engine searches nothing", async () => {
@@ -1148,6 +1186,20 @@ describe("nojs bang commands", () => {
     expect(spy.contexts[0].page).toBe(1);
     await text("/nojs/search?q=!paged&page=2");
     expect(spy.contexts[1].page).toBe(2);
+  });
+
+  test("a command page is clamped to the same bounds as the json route", async () => {
+    const spy: CommandSpy = { args: [], contexts: [] };
+    bangHarness({
+      match: {
+        type: "command",
+        command: makeBangCommand("far", true, spy, 50),
+        commandId: "far-command",
+        args: "",
+      },
+    });
+    await text("/nojs/search?q=!far&page=40");
+    expect(spy.contexts[0].page).toBe(10);
   });
 
   test("a single page command renders no pagination", async () => {

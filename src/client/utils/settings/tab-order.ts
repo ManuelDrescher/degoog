@@ -1,4 +1,5 @@
 import { getBase } from "../net/base-url";
+import { jsonHeaders } from "../net/request";
 
 export const getTabOrder = async (): Promise<string[]> => {
   try {
@@ -16,16 +17,17 @@ export const getTabOrder = async (): Promise<string[]> => {
 export const saveTabOrder = async (
   order: string[],
   token: string | null,
-): Promise<void> => {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (token) headers["x-settings-token"] = token;
-  await fetch(`${getBase()}/api/settings/tab-order`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ engineTabsOrder: order }),
-  });
+): Promise<boolean> => {
+  try {
+    const res = await fetch(`${getBase()}/api/settings/tab-order`, {
+      method: "POST",
+      headers: jsonHeaders(() => token),
+      body: JSON.stringify({ engineTabsOrder: order }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 };
 
 export const applyTabOrder = (types: string[], saved: string[]): string[] => {

@@ -16,7 +16,6 @@ const ROUTER_MODULES = [
   "favicon",
   "indexer",
   "pages",
-  "searx-engines",
   "settings",
   "settings-backup",
   "setup",
@@ -61,11 +60,6 @@ const GATED_APIS: Array<{ method: Method; path: string; routerKey: RouterKey; bo
 
   { method: "POST", path: "/api/cache/clear", routerKey: "pages" },
 
-  { method: "GET", path: "/api/searx/engines", routerKey: "searx-engines" },
-  { method: "POST", path: "/api/searx/install", routerKey: "searx-engines" },
-  { method: "POST", path: "/api/searx/update", routerKey: "searx-engines" },
-  { method: "POST", path: "/api/searx/uninstall", routerKey: "searx-engines" },
-
   { method: "GET", path: "/api/settings/api-key", routerKey: "settings" },
   { method: "POST", path: "/api/settings/api-key/regenerate", routerKey: "settings" },
   { method: "GET", path: "/api/settings/default-engines", routerKey: "settings" },
@@ -87,6 +81,7 @@ const GATED_APIS: Array<{ method: Method; path: string; routerKey: RouterKey; bo
   { method: "DELETE", path: "/api/settings/shortcuts/source/fake", routerKey: "settings" },
   { method: "POST", path: "/api/settings/sync", routerKey: "settings" },
   { method: "POST", path: "/api/settings/tab-order", routerKey: "settings" },
+  { method: "GET", path: "/api/settings/update-check", routerKey: "settings" },
 
   { method: "GET", path: "/api/settings/export", routerKey: "settings-backup" },
   { method: "POST", path: "/api/settings/import", routerKey: "settings-backup" },

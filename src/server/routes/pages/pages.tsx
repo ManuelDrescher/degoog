@@ -3,7 +3,11 @@ import { GateNote } from "./gate-note";
 import { TakeoverResultItem } from "./takeover-result";
 import { Context, Hono } from "hono";
 import { SETTINGS_TABS } from "../../../shared/settings-tabs";
-import { getDefaultEngineConfig, listEngines } from "../../extensions/engines/catalog";
+import {
+  getDefaultEngineBangConfig,
+  getDefaultEngineConfig,
+  listEngines,
+} from "../../extensions/engines/catalog";
 import { getThemeHtml } from "../../extensions/themes/registry";
 import * as cache from "../../utils/cache/cache";
 import { getLocale } from "../../utils/hono";
@@ -22,9 +26,15 @@ import { getBasePath, getBaseUrl } from "../../utils/net/base-url";
 import { getPublicUrl } from "../../utils/net/public-url";
 import { FAKE_RESULTS } from "../../../shared/fake-results";
 import { getInstanceSettings } from "../../utils/settings/server-settings";
+import { settingsAuth } from "../_guards";
 import { hasFaviconProviders } from "../../extensions/favicon/registry";
 import { hasFaviconSource } from "../../extensions/favicon/source";
 import { DEFAULT_THEME_DIR, getCoreTranslator } from "../../render/theme-assets";
+import {
+  beforeHeadEnd,
+  subFirst,
+} from "../../render/substitute";
+import { windowGlobalScript } from "../../render/window-global-script";
 import {
   applyPagePlaceholders,
   buildLayoutPage,
@@ -85,9 +95,6 @@ router.get("/", async (c) => {
   return c.html(await buildLayoutPage("index.html", locale));
 });
 
-const _scriptJson = (value: Record<string, boolean>): string =>
-  JSON.stringify(value).replace(/<\//g, "<\\/");
-
 const _buildResultActionsScript = async (c: Context): Promise<string> => {
   const token = canBalrogPass(c);
   const authenticated = await gandalf(token);
@@ -100,22 +107,21 @@ const _buildResultActionsScript = async (c: Context): Promise<string> => {
     replaceUi = asBoolean(settings.domainReplaceUiEnabled);
     scoreUi = asBoolean(settings.domainScoreUiEnabled);
   }
-  const payload = _scriptJson({
+  return windowGlobalScript("__DEGOOG_RESULT_ACTIONS__", {
     authenticated,
     blockUi,
     replaceUi,
     scoreUi,
     refresh: authenticated && hasFaviconProviders(),
   });
-  return `<script>window.__DEGOOG_RESULT_ACTIONS__=${payload}</script>`;
 };
 
 const _buildFaviconsScript = (): string =>
-  `<script>window.__DEGOOG_FAVICONS__=${_scriptJson({ providers: hasFaviconSource() })}</script>`;
+  windowGlobalScript("__DEGOOG_FAVICONS__", { providers: hasFaviconSource() });
 
 const _injectIntoHead = (html: string, fragment: string): string => {
   if (html.includes("</head>")) {
-    return html.replace("</head>", `${fragment}\n  </head>`);
+    return beforeHeadEnd(html, fragment);
   }
   return `${fragment}\n${html}`;
 };
@@ -131,7 +137,7 @@ const _buildSettingsGatePage = async (locale?: string): Promise<string> => {
         t("settings-page.gate.generated-password-note", undefined, locale),
       )
     : "";
-  return html.replace("__SETTINGS_AUTH_DEFAULT_PASSWORD_NOTE__", note);
+  return subFirst(html, "__SETTINGS_AUTH_DEFAULT_PASSWORD_NOTE__", note);
 };
 
 router.get("/search", async (c) => {
@@ -215,6 +221,7 @@ router.get("/api/engines", async (c) => {
   return c.json({
     engines: await listEngines(),
     defaults: getDefaultEngineConfig(),
+    bangDefaults: getDefaultEngineBangConfig(),
   });
 });
 
@@ -224,10 +231,7 @@ router.get("/opensearch.xml", (c) => {
   });
 });
 
-router.post("/api/cache/clear", async (c) => {
-  const token = canBalrogPass(c);
-  if (!(await gandalf(token)))
-    return c.json({ error: "You shall not pass!" }, 401);
+router.post("/api/cache/clear", settingsAuth("POST /api/cache/clear"), async (c) => {
   const requested = c.req.query("scope") ?? cache.CACHE_SCOPE.ALL;
   if (!cache.isCacheScope(requested)) {
     return c.json(
@@ -254,14 +258,17 @@ router.get("/robots-takeover", async (c) => {
     (await Bun.file(
       `${DEFAULT_THEME_DIR}/easter-eggs/robots-takeover.html`,
     ).text());
-  const withResults = raw.replace(
+  const withResults = subFirst(
+    raw,
     "__ROBOTS_RESULTS__",
     renderTakeoverResults(),
   );
   const layout = await getLayout();
-  const html = layout
-    .replace("__PAGE_CONTENT__", withResults)
-    .replace("__BODY_CLASS__", 'class="has-results"');
+  const html = subFirst(
+    subFirst(layout, "__PAGE_CONTENT__", withResults),
+    "__BODY_CLASS__",
+    'class="has-results"',
+  );
   const t = await getTranslator(locale, !!override);
   return c.html(await applyPagePlaceholders(html, t, locale));
 });

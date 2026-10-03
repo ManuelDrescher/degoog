@@ -33,6 +33,8 @@ import {
 import { RepoList } from "./render/repo-list";
 import { normalizeRepoUrl } from "./render/repo-url";
 
+const t = window.scopedT("core");
+
 export async function initStoreTab(
   container: HTMLElement,
   getToken: () => string | null,
@@ -188,7 +190,11 @@ export async function initStoreTab(
           <FilterOptions
             selected={subtypeFilter}
             options={[
-              { id: "all", label: "All", count: filteredForType.length },
+              {
+                id: "all",
+                label: t("settings-page.store.filter-all"),
+                count: filteredForType.length,
+              },
               ...subtypes.map((id) => ({
                 id,
                 label:
@@ -221,7 +227,11 @@ export async function initStoreTab(
         <FilterOptions
           selected={installedFilter}
           options={[
-            { id: "all", label: "All", count: scopedItems.length },
+            {
+              id: "all",
+              label: t("settings-page.store.filter-all"),
+              count: scopedItems.length,
+            },
             { id: "installed", label: "Installed", count: installed },
             {
               id: "not-installed",
@@ -297,11 +307,11 @@ export async function initStoreTab(
   container
     .querySelector<HTMLElement>(".store-catalog-grid")
     ?.addEventListener("click", (e) => {
-      const t = e.target as HTMLElement;
-      const installBtn = t.closest<HTMLButtonElement>(".store-btn-install");
-      const uninstallBtn = t.closest<HTMLButtonElement>(".store-btn-uninstall");
-      const updateBtn = t.closest<HTMLButtonElement>(".store-btn-update");
-      const deleteBtn = t.closest<HTMLButtonElement>(".store-btn-delete");
+      const target = e.target as HTMLElement;
+      const installBtn = target.closest<HTMLButtonElement>(".store-btn-install");
+      const uninstallBtn = target.closest<HTMLButtonElement>(".store-btn-uninstall");
+      const updateBtn = target.closest<HTMLButtonElement>(".store-btn-update");
+      const deleteBtn = target.closest<HTMLButtonElement>(".store-btn-delete");
       if (installBtn)
         void handleInstall(container, installBtn, getToken, loadItems, render);
       if (uninstallBtn)
@@ -421,6 +431,6 @@ export async function initStoreTab(
     void refreshRemoteIfVisible();
   } catch {
     const wrap = container.querySelector<HTMLElement>(".store-repo-list-wrap");
-    if (wrap) renderNodes(<StoreEmpty message="Failed to load store." />, wrap);
+    if (wrap) renderNodes(<StoreEmpty message={t("settings-page.store.failed-load-store")} />, wrap);
   }
 }

@@ -4,6 +4,7 @@ import { getBase } from "../../../utils/net/base-url";
 import { jsonHeaders } from "../../../utils/net/request";
 import { getStoredToken } from "../../../utils/settings/settings-token";
 import { tr } from "../i18n";
+import { borrowModal, claimModal, closeModal } from "../../../modules/modals/settings-modal/modal";
 
 export const openClearModal = (onCleared: () => void): void => {
   const overlay = document.getElementById("ext-modal-overlay");
@@ -13,25 +14,21 @@ export const openClearModal = (onCleared: () => void): void => {
   const saveEl = document.getElementById(
     "ext-modal-save",
   ) as HTMLButtonElement | null;
-  const closeBtn = document.getElementById("ext-modal-close");
   if (!overlay || !titleEl || !bodyEl || !statusEl || !saveEl) return;
+  const owns = claimModal();
 
   titleEl.textContent = tr("clear-modal-title");
   render(<ClearBody />, bodyEl);
   statusEl.textContent = "";
-  saveEl.textContent = tr("clear-confirm");
-  saveEl.disabled = false;
-  saveEl.hidden = false;
   overlay.style.display = "";
 
-  const close = (): void => {
-    overlay.style.display = "none";
-    statusEl.textContent = "";
-    clear(bodyEl);
+  const _fail = (): void => {
+    if (!owns()) return;
+    statusEl.textContent = tr("clear-failed");
+    saveEl.disabled = false;
   };
-  closeBtn?.addEventListener("click", close, { once: true });
 
-  saveEl.addEventListener("click", async () => {
+  const confirmClear = async (): Promise<void> => {
     const input = bodyEl.querySelector<HTMLInputElement>(
       "#indexer-clear-confirm",
     );
@@ -47,15 +44,16 @@ export const openClearModal = (onCleared: () => void): void => {
         body: JSON.stringify({ confirm: true }),
       });
       if (!res.ok) {
-        statusEl.textContent = "Failed";
-        saveEl.disabled = false;
+        _fail();
         return;
       }
-      close();
+      if (owns()) closeModal();
       onCleared();
     } catch {
-      statusEl.textContent = "Failed";
-      saveEl.disabled = false;
+      _fail();
     }
-  });
+  };
+
+  borrowModal({ onSave: () => void confirmClear(), onClose: () => clear(bodyEl) });
+  saveEl.textContent = tr("clear-confirm");
 };

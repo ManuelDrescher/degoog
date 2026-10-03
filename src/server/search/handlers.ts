@@ -9,6 +9,7 @@ import { getInstanceSettings } from "../utils/settings/server-settings";
 import { asBoolean } from "../utils/settings/plugin-settings";
 import { isRecalled, tagIndexRelation } from "../indexer/store/record";
 import { selectActiveEngines } from "./engine-selection";
+import { agreedPageTotal } from "./page-counter";
 import {
   isCacheable,
   readActiveRuns,
@@ -89,7 +90,11 @@ export async function handleRetry(
     timeFilter: resolvedTime,
   } = await resolveSearchOverrides(origQ, searchType, lang, timeFilter);
 
-  const { results: newResults, timing } = await searchSingleEngine(
+  const {
+    results: newResults,
+    timing,
+    pages: retriedPages,
+  } = await searchSingleEngine(
     engineName,
     query,
     page,
@@ -168,6 +173,12 @@ export async function handleRetry(
     relatedSearches: [],
     timing,
     engineTimings,
+    totalPages: agreedPageTotal([
+      ...others.map(
+        (engine) => knownRuns.find((known) => known.engine === engine)?.run.pages,
+      ),
+      retriedPages,
+    ]),
     results: signResultThumbnails(
       tagIndexRelation(displayMerged, new Set(indexedUrls)),
     ),

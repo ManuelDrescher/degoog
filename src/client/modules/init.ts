@@ -113,6 +113,7 @@ export async function init(): Promise<void> {
     });
 
   resultsInput?.addEventListener("keydown", (e) => {
+    if (e.isComposing) return;
     if (e.key === "Enter" && resultsInput)
       void performSearch(resultsInput.value);
   });
@@ -233,7 +234,9 @@ export async function init(): Promise<void> {
   const type = params.get("type") || postType || "web";
   const page = parseInt(params.get("page") ?? postPage ?? "1", 10) || 1;
   const loadedPage = parseInt(params.get("loaded") ?? "1", 10) || 1;
-  state.restoreInfinitePage = Math.max(page, loadedPage);
+  state.restoreInfinitePage = type.startsWith("tab:")
+    ? 1
+    : Math.max(page, loadedPage);
 
   if (isImageSearchType(type)) state.imageFilter = readImgFilter(params);
 
@@ -308,6 +311,7 @@ export async function init(): Promise<void> {
       if (hs.type?.startsWith("tab:")) {
         void performTabSearch(hs.query, hs.type.slice(4), hs.page);
       } else {
+        state.restoreInfinitePage = Math.max(hs.page || 1, hs.loaded || 1);
         void performSearch(hs.query, hs.type, hs.page);
       }
       return;
@@ -318,7 +322,9 @@ export async function init(): Promise<void> {
       const popType = popParams.get("type") || "web";
       const popPage = parseInt(popParams.get("page") ?? "1", 10) || 1;
       const popLoadedPage = parseInt(popParams.get("loaded") ?? "1", 10) || 1;
-      state.restoreInfinitePage = Math.max(popPage, popLoadedPage);
+      state.restoreInfinitePage = popType.startsWith("tab:")
+        ? 1
+        : Math.max(popPage, popLoadedPage);
       if (isImageSearchType(popType)) state.imageFilter = readImgFilter(popParams);
       else state.imageFilter = defaultImageFilter();
       state.isInitialLoad = true;

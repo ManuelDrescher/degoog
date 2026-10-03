@@ -6,6 +6,7 @@ import { clearServerSettingsCache } from "../../src/server/utils/settings/server
 import { clearTypeCache } from "../../src/server/extensions/engines/search-types";
 import { initEngines } from "../../src/server/extensions/engines/loader";
 import {
+  getDefaultEngineBangConfig,
   getDefaultEngineConfig,
   getEngineMap,
   listEngines,
@@ -420,6 +421,30 @@ describe("SearX engine configuration", () => {
       expect(baseUrl?.description).toBe("Instance this engine talks to.");
       expect(getDefaultEngineConfig()["searx-needy-engine"]).toBe(false);
       expect(getDefaultEngineConfig()["searx-pager-engine"]).toBe(true);
+    });
+  });
+
+  test("instance bang defaults live in default-engines.json and default to on", async () => {
+    await withSearxEnv(async (dir) => {
+      writeEngine(dir, "needy", NEEDY_ENGINE);
+      writeEngine(dir, "pager", PAGER_ENGINE);
+      writeEngine(dir, "statics", STATIC_ENGINE);
+      await initEngines(true);
+      writeFileSync(
+        join(dir, "default-engines.json"),
+        JSON.stringify({
+          "searx-pager-engine": false,
+          bangs: { "searx-statics-engine": false },
+        }),
+      );
+      const engines = getDefaultEngineConfig();
+      const bangs = getDefaultEngineBangConfig();
+      expect(engines["searx-pager-engine"]).toBe(false);
+      expect(engines["searx-statics-engine"]).toBe(true);
+      expect(engines).not.toHaveProperty("bangs");
+      expect(bangs["searx-pager-engine"]).toBe(true);
+      expect(bangs["searx-needy-engine"]).toBe(true);
+      expect(bangs["searx-statics-engine"]).toBe(false);
     });
   });
 

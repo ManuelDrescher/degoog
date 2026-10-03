@@ -26,8 +26,7 @@
     },
     "appearance": {
       "heading": "Darstellung",
-      "desc": "Wähle dein bevorzugtes Theme.",
-      "save-defaults": "Als Instanz-Standard speichern"
+      "desc": "Wähle dein bevorzugtes Theme."
     },
     "theme": {
       "system": "Systemstandard",
@@ -302,8 +301,6 @@
       "indexer-enable": "Indexer aktivieren",
       "indexer-enable-desc": "Wenn aktiviert, werden Suchergebnisse lokal gespeichert.",
       "indexer-enable-aria": "Degoog-Indexer aktivieren",
-      "searx-heading": "SearX-Kompatibilitätsschicht",
-      "searx-desc": "Führe SearXNG-Suchmaschinen über eine Kompatibilitätsschicht direkt in Degoog aus – ohne separate SearXNG-Instanz.",
       "searx-enable": "SearX-Kompatibilitätsschicht aktivieren",
       "searx-enable-desc": "Wenn aktiviert, erscheint im Tab „Suchmaschinen“ der Bereich SearX, in dem du Suchmaschinen aus dem SearXNG-Repository installieren kannst.",
       "searx-enable-aria": "SearX-Kompatibilitätsschicht aktivieren",
@@ -312,11 +309,6 @@
       "searx-api-enable-aria": "SearXNG-API-Format ausliefern",
       "saved": "Gespeichert",
       "save-failed-network": "Speichern fehlgeschlagen. Bitte versuche es erneut.",
-      "shortcuts-heading": "Tastenkürzel",
-      "shortcuts-desc": "Aktiviere anpassbare Tastenkürzel für diese Instanz. Wenn deaktiviert, ist der Bereich Tastenkürzel ausgeblendet und keine Kürzel sind aktiv.",
-      "shortcuts-enable": "Tastenkürzel aktivieren",
-      "shortcuts-enable-aria": "Tastenkürzel aktivieren",
-      "shortcuts-enable-desc": "Kürzel für Power-User, um die Suche zu fokussieren, Tabs zu wechseln und durch Ergebnisse zu navigieren. Konfiguriere sie im Bereich Tastenkürzel.",
       "infinite-scroll-enable": "Seitenweise Navigation durch endloses Scrollen ersetzen",
       "infinite-scroll-enable-aria": "Seitenweise Navigation durch endloses Scrollen ersetzen",
       "infinite-scroll-enable-desc": "Ersetzt die Links „Zurück“ und „Weiter“ durch automatisches Nachladen, sobald du das Seitenende erreichst",
@@ -366,24 +358,15 @@
       "field-fetch-failed": "Optionen konnten nicht geladen werden",
       "field-fetch-empty": "Keine Optionen zurückgegeben"
     },
-    "confirm": {
-      "title": "Bestätigen",
-      "cancel": "Abbrechen",
-      "confirm": "Bestätigen"
-    },
     "extensions": {
       "configure": "Konfigurieren",
       "active": "Aktiv",
       "built-in-theme-name": "Eingebaut",
       "built-in-theme-desc": "Das Standard-Design von degoog.",
-      "group-plugins": "Plugins",
-      "group-builtin-commands": "Eingebaute Befehle",
       "group-transports": "Transports",
       "group-builtin-transports": "Eingebaute Transports",
       "group-autocomplete": "Anbieter für Autovervollständigung",
-      "group-builtin-autocomplete": "Eingebaute Anbieter",
       "group-themes": "Themes",
-      "apply-failed": "Fehlgeschlagen",
       "save-defaults": "Als Instanz-Standard speichern",
       "reset-defaults": "Auf Instanz-Standard zurücksetzen",
       "reset-confirm": "Dadurch wird deine Auswahl der Suchmaschinen in diesem Browser durch die Instanz-Standardwerte ersetzt. Fortfahren?",
@@ -397,6 +380,9 @@
       "status-configured": "Konfiguriert",
       "status-needs-config": "Konfiguration erforderlich",
       "extra-types": "Zusätzliche Typen:",
+      "bang-on-title": "{bang} sucht nur mit dieser Suchmaschine. Klicken zum Ausschalten.",
+      "bang-off-title": "{bang} ist aus. Klicken zum Einschalten.",
+      "bang-only": "In normalen Suchen aus, funktioniert aber mit {bang}.",
       "requires-newer-version": "Erfordert eine neuere Version von Degoog",
       "no-engines": "Keine Suchmaschinen installiert. Gehe zum Tab {store}, um welche zu durchsuchen und zu installieren.",
       "no-engines-store": "Store",
@@ -540,6 +526,7 @@
       "clear-modal-desc": "Dadurch wird jede Zeile in deinem lokalen Index unwiderruflich gelöscht. Gib zur Bestätigung CLEAR ein.",
       "clear-confirm": "Leeren",
       "clear-cancel": "Abbrechen",
+      "clear-failed": "Index konnte nicht geleert werden",
       "save-error": "Indexer-Einstellungen konnten nicht gespeichert werden.",
       "disabled": "Der Indexer ist deaktiviert. Aktiviere ihn unter Server-Einstellungen."
     },
@@ -723,12 +710,10 @@
     },
     "restart": {
       "heading": "Neustart erforderlich",
-      "desc": "Einige installierte Erweiterungen benötigen einen Neustart des Servers, um richtig zu funktionieren.",
       "modal-intro": "Diese Erweiterungen funktionieren erst nach einem Neustart des Servers:",
       "modal-note": "Beim Neustart steht Degoog für ein paar Sekunden still. Du kannst später unter Einstellungen › Server neu starten.",
       "later": "Nicht jetzt",
       "button": "Server neu starten",
-      "confirm": "Dadurch wird der Degoog-Server neu gestartet. Laufende Suchen können kurz unterbrochen werden. Fortfahren?",
       "restarting": "Wird neu gestartet..."
     }
   }

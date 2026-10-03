@@ -1,5 +1,4 @@
 import { clear, render } from "../../../../shared/ui/tribute/dom";
-import { RawDogIt } from "../../../../shared/ui/tribute/rawdogit";
 import { AdvancedSection } from "./fields/advanced-section";
 import { TestConnection } from "./fields/test-connection";
 import { renderField, syncConditionalFields } from "./modal-fields";
@@ -13,7 +12,7 @@ import {
 } from "./fields/field-widgets";
 import { initOptionsFields, disposeOptionsFields } from "./options-field/options-field";
 import { getBase } from "../../../utils/net/base-url";
-import { getStoredToken } from "../../settings/settings";
+import { getStoredToken } from "../../../utils/settings/settings-token";
 import { jsonHeaders } from "../../../utils/net/request";
 import type { Child } from "../../../../shared/ui/tribute/types";
 import type { ExtensionMeta } from "../../../types/extension";
@@ -36,6 +35,40 @@ let modalBodyConditionalChangeBound = false;
 
 let currentExt: ExtensionMeta | null = null;
 let docsBtn: HTMLButtonElement | null = null;
+
+export interface ModalBorrower {
+  onSave?: () => void;
+  onClose?: () => void;
+}
+
+let borrower: ModalBorrower | null = null;
+let lease = 0;
+
+export const releaseModal = (): void => {
+  const leaving = borrower;
+  borrower = null;
+  lease += 1;
+  leaving?.onClose?.();
+};
+
+export const claimModal = (): (() => boolean) => {
+  releaseModal();
+  const mine = lease;
+  return () => lease === mine;
+};
+
+export function borrowModal(next: ModalBorrower): void {
+  borrower = next;
+  _resetSaveButton();
+}
+
+function _resetSaveButton(): void {
+  if (!saveBtn) return;
+  saveBtn.textContent = t("settings-page.modal.save");
+  saveBtn.disabled = false;
+  saveBtn.hidden = false;
+  saveBtn.style.display = "";
+}
 
 function _ensureDocsButton(): HTMLButtonElement | null {
   if (!footerEl) return null;
@@ -253,6 +286,8 @@ const _renderFields = (fields: SettingField[], ext: ExtensionMeta): Child => {
 };
 
 export function openModal(ext: ExtensionMeta): void {
+  releaseModal();
+  _resetSaveButton();
   currentExt = ext;
   const docs = _ensureDocsButton();
   if (docs) {
@@ -336,19 +371,23 @@ export function openModal(ext: ExtensionMeta): void {
 }
 
 export function closeModal(): void {
+  const leaving = borrower;
+  borrower = null;
+  lease += 1;
   disposeOptionsFields();
   if (overlay) overlay.style.display = "none";
   currentExt = null;
-  if (saveBtn) saveBtn.style.display = "";
+  _resetSaveButton();
   if (statusEl) statusEl.textContent = "";
   document.getElementById("ext-modal")?.classList.remove("ext-modal--wide");
+  leaving?.onClose?.();
 }
 
 export function openCustomModal(options: {
   title: string;
-  body: Child;
   wide?: boolean;
 }): void {
+  releaseModal();
   currentExt = null;
   if (options.wide) {
     document.getElementById("ext-modal")?.classList.add("ext-modal--wide");
@@ -358,19 +397,7 @@ export function openCustomModal(options: {
   if (saveBtn) saveBtn.style.display = "none";
   if (titleEl) titleEl.textContent = options.title;
   disposeOptionsFields();
-  if (bodyEl) {
-    clear(bodyEl);
-    render(
-      <>
-        {typeof options.body === "string" ? (
-          <RawDogIt html={options.body} />
-        ) : (
-          options.body
-        )}
-      </>,
-      bodyEl,
-    );
-  }
+  if (bodyEl) clear(bodyEl);
   if (statusEl) statusEl.textContent = "";
   if (overlay) overlay.style.display = "flex";
 }
@@ -400,11 +427,23 @@ async function _save(): Promise<void> {
   }
 }
 
-saveBtn?.addEventListener("click", () => void _save());
+saveBtn?.addEventListener("click", () => {
+  if (borrower) borrower.onSave?.();
+  else void _save();
+});
 closeBtn?.addEventListener("click", closeModal);
 overlay?.addEventListener("click", (e) => {
   if (e.target === overlay) closeModal();
 });
+const _isShown = (el: HTMLElement): boolean => el.style.display !== "none";
+
+const _stackedOverlayOpen = (): boolean =>
+  Array.from(
+    document.querySelectorAll<HTMLElement>(".ext-modal-overlay"),
+  ).some((el) => el !== overlay && _isShown(el));
+
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeModal();
+  if (e.key !== "Escape" || e.defaultPrevented) return;
+  if (!overlay || !_isShown(overlay) || _stackedOverlayOpen()) return;
+  closeModal();
 });

@@ -7,15 +7,10 @@ import { initFileUpload } from "../../../utils/file-upload/file-upload";
 import { fetchEngineTypes, IMPORT_CUSTOM_TYPE } from "../api";
 import { mountProgress, type ProgressUi } from "../progress/progress";
 import { tr } from "../i18n";
+import { borrowModal, claimModal, closeModal } from "../../../modules/modals/settings-modal/modal";
 
 const CHUNK_BYTES = 8 * 1024 * 1024;
 const PROGRESS_HOST_ID = "indexer-import-progress";
-
-const freshBtn = (btn: HTMLButtonElement): HTMLButtonElement => {
-  const clone = btn.cloneNode(true) as HTMLButtonElement;
-  btn.replaceWith(clone);
-  return clone;
-};
 
 interface StartResponse {
   sessionId?: string;
@@ -58,7 +53,7 @@ const runImport = async (
   type: string,
   file: File,
   hostEl: HTMLElement,
-  statusEl: HTMLElement,
+  setStatus: (text: string) => void,
 ): Promise<CompleteResponse | null> => {
   const base = getBase();
   const bar = mountProgress(hostEl);
@@ -74,14 +69,14 @@ const runImport = async (
   });
   const start = (await startRes.json().catch(() => ({}))) as StartResponse;
   if (!startRes.ok || !start.sessionId) {
-    statusEl.textContent = start.error ?? `Import failed (${startRes.status})`;
+    setStatus(start.error ?? `Import failed (${startRes.status})`);
     bar.finish(true);
     return null;
   }
 
   const uploaded = await uploadChunks(file, start.sessionId, bar);
   if (!uploaded) {
-    statusEl.textContent = tr("import-progress");
+    setStatus(tr("import-progress"));
     bar.finish(true);
     return null;
   }
@@ -97,7 +92,7 @@ const runImport = async (
   });
   const data = (await doneRes.json().catch(() => ({}))) as CompleteResponse;
   if (!doneRes.ok || !data.ok) {
-    statusEl.textContent = data.error ?? `Import failed (${doneRes.status})`;
+    setStatus(data.error ?? `Import failed (${doneRes.status})`);
     bar.finish(true);
     return null;
   }
@@ -111,18 +106,14 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
   const titleEl = document.getElementById("ext-modal-title");
   const bodyEl = document.getElementById("ext-modal-body");
   const statusEl = document.getElementById("ext-modal-status");
-  const staleSave = document.getElementById(
+  const saveEl = document.getElementById(
     "ext-modal-save",
   ) as HTMLButtonElement | null;
-  const staleClose = document.getElementById(
-    "ext-modal-close",
-  ) as HTMLButtonElement | null;
-  if (!overlay || !titleEl || !bodyEl || !statusEl || !staleSave) return;
-
-  const saveEl = freshBtn(staleSave);
-  const closeBtn = staleClose ? freshBtn(staleClose) : null;
+  if (!overlay || !titleEl || !bodyEl || !statusEl || !saveEl) return;
+  const owns = claimModal();
 
   const engineTypes = await fetchEngineTypes();
+  if (!owns()) return;
 
   titleEl.textContent = tr("import-modal-title");
   render(
@@ -134,9 +125,6 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
     bodyEl,
   );
   statusEl.textContent = "";
-  saveEl.textContent = tr("import-btn");
-  saveEl.disabled = false;
-  saveEl.hidden = false;
   overlay.style.display = "";
 
   const typeEl = bodyEl.querySelector<HTMLSelectElement>(
@@ -155,16 +143,23 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
   initFileUpload(bodyEl);
 
   let running = false;
+  let finished = false;
 
-  const close = (): void => {
-    overlay.style.display = "none";
-    statusEl.textContent = "";
-    clear(bodyEl);
-    saveEl.removeEventListener("click", onSave);
+  const showSave = (): void => {
+    if (!owns()) return;
+    saveEl.disabled = false;
+    saveEl.hidden = false;
   };
-  closeBtn?.addEventListener("click", close, { once: true });
+
+  const setStatus = (text: string): void => {
+    if (owns()) statusEl.textContent = text;
+  };
 
   const onSave = async (): Promise<void> => {
+    if (finished) {
+      closeModal();
+      return;
+    }
     if (running) return;
     const sel = bodyEl.querySelector<HTMLSelectElement>("#indexer-import-type");
     const customEl = bodyEl.querySelector<HTMLInputElement>(
@@ -190,31 +185,34 @@ export const openImportModal = async (onDone: () => void): Promise<void> => {
     saveEl.hidden = true;
 
     try {
-      const data = await runImport(type, file, host, statusEl);
+      const data = await runImport(type, file, host, setStatus);
       if (!data) {
-        saveEl.disabled = false;
-        saveEl.hidden = false;
+        showSave();
         return;
       }
-      statusEl.textContent = tr("import-done", {
-        type,
-        urls: String(data.urls ?? 0),
-        hits: String(data.hits ?? 0),
-      });
       onDone();
-      saveEl.removeEventListener("click", onSave);
+      if (!owns()) return;
+      setStatus(
+        tr("import-done", {
+          type,
+          urls: String(data.urls ?? 0),
+          hits: String(data.hits ?? 0),
+        }),
+      );
+      finished = true;
       saveEl.textContent = tr("import-close");
-      saveEl.disabled = false;
-      saveEl.hidden = false;
-      saveEl.addEventListener("click", close, { once: true });
+      showSave();
     } catch {
-      statusEl.textContent = "Import failed";
-      saveEl.disabled = false;
-      saveEl.hidden = false;
+      setStatus("Import failed");
+      showSave();
     } finally {
       running = false;
     }
   };
 
-  saveEl.addEventListener("click", onSave);
+  borrowModal({
+    onSave: () => void onSave(),
+    onClose: () => clear(bodyEl),
+  });
+  saveEl.textContent = tr("import-btn");
 };

@@ -11,6 +11,8 @@ import {
   extCardVersionWarningNode,
 } from "../shared/ext-card";
 import { extraTypeLabels } from "./engine-types";
+import { EngineBangChip } from "./engine-bang-chip";
+import { EngineBangOnly } from "./engine-bang-only";
 import type { ExtensionMeta } from "../../types/extension";
 import { renderMdInline } from "../../utils/dom/md";
 
@@ -19,14 +21,18 @@ const t = window.scopedT("core");
 export const EngineCard = ({
   engine,
   enabled,
+  bangEnabled,
   allowConfigure,
   onToggle,
+  onToggleBang,
   onConfigure,
 }: {
   engine: ExtensionMeta;
   enabled: boolean;
+  bangEnabled: boolean;
   allowConfigure: boolean;
   onToggle: (event: Event) => void;
+  onToggleBang: () => void;
   onConfigure: () => void;
 }): JSX.Element => {
   const toggleId = `engine-toggle-${engine.id}`;
@@ -42,6 +48,14 @@ export const EngineCard = ({
           class="engine-toggle-label"
           name={engine.displayName}
         />,
+        engine.bangShortcut ? (
+          <EngineBangChip
+            engineId={engine.id}
+            shortcut={engine.bangShortcut}
+            on={bangEnabled}
+            onClick={onToggleBang}
+          />
+        ) : null,
         engine.compatibilityLayer ? (
           <Badge modifier="engine-type">{engine.compatibilityLayer}</Badge>
         ) : null,
@@ -59,6 +73,13 @@ export const EngineCard = ({
               <Badge modifier="engine-type">{label}</Badge>
             ))}
           </div>
+        ) : null,
+        engine.bangShortcut ? (
+          <EngineBangOnly
+            engineId={engine.id}
+            shortcut={engine.bangShortcut}
+            visible={bangEnabled && !enabled}
+          />
         ) : null,
         extCardVersionWarningNode(engine),
       ]}

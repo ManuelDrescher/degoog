@@ -109,6 +109,7 @@ interface RegistryOptions<T> {
    * "init failed", which is logged and also skips the item.
    */
   onLoad?(item: T, meta: RegistryLoadMeta): Promise<void | false>;
+  reset?(): void;
   canonicalIdKind?: ExtensionKind;
   /**
    * When `true`, plain `.js/.ts/.mjs/.cjs` files in the directory are
@@ -199,10 +200,14 @@ export function createRegistry<T>(opts: RegistryOptions<T>): {
   refresh: () => Promise<void>;
 } {
   let _items: T[] = [];
-  const _canonicalIds = new Set<string>();
   const _loadMutex = createMutex();
 
-  async function loadFromDir(registryDir: RegistryDir, bust: boolean): Promise<void> {
+  async function loadFromDir(
+    registryDir: RegistryDir,
+    bust: boolean,
+    into: T[],
+    canonicalIds: Set<string>,
+  ): Promise<void> {
     let entries: string[];
     try {
       entries = (await readdir(registryDir.dir)).sort((a, b) =>
@@ -256,11 +261,11 @@ export function createRegistry<T>(opts: RegistryOptions<T>): {
       const canonicalId = opts.canonicalIdKind
         ? dedupeExtID(
             makeExtID(c.r.base, opts.canonicalIdKind),
-            _canonicalIds,
+            canonicalIds,
             c.r.fullPath,
           )
         : undefined;
-      if (canonicalId) _canonicalIds.add(canonicalId);
+      if (canonicalId) canonicalIds.add(canonicalId);
       toInit.push({
         extracted: c.extracted,
         meta: {
@@ -276,7 +281,7 @@ export function createRegistry<T>(opts: RegistryOptions<T>): {
     if (!opts.onLoad) {
       for (const { extracted, meta, docsDir } of toInit) {
         _rememberDocs(extracted, meta, docsDir);
-        _items.push(extracted);
+        into.push(extracted);
       }
       return;
     }
@@ -296,7 +301,7 @@ export function createRegistry<T>(opts: RegistryOptions<T>): {
           continue;
         }
         _rememberDocs(toInit[i].extracted, toInit[i].meta, toInit[i].docsDir);
-        _items.push(toInit[i].extracted);
+        into.push(toInit[i].extracted);
       } else {
         logger.debug(
           opts.debugTag,
@@ -308,12 +313,14 @@ export function createRegistry<T>(opts: RegistryOptions<T>): {
   }
 
   async function _load(bust: boolean): Promise<void> {
-    _items = [];
-    _canonicalIds.clear();
+    opts.reset?.();
+    const next: T[] = [];
+    const canonicalIds = new Set<string>();
     const dirs = typeof opts.dirs === "function" ? opts.dirs() : opts.dirs;
     for (const d of dirs) {
-      await loadFromDir(d, bust);
+      await loadFromDir(d, bust, next, canonicalIds);
     }
+    _items = next;
   }
 
   const init = (bust = false): Promise<void> => _loadMutex(() => _load(bust));

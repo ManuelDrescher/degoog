@@ -157,18 +157,15 @@ describe("GET /api/search/stream request handling", () => {
     expect(attemptsByEngine).toEqual({});
   });
 
-  test("no active engines answers plain JSON rather than an event stream", async () => {
+  test("no active engines still streams, with a lone done and no timings", async () => {
     harness({ engines: [] });
     const res = await call(uniqueQuery("noengines"));
 
     expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")).toContain("application/json");
-    expect(await res.json()).toMatchObject({
-      results: [],
-      engineTimings: [],
-      relatedSearches: [],
-      totalTime: 0,
-    });
+    expect(res.headers.get("content-type")).toBe("text/event-stream");
+    const events = await readEvents(res);
+    expect(events.map((e) => e.event)).toEqual(["done"]);
+    expect(events[0].data.engineTimings).toEqual([]);
   });
 
   test("a live stream carries the event-stream headers", async () => {

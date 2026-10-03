@@ -194,6 +194,54 @@ describe("theme-transport-ids migration", () => {
     }
   });
 
+  test("keeps canonical shortcut and favicon installedAs on a rerun", async () => {
+    const canonical = [
+      {
+        repoUrl: "https://github.com/degoog-org/official-extensions.git",
+        type: ExtensionStoreType.Shortcut,
+        itemPath: "shortcuts/vim",
+        installedAs: "degoog-org-official-extensions-vim-shortcut",
+        installedAt: "",
+        version: "1.0.0",
+      },
+      {
+        repoUrl: "https://github.com/degoog-org/official-extensions.git",
+        type: ExtensionStoreType.Favicon,
+        itemPath: "favicon/duckduckgo",
+        installedAs: "degoog-org-official-extensions-duckduckgo-favicon",
+        installedAt: "",
+        version: "1.0.0",
+      },
+      {
+        repoUrl: "https://github.com/degoog-org/official-extensions.git",
+        type: ExtensionStoreType.Plugin,
+        itemPath: "plugins/weather/",
+        installedAs: "weather",
+        installedAt: "",
+        version: "1.0.0",
+      },
+    ];
+    const out = await withMigration({}, (dir) => {
+      const repos = reposFixture();
+      repos.installed.push(...canonical);
+      writeFileSync(join(dir, "repos.json"), JSON.stringify(repos, null, 2));
+    });
+    try {
+      const repos = JSON.parse(
+        readFileSync(join(out.dir, "repos.json"), "utf-8"),
+      ) as ReposData;
+      expect(repos.installed.map((i) => i.installedAs)).toEqual([
+        "degoog-org-official-extensions-zen-theme",
+        "degoog-org-official-extensions-bing-autocomplete",
+        "degoog-org-official-extensions-vim-shortcut",
+        "degoog-org-official-extensions-duckduckgo-favicon",
+        "degoog-org-official-extensions-weather",
+      ]);
+    } finally {
+      out.cleanup();
+    }
+  });
+
   test("moves legacy autocomplete keys to canonical -autocomplete keys", async () => {
     const out = await withMigration({
       "autocomplete-degoog-org-official-extensions-bing": { disabled: "true" },

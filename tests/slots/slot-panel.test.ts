@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { slotContext, toSlotPanel } from "../../src/server/extensions/slots/run";
 import { outgoingFetch } from "../../src/server/utils/net/outgoing";
-import { buildSignedProxyUrl } from "../../src/server/utils/net/proxy-sign";
+import { buildSignedProxyUrl, signFaviconUrl } from "../../src/server/utils/net/proxy-sign";
 import { createCache, useCache } from "../../src/server/utils/cache/cache";
 import { SlotPanelPosition, type ScoredResult } from "../../src/shared/search-types";
 import type { SlotPlugin } from "../../src/server/types/extension";
@@ -42,6 +42,7 @@ describe("slot context", () => {
       results,
       fetch: outgoingFetch,
       signProxyUrl: buildSignedProxyUrl,
+      signFaviconUrl,
       createCache,
       useCache,
       locale: "de",

@@ -20,7 +20,11 @@ import {
 import { manifestKeys } from "./entries";
 import { translateSchema } from "../extension-meta";
 import { allEngineEntries } from "./loader";
-import { getDefaultEngineConfig, getEngineMap } from "./catalog";
+import {
+  getDefaultEngineBangConfig,
+  getDefaultEngineConfig,
+  getEngineMap,
+} from "./catalog";
 import { resolveTypes } from "./search-types";
 import { primaryType } from "../../../shared/search-types";
 import {
@@ -78,6 +82,7 @@ export const getEngineExtensionMeta = async (
   const indexerOn = asBoolean(settings.degoogIndexerEnabled);
 
   const defaults = getDefaultEngineConfig();
+  const bangDefaults = getDefaultEngineBangConfig();
   for (const entry of items) {
     if (entry.id === DEGOOG_ENGINE_ID && !indexerOn) continue;
     const instance = engineMap[entry.id];
@@ -156,6 +161,8 @@ export const getEngineExtensionMeta = async (
       settings: maskedSettings,
       extensionDocsAvailable: exists,
       defaultEnabled: defaults[entry.id],
+      defaultBangEnabled: bangDefaults[entry.id],
+      bangShortcut: instance?.bangShortcut,
       source: entry.source,
       compatibilityLayer: entry.compatibilityLayer,
       needsAppRestart: isExtensionRestartFlagVisible(instance?.needsAppRestart),

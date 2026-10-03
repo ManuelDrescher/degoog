@@ -38,7 +38,7 @@ export const helpCommand: BangCommand = {
   ): Promise<CommandResult> {
     const nojs = context?.nojs === true;
     const [commands, engineTypes] = await Promise.all([
-      getFilteredCommandRegistry(context?.engines),
+      getFilteredCommandRegistry(context?.bangs),
       getCustomEngineTypes(),
     ]);
 

@@ -2,7 +2,12 @@ import { getBase } from "../../utils/net/base-url";
 import { authHeaders } from "../../utils/net/request";
 import { getStoredToken } from "../../utils/settings/settings-token";
 import { saveField } from "../../utils/settings/settings-api";
-import { bindFieldSaveBtn, createFieldSaveBtn } from "../shared/field-save";
+import {
+  bindFieldSaveBtn,
+  createFieldSaveBtn,
+  markFieldDirty,
+} from "../shared/field-save";
+import { flashError } from "../shared/flash-msg";
 import { setIndexerNavVisible } from "./nav";
 import { markOversized, oversizedMap } from "../shared/oversized";
 import { tr } from "./i18n";
@@ -131,7 +136,7 @@ export const wireToggles = async (
     if (!field || oversized[key]) continue;
     const btn = createFieldSaveBtn();
     field.insertAdjacentElement("afterend", btn);
-    field.addEventListener("input", () => { btn.hidden = false; });
+    field.addEventListener("input", () => markFieldDirty(btn));
     bindFieldSaveBtn(btn, () => {
       _clampToBounds(field);
       return _persistField(key, field.value || fallback);
@@ -142,8 +147,16 @@ export const wireToggles = async (
     checkEl: HTMLInputElement | null,
     key: string,
   ): void => {
+    let revision = 0;
+    let queue: Promise<void> = Promise.resolve();
     checkEl?.addEventListener("change", () => {
-      void _persistField(key, String(checkEl.checked));
+      const sent = checkEl.checked;
+      const current = ++revision;
+      queue = queue.then(async () => {
+        if (await _persistField(key, String(sent))) return;
+        if (current === revision) checkEl.checked = !sent;
+        flashError(window.scopedT("core")("settings-page.server.save-failed-network"));
+      });
     });
   };
 

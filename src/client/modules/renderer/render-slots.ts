@@ -23,9 +23,8 @@ export function clearSlotPanels(): void {
   if (glanceEl) clear(glanceEl);
 }
 
-function _renderSlotPanelsInto(panels: SlotPanel[], clearFirst: boolean): void {
+export function appendSlotPanels(panels: SlotPanel[]): void {
   if (!panels || !Array.isArray(panels) || panels.length === 0) return;
-  if (clearFirst) clearSlotPanels();
   const byPosition: Record<SlotPanelPosition, HTMLElement | null> = {
     [SlotPanelPosition.FullWidthAboveResults]: document.getElementById(
       "slot-full-width-above-results",
@@ -60,12 +59,4 @@ function _renderSlotPanelsInto(panels: SlotPanel[], clearFirst: boolean): void {
       );
     }
   }
-}
-
-export function renderSlotPanels(panels: SlotPanel[]): void {
-  _renderSlotPanelsInto(panels, true);
-}
-
-export function appendSlotPanels(panels: SlotPanel[]): void {
-  _renderSlotPanelsInto(panels, false);
 }

@@ -78,7 +78,7 @@ Everything except the indexer is JSON files and extension folders under `data/`.
 
 `server-settings.json` failing to parse is the nastiest case in the codebase. The loader writes a fresh file with a brand new `instanceId`, which resets proxies and auth flags and orphans the Valkey namespace. Treat any change to that read path with suspicion.
 
-The indexer queue clears its pending buffer before the write lands, so a failed flush drops those rows with nothing in the logs to say so. If you touch `queue.ts`, keep that in mind rather than making it worse.
+The indexer queue clears its pending buffer before the write lands. A failed flush puts those rows back for the next attempt, capped at `MAX_PENDING_PER_TYPE` per type, and logs what it had to drop once the cap is hit. If you touch `queue.ts`, keep that guarantee rather than making it worse.
 
 The `data/` directory on this machine is my real instance. Don't clear it, reshape it or tidy it to make a test pass.
 

@@ -30,23 +30,37 @@ export function parseEnginesFromBody(enabledList?: string[]): EngineConfig {
   return engines;
 }
 
-export const parseSearchRequest = (c: Context): Omit<SearchParams, "query"> & { origQ: string } => ({
-  origQ: c.req.query("q") ?? "",
-  engines: parseEngineConfig(new URL(c.req.url).searchParams),
-  searchType: (c.req.query("type") || "web") as SearchType,
-  page: sanePage(c.req.query("page")),
-  timeFilter: (c.req.query("time") || "any") as TimeFilter,
-  lang: c.req.query("lang") || "",
-  dateFrom: c.req.query("dateFrom") || "",
-  dateTo: c.req.query("dateTo") || "",
+type ParsedSearchRequest = Omit<SearchParams, "query"> & { origQ: string };
+
+const _parseSearchFields = (
+  read: (key: string) => string | null | undefined,
+  engines: EngineConfig,
+): ParsedSearchRequest => ({
+  origQ: read("q") ?? "",
+  engines,
+  searchType: (read("type") || "web") as SearchType,
+  page: sanePage(read("page")),
+  timeFilter: (read("time") || "any") as TimeFilter,
+  lang: read("lang") || "",
+  dateFrom: read("dateFrom") || "",
+  dateTo: read("dateTo") || "",
   imageFilter: parseImageFilter(
-    c.req.query("imgColor"),
-    c.req.query("imgSize"),
-    c.req.query("imgType"),
-    c.req.query("imgLayout"),
-    c.req.query(SAFE_MODE_PARAM) ?? c.req.query(LEGACY_SAFE_MODE_PARAM),
+    read("imgColor"),
+    read("imgSize"),
+    read("imgType"),
+    read("imgLayout"),
+    read(SAFE_MODE_PARAM) ?? read(LEGACY_SAFE_MODE_PARAM),
   ),
 });
+
+export const parseSearchRequest = (c: Context): ParsedSearchRequest =>
+  _parseSearchFields(
+    (key) => c.req.query(key),
+    parseEngineConfig(new URL(c.req.url).searchParams),
+  );
+
+export const parseSearchParams = (params: URLSearchParams): ParsedSearchRequest =>
+  _parseSearchFields((key) => params.get(key), parseEngineConfig(params));
 
 export const parseSearchBody = (body: SearchBody): Omit<SearchParams, "query"> => ({
   engines: parseEnginesFromBody(body.engines),

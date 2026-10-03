@@ -3,7 +3,6 @@ import { DEGOOG_ENGINE_NAME, type ScoredResult } from "../../shared/search-types
 import type { Translate } from "../types/extension";
 import { hasFaviconSource } from "../extensions/favicon/source";
 import { buildFaviconUrl } from "../utils/net/proxy-sign";
-import { DEFAULT_LANGUAGES } from "../utils/search";
 import { logger } from "../utils/logger";
 import { searchHref, type NojsQuery } from "./links";
 import { nojsTabType } from "./tabs";
@@ -137,18 +136,6 @@ const _languageLabel = (code: string, locale: string): string => {
     logger.debug("nojs", "could not resolve language name", err);
     return code;
   }
-};
-
-export const resolveLanguages = (
-  enabled: boolean,
-  raw: string,
-): string[] => {
-  if (!enabled) return DEFAULT_LANGUAGES;
-  const codes = raw
-    .split(/[\n,]/)
-    .map((s) => s.trim().toLowerCase())
-    .filter((s) => /^[a-z]{2,3}$/.test(s));
-  return codes.length > 0 ? codes : DEFAULT_LANGUAGES;
 };
 
 export const buildToolsContext = (

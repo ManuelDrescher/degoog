@@ -1,8 +1,14 @@
-import { getActiveWebEngines, getEngineMap, getEngineSettingsView, getEnginesForCustomType } from "../extensions/engines/catalog";
+import {
+  getActiveWebEngines,
+  getEngineMap,
+  getEngineSettingsView,
+  getEnginesForCustomType,
+  readEngineScore,
+} from "../extensions/engines/catalog";
 import { engineFullSchema } from "../extensions/engines/engine-settings";
 import type { SearchEngine } from "../types/extension";
 import type { EngineConfig, ImageFilter } from "../types/search";
-import { asString, getSettings, maskSecrets } from "../utils/settings/plugin-settings";
+import { maskSecrets } from "../utils/settings/plugin-settings";
 
 export interface ActiveEngine {
   id: string;
@@ -23,13 +29,6 @@ export const selectActiveEngines = async (
       score: await readEngineScore(e.id),
     })),
   );
-};
-
-const readEngineScore = async (id: string): Promise<number> => {
-  const stored = await getSettings(id);
-  const parsed = parseFloat(asString(stored["score"]));
-  const score = Number.isFinite(parsed) ? parsed : 1;
-  return Math.max(score, 0.1);
 };
 
 const _stableSettings = (settings: Record<string, unknown>): Record<string, unknown> =>

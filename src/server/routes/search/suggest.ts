@@ -9,6 +9,8 @@ import { getSuggestionsFromProviders } from "../../extensions/autocomplete/regis
 import { getInstanceSettings } from "../../utils/settings/server-settings";
 import { publicBodyLimit } from "../_guards";
 
+const SUGGEST_LIMIT_PREFIX = "suggest:";
+
 async function _applySuggestRateLimit(c: Parameters<typeof getClientIp>[0]) {
   const settings = await getInstanceSettings();
   if (!asBoolean(settings.rateLimitSuggestEnabled)) return null;
@@ -21,7 +23,7 @@ async function _applySuggestRateLimit(c: Parameters<typeof getClientIp>[0]) {
     rateLimitLongWindow: asString(settings.rateLimitSuggestLongWindow) || "60",
     rateLimitLongMax: asString(settings.rateLimitSuggestLongMax) || "120",
   };
-  const result = checkRateLimit(ip, opts);
+  const result = checkRateLimit(`${SUGGEST_LIMIT_PREFIX}${ip}`, opts);
   if (!result.allowed && result.retryAfterSec !== undefined) {
     return (
       c as Parameters<typeof getClientIp>[0] & {

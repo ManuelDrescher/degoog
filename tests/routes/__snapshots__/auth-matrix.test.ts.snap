@@ -140,15 +140,6 @@ exports[`what an unauthenticated caller gets from every route search/stream unau
 ]
 `;
 
-exports[`what an unauthenticated caller gets from every route searx-engines unauthenticated responses are unchanged (nojs pinned off) 1`] = `
-[
-  "GET /api/searx/engines -> 401",
-  "POST /api/searx/install -> 401",
-  "POST /api/searx/uninstall -> 401",
-  "POST /api/searx/update -> 401",
-]
-`;
-
 exports[`what an unauthenticated caller gets from every route settings unauthenticated responses are unchanged (nojs pinned off) 1`] = `
 [
   "DELETE /api/settings/shortcuts/source/:id -> 401",

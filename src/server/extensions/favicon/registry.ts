@@ -166,10 +166,6 @@ export type FaviconAccept<T> = (
   result: NonNullable<FaviconResult>,
 ) => Promise<T | null> | T | null;
 
-export const acceptFaviconResult = (
-  result: NonNullable<FaviconResult>,
-): NonNullable<FaviconResult> => result;
-
 export const runFaviconChain = async <T>(
   host: string,
   accept: FaviconAccept<T>,

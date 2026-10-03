@@ -1,6 +1,9 @@
-import { readFile } from "fs/promises";
+import { existsSync } from "fs";
 import { pluginSettingsFile } from "../paths";
 import { writeJsonAtomic } from "../storage/atomic-json";
+import { readJsonOrQuarantine } from "../storage/read-json";
+import { createMutex } from "../cache/mutex";
+import { logger } from "../logger";
 import {
   INVALIDATE_SCOPE,
   onInvalidate,
@@ -20,6 +23,8 @@ export const asBoolean = (v: SettingValue | undefined): boolean =>
   v === true || v === "true";
 let cache: PluginSettingsStore | null = null;
 let loadFailed = false;
+let unreadable = false;
+const writeLock = createMutex();
 
 onInvalidate((payload) => {
   if (payload.scope !== INVALIDATE_SCOPE.PLUGIN_SETTINGS) return;
@@ -41,15 +46,20 @@ const _lowerKeys = (store: PluginSettingsStore): PluginSettingsStore => {
 
 const load = async (): Promise<PluginSettingsStore> => {
   if (cache) return cache;
+  const file = pluginSettingsFile();
   try {
-    const raw = await readFile(pluginSettingsFile(), "utf-8");
-    cache = _lowerKeys(JSON.parse(raw) as PluginSettingsStore);
-    loadFailed = false;
-  } catch (e: unknown) {
-    cache = {};
-    loadFailed = (e as NodeJS.ErrnoException).code !== "ENOENT";
+    const existed = existsSync(file);
+    const parsed = await readJsonOrQuarantine<PluginSettingsStore>("plugin-settings", file);
+    unreadable = false;
+    loadFailed = parsed === null && existed;
+    cache = parsed ? _lowerKeys(parsed) : {};
+    return cache;
+  } catch (err) {
+    logger.error("plugin-settings", "plugin-settings.json could not be read", err);
+    unreadable = true;
+    loadFailed = true;
+    return {};
   }
-  return cache;
 };
 
 export const didSettingsLoadFail = (): boolean => loadFailed;
@@ -59,6 +69,9 @@ export const clearPluginSettingsCache = (): void => {
 };
 
 async function persist(store: PluginSettingsStore): Promise<void> {
+  if (unreadable) {
+    throw new Error("plugin-settings.json is unreadable, refusing to overwrite it");
+  }
   await writeJsonAtomic(pluginSettingsFile(), store);
 }
 
@@ -88,17 +101,18 @@ export const mergeDefaults = (
   return { ...out, ...stored };
 };
 
-export async function setSettings(
+export function setSettings(
   id: string,
   values: Record<string, SettingValue>,
 ): Promise<void> {
-  const store = await load();
-  store[id] = { ...(store[id] ?? {}), ...values };
-  cache = store;
-
-  await persist(store);
-  loadFailed = false;
-  await publishInvalidate(INVALIDATE_SCOPE.PLUGIN_SETTINGS, id);
+  return writeLock(async () => {
+    const store = await load();
+    store[id] = { ...(store[id] ?? {}), ...values };
+    await persist(store);
+    cache = store;
+    loadFailed = false;
+    await publishInvalidate(INVALIDATE_SCOPE.PLUGIN_SETTINGS, id);
+  });
 }
 
 export const SCHEMA_VERSION_KEY = "__schemaVersion";
@@ -109,13 +123,15 @@ export const getSchemaVersion = async (): Promise<number> => {
   return typeof version === "number" ? version : 0;
 };
 
-export async function setSchemaVersion(version: number): Promise<void> {
-  const store = await load();
-  (store as Record<string, unknown>)[SCHEMA_VERSION_KEY] = version;
-  cache = store;
-  await persist(store);
-  loadFailed = false;
-  await publishInvalidate(INVALIDATE_SCOPE.PLUGIN_SETTINGS, SCHEMA_VERSION_KEY);
+export function setSchemaVersion(version: number): Promise<void> {
+  return writeLock(async () => {
+    const store = await load();
+    (store as Record<string, unknown>)[SCHEMA_VERSION_KEY] = version;
+    await persist(store);
+    cache = store;
+    loadFailed = false;
+    await publishInvalidate(INVALIDATE_SCOPE.PLUGIN_SETTINGS, SCHEMA_VERSION_KEY);
+  });
 }
 
 export const getAllSettings = async (): Promise<PluginSettingsStore> => {
@@ -130,14 +146,15 @@ export const getTypeOverride = async (id: string): Promise<string | null> => {
   return typeof v === "string" && v.trim() ? v.trim() : null;
 };
 
-export async function removeSettings(id: string): Promise<void> {
-  const store = await load();
-  if (id in store) {
+export function removeSettings(id: string): Promise<void> {
+  return writeLock(async () => {
+    const store = await load();
+    if (!(id in store)) return;
     delete store[id];
-    cache = store;
     await persist(store);
+    cache = store;
     await publishInvalidate(INVALIDATE_SCOPE.PLUGIN_SETTINGS, id);
-  }
+  });
 }
 
 export const maskSecrets = (

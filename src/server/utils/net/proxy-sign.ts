@@ -65,6 +65,9 @@ export const buildFaviconUrl = (host: string, version?: number): string => {
   return _signedFaviconUrl(normalized, version);
 };
 
+export const signFaviconUrl = (url: string): string =>
+  buildFaviconUrl(faviconHostname(url));
+
 const _faviconSigner = (): ((url: string) => string) => {
   if (!hasFaviconSource()) return () => "";
   const byHost = new Map<string, string>();

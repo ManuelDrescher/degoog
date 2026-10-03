@@ -1,6 +1,6 @@
 import { clear, render } from "../../../shared/ui/tribute/dom";
 import { LoadingDots } from "../../../shared/ui/components/feedback/loading-dots";
-import { state } from "../../state";
+import { isCurrentSearch, state } from "../../state";
 import { isImageSearchType, type ScoredResult } from "../../../shared/search-types";
 import { fetchResultsPage } from "../../utils/net/url";
 
@@ -49,6 +49,15 @@ export function setupMediaObserver(type: string): void {
   mediaObserver.observe(sentinel);
 }
 
+const _rearmMediaObserver = (): void => {
+  const sentinel = document.querySelector<HTMLElement>(
+    ".media-scroll-sentinel",
+  );
+  if (!mediaObserver || !sentinel) return;
+  mediaObserver.unobserve(sentinel);
+  mediaObserver.observe(sentinel);
+};
+
 export async function loadMoreMedia(type: string): Promise<void> {
   const isImage = isImageSearchType(type);
   const page = isImage ? state.imagePage : state.videoPage;
@@ -57,19 +66,26 @@ export async function loadMoreMedia(type: string): Promise<void> {
   if (nextPage > lastPg || state.mediaLoading) return;
 
   state.mediaLoading = true;
+  const seq = state.searchSeq;
   const sentinel = document.querySelector<HTMLElement>(
     ".media-scroll-sentinel",
   );
   if (sentinel) render(<LoadingDots />, sentinel);
 
-  let res: Response;
+  let appended = false;
   try {
-    res = await fetchResultsPage(type, nextPage);
+    const res = await fetchResultsPage(type, nextPage);
+    if (!isCurrentSearch(seq)) return;
+    if (!res.ok) {
+      console.warn("[media-scroll] next page failed", res.status);
+      return;
+    }
 
     const raw = (await res.json()) as {
       results?: ScoredResult[];
       type?: string;
     };
+    if (!isCurrentSearch(seq)) return;
     const data = { results: raw.results ?? [] };
     if (data.results.length === 0) {
       if (isImage) state.imageLastPage = page;
@@ -86,9 +102,13 @@ export async function loadMoreMedia(type: string): Promise<void> {
       if (grid && appendMediaCardsRef) {
         appendMediaCardsRef(grid, data.results, isImage ? "image" : "video");
       }
+      appended = true;
     }
+  } catch (err) {
+    console.warn("[media-scroll] next page failed", err);
   } finally {
     state.mediaLoading = false;
     if (sentinel) clear(sentinel);
+    if (appended || !isCurrentSearch(seq)) _rearmMediaObserver();
   }
 }

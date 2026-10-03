@@ -17,6 +17,8 @@ export interface ExtensionMeta {
   compatibilityLayer?: string;
   extensionDocsAvailable?: boolean;
   defaultEnabled?: boolean;
+  defaultBangEnabled?: boolean;
+  bangShortcut?: string;
   defaultFeedUrls?: string[];
   isClientExposed?: boolean;
   requiresNewerVersion?: boolean;
@@ -61,4 +63,5 @@ export interface EngineRegistry {
     origin?: EngineOrigin;
   }>;
   defaults?: Record<string, boolean>;
+  bangDefaults?: Record<string, boolean>;
 }

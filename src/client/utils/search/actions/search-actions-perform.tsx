@@ -15,7 +15,12 @@ import {
   teardownInfinite,
 } from "../../../modules/renderer/infinite-scroll/infinite-scroll";
 import { renderImgEngines } from "../../../modules/filters/image-filters";
-import { state } from "../../../state";
+import {
+  beginSearch,
+  isCurrentSearch,
+  state,
+  takeRestoreInfinitePage,
+} from "../../../state";
 import type { Command } from "../../../types/extension";
 import {
   isImageSearchType,
@@ -24,7 +29,13 @@ import {
 } from "../../../../shared/search-types";
 import { abortAcReq, hideAcDropdown } from "../../autocomplete/autocomplete";
 import { triggerUovadipasqua } from "../../app/uovadipasqua";
-import { getEngines, getKnownSearchTypePrefixes } from "../engines";
+import {
+  enabledIds,
+  getEngineBangs,
+  getEngines,
+  getKnownSearchTypePrefixes,
+} from "../engines";
+import { ENGINE_BANGS_FIELD } from "../../../../shared/sync";
 import { setActiveTab, setTabsForBang } from "../../navigation/navigation";
 import { Pagination } from "../../pagination/pagination";
 import {
@@ -49,6 +60,8 @@ import {
   renderSearchResponse,
 } from "./search-actions-render";
 
+const t = window.scopedT("themes/degoog");
+
 let commandsCache: { key: string; commands: Command[] } | null = null;
 
 onWindowEvent("extensions-saved", () => {
@@ -56,11 +69,10 @@ onWindowEvent("extensions-saved", () => {
 });
 
 const _fetchCommands = async (): Promise<Command[]> => {
-  const engines = await getEngines();
-  const params = new URLSearchParams(
-    Object.entries(engines).map(([id, on]) => [id, String(on)]),
-  );
-  const key = params.toString();
+  const bangs = await getEngineBangs();
+  const key = new URLSearchParams({
+    [ENGINE_BANGS_FIELD]: enabledIds(bangs).join(","),
+  }).toString();
   if (commandsCache?.key === key) return commandsCache.commands;
   try {
     const res = await fetch(`${getBase()}/api/commands?${key}`, { cache: "no-store" });
@@ -80,8 +92,12 @@ export async function performSearch(
   type?: string,
   page?: number,
 ): Promise<void> {
+  const restorePage = takeRestoreInfinitePage();
   const resolvedType = type || state.currentType || "web";
   if (!query.trim()) return;
+  destroyMediaObserver();
+  teardownInfinite();
+  const seq = beginSearch();
 
   void import("../../../modules/filters/image-filters").then(
     ({ syncImgFilters }) => syncImgFilters(resolvedType),
@@ -89,9 +105,9 @@ export async function performSearch(
   void triggerUovadipasqua(query);
 
   const isInit = state.isInitialLoad;
-  state.isInitialLoad = false;
 
   if (query.trim().startsWith("!") || /\s!\S+$/.test(query.trim())) {
+    state.isInitialLoad = false;
     state.currentQuery = query;
     return _performBangCommand(query, resolvedType, page || 1, isInit);
   }
@@ -102,6 +118,7 @@ export async function performSearch(
     const actualQuery = prefixMatch[2].trim();
     if (actualQuery) {
       const knownTypes = await getKnownSearchTypePrefixes();
+      if (!isCurrentSearch(seq)) return;
       if (knownTypes.has(prefix)) {
         const { performTabSearch } =
           await import("../../../modules/tabs/tab-search");
@@ -115,12 +132,16 @@ export async function performSearch(
     return performTabSearch(query, resolvedType.slice(4), page);
   }
 
+  state.isInitialLoad = false;
+
   const commands = await _fetchCommands();
+  if (!isCurrentSearch(seq)) return;
   const naturalBangQuery = commands.length
     ? getNaturalLanguageBangQuery(query, commands)
     : null;
 
   const streamingConfig = await fetchStreamingConfig();
+  if (!isCurrentSearch(seq)) return;
   if (
     !naturalBangQuery &&
     !state.postMethodEnabled &&
@@ -134,6 +155,7 @@ export async function performSearch(
       resolvedType,
       (q) => void performSearch(q),
       isInit,
+      restorePage,
     );
   }
 
@@ -149,6 +171,7 @@ export async function performSearch(
   destroyMediaObserver();
 
   const engines = await getEngines();
+  if (!isCurrentSearch(seq)) return;
   const url = buildSearchUrl(query, engines, resolvedType, resolvedPage);
 
   prepareResultsUi(query, resolvedType);
@@ -162,6 +185,8 @@ export async function performSearch(
       engines,
       resolvedType,
       resolvedPage,
+      seq,
+      restorePage,
     );
   }
 
@@ -181,19 +206,22 @@ export async function performSearch(
           },
         })
       : await fetch(appendSearchAuthParams(url));
+    if (!isCurrentSearch(seq)) return;
 
     if (!res.ok) {
       const body = await res.text().catch(() => "(unreadable)");
+      if (!isCurrentSearch(seq)) return;
       console.error("[search] non-ok response", res.status, body);
       const msg =
         res.status === 429
           ? "Too many requests. Please slow down."
-          : "Search failed. Please try again.";
+          : t("search-templates.search-failed");
       if (resultsMeta) resultsMeta.textContent = "";
       if (resultsList) render(<NoResults>{msg}</NoResults>, resultsList);
       return;
     }
     const data = (await res.json()) as SearchResponse;
+    if (!isCurrentSearch(seq)) return;
     renderSearchResponse(
       data,
       query,
@@ -201,14 +229,16 @@ export async function performSearch(
       (q) => void performSearch(q),
       {
         fetchGlance: true,
+        restorePage,
       },
     );
   } catch (err) {
     console.error("[search] search failed", err);
+    if (!isCurrentSearch(seq)) return;
     if (resultsMeta) resultsMeta.textContent = "";
     if (resultsList)
       render(
-        <NoResults>Search failed. Please try again.</NoResults>,
+        <NoResults>{t("search-templates.search-failed")}</NoResults>,
         resultsList,
       );
   }
@@ -220,6 +250,8 @@ async function _performSearchWithBang(
   engines: Record<string, boolean>,
   type: string,
   page: number,
+  seq: number,
+  restorePage: number,
 ): Promise<void> {
   const glanceEl = document.getElementById("at-a-glance");
   const resultsMeta = document.getElementById("results-meta");
@@ -229,7 +261,11 @@ async function _performSearchWithBang(
       fetchCommand(bangQuery, type, 1),
       fetchSearch(query, engines, type, page),
     ]);
+    if (!searchRes.ok) {
+      throw new Error(`search request failed: ${searchRes.status}`);
+    }
     const searchData = (await searchRes.json()) as SearchResponse;
+    if (!isCurrentSearch(seq)) return;
     const isMediaType = isImageSearchType(type);
     renderSearchResponse(
       searchData,
@@ -238,6 +274,7 @@ async function _performSearchWithBang(
       (q) => void performSearch(q),
       {
         fetchGlance: false,
+        restorePage,
       },
     );
 
@@ -248,6 +285,7 @@ async function _performSearchWithBang(
         title?: string;
         html?: string;
       };
+      if (!isCurrentSearch(seq)) return;
       const glance = buildCommandGlance(cmdData);
       if (glance) {
         clear(glanceEl);
@@ -259,10 +297,11 @@ async function _performSearchWithBang(
     }
   } catch (err) {
     console.error("[search] bang search failed", err);
+    if (!isCurrentSearch(seq)) return;
     if (resultsMeta) resultsMeta.textContent = "";
     if (resultsList)
       render(
-        <NoResults>Search failed. Please try again.</NoResults>,
+        <NoResults>{t("search-templates.search-failed")}</NoResults>,
         resultsList,
       );
   }
@@ -280,6 +319,7 @@ async function _performBangCommand(
   page = 1,
   isInit = false,
 ): Promise<void> {
+  const seq = beginSearch();
   closeMediaPreview(MediaPreviewCloseMode.Reset);
   abortStreamingSearch();
   teardownInfinite();
@@ -334,8 +374,10 @@ async function _performBangCommand(
 
   try {
     const res = await fetchCommand(query, requestedType, page);
+    if (!isCurrentSearch(seq)) return;
     if (res.status === 403) {
       const { error } = (await res.json()) as { error?: string };
+      if (!isCurrentSearch(seq)) return;
       if (resultsMeta) resultsMeta.textContent = "";
       if (resultsList) render(<NoResults>{error ?? "Disabled."}</NoResults>, resultsList);
       return;
@@ -353,6 +395,7 @@ async function _performBangCommand(
       totalPages?: number;
       page?: number;
     };
+    if (!isCurrentSearch(seq)) return;
     if (data.type === "engine") {
       const engineType = data.primaryType ?? "web";
       const isMedia = isImageSearchType(engineType);
@@ -385,6 +428,7 @@ async function _performBangCommand(
       if (isMedia) renderImgEngines(data.engineTimings ?? []);
       state.currentPage = page;
       const infinite = (await fetchStreamingConfig()).infiniteScroll && !isMedia;
+      if (!isCurrentSearch(seq)) return;
       renderResults(data.results ?? [], { paginate: !infinite });
       if (infinite) setupInfinite(engineType);
       return;
@@ -402,6 +446,7 @@ async function _performBangCommand(
       );
     }
   } catch {
+    if (!isCurrentSearch(seq)) return;
     if (resultsMeta) resultsMeta.textContent = "";
     if (resultsList)
       render(

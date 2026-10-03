@@ -4,7 +4,8 @@ import { state } from "../../state";
 import { getBase } from "./base-url";
 import { appendSearchAuthParams, searchAuthHeaders } from "./request";
 import { isImageSearchType } from "../../../shared/search-types";
-import { getEngines } from "../search/engines";
+import { enabledIds, getEngineBangs, getEngines } from "../search/engines";
+import { ENGINE_BANGS_FIELD } from "../../../shared/sync";
 
 export const imgFilterRecord = (f: ImageFilter): Record<string, string> => {
   const r: Record<string, string> = {};
@@ -81,9 +82,7 @@ export const buildSearchBody = (
 ): SearchBody => {
   const body: SearchBody = {
     query,
-    engines: Object.entries(engines)
-      .filter(([, v]) => v)
-      .map(([k]) => k),
+    engines: enabledIds(engines),
   };
 
   if (type && type !== "web") body.type = type;
@@ -125,14 +124,18 @@ export const fetchCommand = async (
   type: string,
   page: number,
 ): Promise<Response> => {
-  const engines = await getEngines();
-  return state.postMethodEnabled
-    ? _postSearchJson("/api/command", buildSearchBody(query, engines, type, page))
-    : fetch(
-        appendSearchAuthParams(
-          `${getBase()}/api/command?${buildSearchParams(query, engines, type, page).toString()}`,
-        ),
-      );
+  const [engines, bangs] = await Promise.all([getEngines(), getEngineBangs()]);
+  if (state.postMethodEnabled) {
+    return _postSearchJson("/api/command", {
+      ...buildSearchBody(query, engines, type, page),
+      bangs: enabledIds(bangs),
+    });
+  }
+  const params = buildSearchParams(query, engines, type, page);
+  params.set(ENGINE_BANGS_FIELD, enabledIds(bangs).join(","));
+  return fetch(
+    appendSearchAuthParams(`${getBase()}/api/command?${params.toString()}`),
+  );
 };
 
 export const fetchResultsPage = async (

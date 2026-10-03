@@ -1,10 +1,17 @@
 import { clear } from "../../../shared/ui/tribute/dom";
-import { escapeHtml } from "../../../shared/ui/tribute/escape";
+import { linkHref } from "../../../shared/utils/url";
 import { performSearch } from "./actions/search-actions-perform";
 import type { SearchBarAction } from "../../types/extension";
 import { getBase } from "../net/base-url";
 
 const SEARCH_BAR_ACTION_EVENT = "search-bar-action";
+const DATA_IMAGE_PREFIX = /^data:image\//i;
+
+const _iconSrc = (icon: string): string => {
+  const trimmed = icon.trim();
+  if (DATA_IMAGE_PREFIX.test(trimmed)) return trimmed;
+  return linkHref(trimmed);
+};
 
 const _renderActionButton = (
   action: SearchBarAction,
@@ -19,9 +26,10 @@ const _renderActionButton = (
   if (action.type === "navigate" && action.url) btn.dataset.url = action.url;
   if (action.type === "bang" && action.trigger)
     btn.dataset.trigger = action.trigger;
-  if (action.icon) {
+  const iconSrc = action.icon ? _iconSrc(action.icon) : "";
+  if (iconSrc) {
     const img = document.createElement("img");
-    img.src = escapeHtml(action.icon);
+    img.src = iconSrc;
     img.alt = "";
     img.className = "search-bar-action-icon";
     btn.appendChild(img);

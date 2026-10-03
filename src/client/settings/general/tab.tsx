@@ -21,6 +21,18 @@ const t = window.scopedT("core");
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
 
+const _bound = new WeakSet<HTMLElement>();
+
+const _bindOnce = (
+  el: HTMLElement | null,
+  type: string,
+  handler: () => void | Promise<void>,
+): void => {
+  if (!el || _bound.has(el)) return;
+  _bound.add(el);
+  el.addEventListener(type, () => void handler());
+};
+
 async function getNewestRelease(fresh = false): Promise<string> {
   try {
     const res = await fetch(`${getBase()}/api/settings/update-check${fresh ? "?fresh=1" : ""}`, {
@@ -44,7 +56,7 @@ export async function initAppearanceSettings(): Promise<void> {
   if (themeSelect) {
     const saved = await idbGet<string>(THEME_KEY);
     themeSelect.value = saved || "system";
-    themeSelect.addEventListener("change", async () => {
+    _bindOnce(themeSelect, "change", async () => {
       const value = themeSelect.value;
       await idbSet(THEME_KEY, value);
       try {
@@ -66,7 +78,7 @@ export async function initAppearanceSettings(): Promise<void> {
       saved && ENGINE_ORIGIN_DISPLAY_VALUES.includes(saved)
         ? saved
         : INSTANCE_DEFAULT_VALUE;
-    originSelect.addEventListener("change", async () => {
+    _bindOnce(originSelect, "change", async () => {
       const value = originSelect.value;
       if (value === INSTANCE_DEFAULT_VALUE) await idbDel(ENGINE_ORIGIN_DISPLAY);
       else await idbSet(ENGINE_ORIGIN_DISPLAY, value);
@@ -80,7 +92,7 @@ export async function initAppearanceSettings(): Promise<void> {
     const saved = await idbGet<boolean>(pref.key);
     const stored = saved ?? pref.defaultVal ?? false;
     el.checked = pref.invert ? !stored : stored;
-    el.addEventListener("change", async () => {
+    _bindOnce(el, "change", async () => {
       await idbSet(pref.key, pref.invert ? !el.checked : el.checked);
     });
   }
@@ -93,7 +105,7 @@ export const bindResetDefaults = (
   const resetBtn = document.getElementById(
     "settings-sync-reset-defaults",
   ) as HTMLButtonElement | null;
-  resetBtn?.addEventListener("click", async () => {
+  _bindOnce(resetBtn, "click", async () => {
     const confirmed = await confirmModal({
       title: t("settings-page.sync.reset-button"),
       message: t("settings-page.sync.reset-confirm"),
@@ -117,7 +129,7 @@ async function initSyncSetting(getToken: () => string | null): Promise<void> {
   ) as HTMLButtonElement | null;
   if (btn) {
     const label = btn.textContent;
-    btn.addEventListener("click", async () => {
+    _bindOnce(btn, "click", async () => {
       btn.disabled = true;
       const ok = await saveDefaults();
       btn.textContent = ok
@@ -174,7 +186,7 @@ async function initVersionChecker(): Promise<void> {
   if (latestVersion && newestVersionEl)
     newestVersionEl.textContent = latestVersion;
 
-  checkNowBtn?.addEventListener("click", async () => {
+  _bindOnce(checkNowBtn, "click", async () => {
     const newest = await getNewestRelease(true);
     if (newestVersionEl) newestVersionEl.textContent = newest;
     localStorage.setItem("last-update-check-version", newest);

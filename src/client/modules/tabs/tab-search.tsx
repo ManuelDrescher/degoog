@@ -1,10 +1,11 @@
+import { teardownInfinite } from "../renderer/infinite-scroll/infinite-scroll";
 import { clear, render } from "../../../shared/ui/tribute/dom";
 import { NoResults } from "../../../shared/ui/components/feedback/no-results";
 import { PaginationWrap } from "../../utils/pagination/pagination-wrap";
 import { SkeletonImageGrid } from "../../animations/skeleton/skeleton-image-grid";
 import { SkeletonResults } from "../../animations/skeleton/skeleton-results";
 import { SkeletonSidebar } from "../../animations/skeleton/skeleton-sidebar";
-import { state } from "../../state";
+import { beginSearch, isCurrentSearch, state } from "../../state";
 import {
   isImageSearchType,
   type ScoredResult,
@@ -12,7 +13,7 @@ import {
   SlotPanelPosition,
 } from "../../../shared/search-types";
 import { hideAcDropdown } from "../../utils/autocomplete/autocomplete";
-import { setActiveTab } from "../../utils/navigation/navigation";
+import { setActiveTab, showAllTabs } from "../../utils/navigation/navigation";
 import { fetchStreamingConfig } from "../../utils/search/streaming/streaming-config";
 import { Pagination } from "../../utils/pagination/pagination";
 import { fetchGlancePanels, fetchSlotPanels } from "../../utils/search/search-utils";
@@ -39,6 +40,9 @@ import { getBase } from "../../utils/net/base-url";
 import { buildSearchBody, buildSearchParams } from "../../utils/net/url";
 import { appendSearchAuthParams, searchAuthHeaders } from "../../utils/net/request";
 import { getEngines } from "../../utils/search/engines";
+import { MAX_PAGE } from "../../constants";
+
+const t = window.scopedT("themes/degoog");
 
 export async function performTabSearch(
   query: string,
@@ -46,6 +50,9 @@ export async function performTabSearch(
   page = 1,
 ): Promise<void> {
   if (!query.trim()) return;
+  destroyMediaObserver();
+  teardownInfinite();
+  const seq = beginSearch();
 
   const tabType = `tab:${tabId}`;
   const isImageType = isImageSearchType(tabType);
@@ -61,6 +68,7 @@ export async function performTabSearch(
     ? tabId.replace("engine:", "")
     : "";
   const streamingConfig = engineType ? await fetchStreamingConfig() : null;
+  if (!isCurrentSearch(seq)) return;
   if (
     streamingConfig?.enabled &&
     page === 1 &&
@@ -72,6 +80,7 @@ export async function performTabSearch(
       query,
       engineType,
       (q) => void performTabSearch(q, tabId),
+      isInit,
     );
   }
 
@@ -79,8 +88,14 @@ export async function performTabSearch(
   state.currentBangQuery = "";
   state.currentType = `tab:${tabId}`;
   state.currentPage = page;
+  state.imagePage = page;
+  state.imageLastPage = MAX_PAGE;
+  state.videoPage = page;
+  state.videoLastPage = MAX_PAGE;
   destroyMediaObserver();
+  teardownInfinite();
 
+  showAllTabs();
   setActiveTab(`tab:${tabId}`);
   closeMediaPreview(MediaPreviewCloseMode.Reset);
   hideAcDropdown(document.getElementById("ac-dropdown-home"));
@@ -111,6 +126,7 @@ export async function performTabSearch(
   clearSlotPanels();
   if (!isImageType) {
     void fetchSlotPanels(query).then((panels) => {
+      if (!isCurrentSearch(seq)) return;
       const kp = panels.filter(
         (p) => p.position === SlotPanelPosition.KnowledgePanel,
       );
@@ -168,6 +184,7 @@ export async function performTabSearch(
       engineTimings?: SearchResponse["engineTimings"];
       totalTime?: number;
     };
+    if (!isCurrentSearch(seq)) return;
 
     state.currentResults = data.results || [];
     const timings = data.engineTimings ?? [];
@@ -202,10 +219,11 @@ export async function performTabSearch(
     }
   } catch (err) {
     console.error("[tab-search] search failed", err);
+    if (!isCurrentSearch(seq)) return;
     if (resultsMeta) resultsMeta.textContent = "";
     if (resultsList)
       render(
-        <NoResults>Search failed. Please try again.</NoResults>,
+        <NoResults>{t("search-templates.search-failed")}</NoResults>,
         resultsList,
       );
     return;
@@ -216,6 +234,7 @@ export async function performTabSearch(
 
   void (async () => {
     const panels = await fetchSlotPanels(query, state.currentResults);
+    if (!isCurrentSearch(seq)) return;
     const kpPanels = panels.filter(
       (p) => p.position === SlotPanelPosition.KnowledgePanel,
     );
@@ -251,7 +270,7 @@ function _renderTabResults(
 ): void {
   if (!container) return;
   if (results.length === 0) {
-    render(<NoResults>No results found.</NoResults>, container);
+    render(<NoResults>{t("search-templates.no-results")}</NoResults>, container);
     return;
   }
 

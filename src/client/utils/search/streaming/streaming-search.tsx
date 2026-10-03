@@ -2,25 +2,13 @@ import { clear, render } from "../../../../shared/ui/tribute/dom";
 import { TransText } from "../../../../shared/ui/components/primitives/trans-text";
 import { NoResults } from "../../../../shared/ui/components/feedback/no-results";
 import { NoEnginesLink } from "../engine-stats/no-engines-link";
-import { SkeletonImageGrid } from "../../../animations/skeleton/skeleton-image-grid";
-import { SkeletonResults } from "../../../animations/skeleton/skeleton-results";
-import { SkeletonSidebar } from "../../../animations/skeleton/skeleton-sidebar";
 import { MAX_PAGE } from "../../../constants";
-import {
-  closeMediaPreview,
-  MediaPreviewCloseMode,
-  syncMediaPreviewPanel,
-} from "../../../modules/media/media";
 import { destroyMediaObserver, setupMediaObserver } from "../../../modules/media/media-scroll";
-import {
-  prependKnowledgePanels,
-  renderSidebar,
-} from "../../../modules/renderer/sidebar/render-sidebar";
-import { clearSlotPanels } from "../../../modules/renderer/render-slots";
+import { renderSidebar } from "../../../modules/renderer/sidebar/render-sidebar";
 import { attachVideoPlayers, renderPagination } from "../../../modules/renderer/render";
 import { renderImageGrid } from "../../../modules/renderer/media/render-media";
 import { renderImgEngines } from "../../../modules/filters/image-filters";
-import { state } from "../../../state";
+import { beginSearch, isCurrentSearch, state } from "../../../state";
 import {
   type EngineTiming,
   isImageSearchType,
@@ -28,26 +16,22 @@ import {
   type SearchResponse,
   SlotPanelPosition,
 } from "../../../../shared/search-types";
-import { abortAcReq, hideAcDropdown } from "../../autocomplete/autocomplete";
 import { getEngines } from "../engines";
-import { setActiveTab } from "../../navigation/navigation";
-import {
-  abortGlancePanels,
-  abortSlotPanels,
-  fetchGlancePanels,
-  fetchSlotPanels,
-} from "../search-utils";
-import { buildSearchUrl, imgFilterRecord } from "../../net/url";
+import { fetchGlancePanels, fetchSlotPanels } from "../search-utils";
+import { buildSearchUrl } from "../../net/url";
 import { appendSearchAuthParams } from "../../net/request";
 import { declaredPages } from "../search-helpers";
 import { infiniteScrollOn } from "./streaming-config";
 import {
-  setupInfinite,
+  armInfinite,
   teardownInfinite,
 } from "../../../modules/renderer/infinite-scroll/infinite-scroll";
 import { getBase } from "../../net/base-url";
-import { loadSidebarSuggestions } from "../actions/search-actions-render";
-import { mergeStreamingMediaResults } from "./streaming-media-results";
+import {
+  loadSidebarSuggestions,
+  prepareResultsUi,
+  pushSearchHistory,
+} from "../actions/search-actions-render";
 import { staysHere } from "../../dom/plain-click";
 import {
   updateEngineTimings,
@@ -99,8 +83,10 @@ export async function performStreamingSearch(
   type: string,
   onComplete: (q: string) => void,
   isInitialLoad = false,
+  restorePage = 1,
 ): Promise<void> {
   abortStreamingSearch();
+  const seq = beginSearch();
 
   state.currentQuery = query;
   state.currentBangQuery = "";
@@ -115,96 +101,35 @@ export async function performStreamingSearch(
   teardownInfinite();
 
   const engines = await getEngines();
+  if (!isCurrentSearch(seq)) return;
   const url = buildSearchUrl(query, engines, type, 1);
   const streamUrl = appendSearchAuthParams(
     url.replace("/api/search?", "/api/search/stream?"),
   );
 
-  setActiveTab(type);
-  closeMediaPreview(MediaPreviewCloseMode.Reset);
-  abortAcReq();
-  hideAcDropdown(document.getElementById("ac-dropdown-home"));
-  hideAcDropdown(document.getElementById("ac-dropdown-results"));
-  (document.activeElement as HTMLElement | null)?.blur();
-  const resultsInput = document.getElementById(
-    "results-search-input",
-  ) as HTMLInputElement | null;
-  if (resultsInput) {
-    resultsInput.value = query;
-    resultsInput.defaultValue = query;
-  }
-  const isImageType = isImageSearchType(type);
-  const layout = document.getElementById("results-layout");
-  if (isImageType) {
-    layout?.classList.add("media-mode");
-  } else {
-    layout?.classList.remove("media-mode");
-  }
-  syncMediaPreviewPanel(isImageType);
-  const resultsMeta = document.getElementById("results-meta");
-  if (resultsMeta) resultsMeta.textContent = "Searching...";
-  const resultsList = document.getElementById("results-list");
-  if (resultsList) {
-    render(
-      isImageType ? <SkeletonImageGrid /> : <SkeletonResults />,
-      resultsList,
-    );
-  }
-  const pagination = document.getElementById("pagination");
-  if (pagination) clear(pagination);
-  const sidebar = document.getElementById("results-sidebar");
-  if (sidebar) {
-    if (isImageType) clear(sidebar);
-    else render(<SkeletonSidebar />, sidebar);
-  }
+  prepareResultsUi(query, type);
   loadSidebarSuggestions(query, type, onComplete);
-  clearSlotPanels();
-  if (isImageType) {
-    abortGlancePanels();
-    abortSlotPanels();
-  } else {
-    void fetchSlotPanels(query).then((panels) => {
-      const kp = panels.filter(
-        (p) => p.position === SlotPanelPosition.KnowledgePanel,
-      );
-      if (kp.length > 0) prependKnowledgePanels(kp);
-    });
-    void fetchGlancePanels(query);
-  }
-  const glanceEl = document.getElementById("at-a-glance");
-  if (glanceEl) clear(glanceEl);
-  document.title = `${query} - degoog`;
+  pushSearchHistory(query, type, 1, isInitialLoad);
 
-  const urlParams = new URLSearchParams({ q: query });
-  if (type !== "web") urlParams.set("type", type);
-  if (isImageType) {
-    for (const [k, v] of Object.entries(imgFilterRecord(state.imageFilter))) {
-      urlParams.set(k, v);
-    }
-  }
-  const historyState = {
-    degoog: true,
-    query,
-    type,
-    page: 1,
-    imageFilter: isImageType ? { ...state.imageFilter } : undefined,
-  };
-  const searchUrl = `${getBase()}/search?${urlParams.toString()}`;
-  if (isInitialLoad) {
-    history.replaceState(historyState, "", searchUrl);
-  } else {
-    history.pushState(historyState, "", searchUrl);
-  }
+  const isImageType = isImageSearchType(type);
+  const resultsMeta = document.getElementById("results-meta");
+  const resultsList = document.getElementById("results-list");
+  const sidebar = document.getElementById("results-sidebar");
 
   const engineTimings: EngineTiming[] = [];
   let firstResult = true;
   let currentResults: ScoredResult[] = [];
   const renderedUrls = new Set<string>();
-  const renderedImages: ScoredResult[] = [];
 
   const source = new EventSource(streamUrl);
   _activeSource = source;
   _linkWatch = new AbortController();
+
+  const live = (): boolean => {
+    if (isCurrentSearch(seq)) return true;
+    dropStream(source);
+    return false;
+  };
 
   resultsList?.addEventListener(
     "click",
@@ -217,6 +142,7 @@ export async function performStreamingSearch(
   );
 
   source.addEventListener("engine-result", (e) => {
+    if (!live()) return;
     const data = JSON.parse(e.data) as StreamEngineResult;
 
     const existingIdx = engineTimings.findIndex(
@@ -241,14 +167,8 @@ export async function performStreamingSearch(
           );
         }
       }
-      for (const r of data.results) renderedUrls.add(r.url);
-      renderedImages.splice(
-        0,
-        renderedImages.length,
-        ...mergeStreamingMediaResults(renderedImages, data.results),
-      );
-      currentResults = renderedImages;
-      state.currentResults = renderedImages;
+      currentResults = data.results;
+      state.currentResults = currentResults;
       if (resultsList) renderImageGrid(currentResults, resultsList);
     } else {
       currentResults = data.results;
@@ -273,6 +193,7 @@ export async function performStreamingSearch(
   });
 
   source.addEventListener("engine-retry", (e) => {
+    if (!live()) return;
     const data = JSON.parse(e.data) as StreamEngineRetry;
     const existingIdx = engineTimings.findIndex(
       (timing) => timing.name === data.engine,
@@ -282,10 +203,15 @@ export async function performStreamingSearch(
     } else {
       engineTimings.push({ ...data.timing, resultCount: -1 });
     }
-    updateEngineTimings(sidebar, engineTimings);
+    if (isImageType) {
+      renderImgEngines(engineTimings);
+    } else {
+      updateEngineTimings(sidebar, engineTimings);
+    }
   });
 
   source.addEventListener("done", (e) => {
+    if (!live()) return;
     const data = JSON.parse(e.data) as StreamDone;
     dropStream(source);
 
@@ -322,6 +248,7 @@ export async function performStreamingSearch(
       updateEngineTimings(sidebar, data.engineTimings);
       void fetchGlancePanels(query, currentResults);
       void fetchSlotPanels(query, currentResults).then((panels) => {
+        if (!isCurrentSearch(seq)) return;
         const kpPanels = panels.filter(
           (p) => p.position === SlotPanelPosition.KnowledgePanel,
         );
@@ -358,7 +285,7 @@ export async function performStreamingSearch(
       if (infiniteScrollOn()) {
         const paginationBox = document.getElementById("pagination");
         if (paginationBox) clear(paginationBox);
-        setupInfinite(type);
+        armInfinite(type, restorePage);
       } else {
         renderPagination(
           state.lastPage,
@@ -370,7 +297,7 @@ export async function performStreamingSearch(
   });
 
   source.addEventListener("error", (e) => {
-    if (_activeSource !== source) {
+    if (_activeSource !== source || !live()) {
       source.close();
       return;
     }

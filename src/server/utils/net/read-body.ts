@@ -1,10 +1,7 @@
-export const readWithin = <T>(read: Promise<T>, idleMs: number): Promise<T> => {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const idle = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error("upstream body stalled")), idleMs);
-  });
-  return Promise.race([read, idle]).finally(() => clearTimeout(timer));
-};
+import { withTimeout } from "./with-timeout";
+
+export const readWithin = <T>(read: Promise<T>, idleMs: number): Promise<T> =>
+  withTimeout(read, idleMs, "upstream body");
 
 export const readBodyCapped = async (
   res: Response,

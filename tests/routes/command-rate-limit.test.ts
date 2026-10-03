@@ -73,6 +73,19 @@ describe("command bangs and rate limiting", () => {
     expect(executed).toBe(0);
   });
 
+  test("a command that throws answers with a json 500", async () => {
+    command = {
+      ...makeCommand(),
+      execute: async () => {
+        throw new Error("boom");
+      },
+    };
+    const res = await router.request("http://localhost/api/command?q=!probe");
+    expect(res.status).toBe(500);
+    expect(res.headers.get("content-type")).toContain("application/json");
+    expect(await res.json()).toEqual({ error: "Command failed" });
+  });
+
   test("the built-in !ip command opts in", async () => {
     const ip = (await import("../../src/server/extensions/commands/builtins/ip")).default;
     expect(ip.respectRateLimiting).toBe(true);

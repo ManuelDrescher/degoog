@@ -12,7 +12,7 @@ import { transportsDir } from "../../utils/paths";
 import { createRegistry } from "../registry-factory";
 import { registerExtensionFolder } from "../../utils/extension-support/extension-docs";
 import { buildExtensionMeta } from "../extension-meta";
-import { mountTransportWs } from "./ws-registry";
+import { mountTransportWs, pruneTransportWs } from "./ws-registry";
 import { getTransportWsSession } from "./ws-session";
 import {
   isExtensionRestartFlagVisible,
@@ -52,7 +52,6 @@ const registry = createRegistry<Transport>({
   canonicalIdKind: "transport",
   onLoad: async (instance, { folderName, canonicalId }) => {
     const name = canonicalId ?? folderName;
-    if (_builtins.some((t) => t.name === name)) return false;
     instance.name = name;
     registerExtensionFolder(name, folderName);
     if (instance.configure) {
@@ -133,4 +132,7 @@ export async function getTransportExtensionMeta(): Promise<ExtensionMeta[]> {
 
 export async function initTransports(bust = false): Promise<void> {
   await (bust ? registry.reload() : registry.init());
+  pruneTransportWs(
+    new Set(registry.items().filter((t) => t.wsHandler).map((t) => t.name)),
+  );
 }

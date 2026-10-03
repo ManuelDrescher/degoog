@@ -6,6 +6,7 @@ import { ErrorNotice } from "./error-notice";
 import { initTheme } from "../../utils/app/theme";
 import { applyDefaults } from "../../utils/storage/sync";
 import { getBase } from "../../utils/net/base-url";
+import { authHeaders } from "../../utils/net/request";
 import { initInstallPrompt } from "../../utils/app/install-prompt";
 import {
   initGeneralTab,
@@ -25,7 +26,7 @@ import { initIndexerTab } from "../../settings/indexer/tab";
 import { initShortcutsTab } from "../../settings/shortcuts/tab";
 import { initGlobalSearch } from "../../settings/shared/settings-search";
 import {
-  getStoredToken as _getStoredToken,
+  getStoredToken,
   SETTINGS_TOKEN_KEY,
 } from "../../utils/settings/settings-token";
 import { initSettingsWizard } from "../wizard/wizard";
@@ -35,6 +36,7 @@ import { navigateSettingsBack } from "../../utils/navigation/navigation";
 import {
   getActiveSettingsTab,
   getSettingsRoot,
+  switchSettingsTab,
 } from "../../utils/settings/settings-path";
 
 declare global {
@@ -59,18 +61,14 @@ function _initSettingsBackLink(): void {
   });
 }
 
-export const getStoredToken = _getStoredToken;
-
 const _checkAuth = async (): Promise<{
   required: boolean;
   valid: boolean;
   loginUrl?: string;
   error?: string;
 }> => {
-  const token = getStoredToken();
-  const headers = token ? { "x-settings-token": token } : {};
   const res = await fetch(`${getBase()}/api/settings/auth`, {
-    headers: headers as Record<string, string>,
+    headers: authHeaders(getStoredToken),
   });
   return res.json() as Promise<{
     required: boolean;
@@ -116,30 +114,6 @@ function _showAuthGate(): void {
   const page = document.querySelector<HTMLElement>(".settings-page");
   if (!page) return;
   render(<AuthGate onSubmit={(event) => void _submitAuth(event)} />, page);
-}
-
-export function switchSettingsTab(value: string, updateUrl = true): void {
-  document
-    .querySelectorAll<HTMLElement>(".settings-tab-panel")
-    .forEach((p) => p.classList.remove("active"));
-  document.getElementById(`tab-${value}`)?.classList.add("active");
-  document.querySelectorAll<HTMLElement>(".settings-nav-item").forEach((b) => {
-    b.classList.toggle("active", b.dataset.tab === value);
-  });
-  const select = document.getElementById(
-    "settings-tab-select",
-  ) as HTMLSelectElement | null;
-  if (select) select.value = value;
-
-  if (updateUrl) {
-    const root = getSettingsRoot();
-    const path = value === "general" ? root : `${root}/${value}`;
-    window.history.replaceState({}, "", path);
-  }
-
-  window.dispatchEvent(
-    new CustomEvent("settings-tab-changed", { detail: value }),
-  );
 }
 
 function _initTabs(): void {
@@ -199,6 +173,7 @@ function _initSettingsMainOffset(): void {
 }
 
 async function _initSettings(): Promise<void> {
+  await applyDefaults();
   void initTheme();
   initInstallPrompt();
   _initTabs();
@@ -210,9 +185,7 @@ async function _initSettings(): Promise<void> {
   try {
     const [extRes, themesRes] = await Promise.all([
       fetch(`${getBase()}/api/extensions`, {
-        headers: getStoredToken()
-          ? { "x-settings-token": getStoredToken()! }
-          : {},
+        headers: authHeaders(getStoredToken),
       }),
       fetch(`${getBase()}/api/themes`),
     ]);
@@ -274,9 +247,7 @@ window.addEventListener("extensions-saved", async () => {
   try {
     const [extRes, themesRes] = await Promise.all([
       fetch(`${getBase()}/api/extensions`, {
-        headers: getStoredToken()
-          ? { "x-settings-token": getStoredToken()! }
-          : {},
+        headers: authHeaders(getStoredToken),
       }),
       fetch(`${getBase()}/api/themes`),
     ]);

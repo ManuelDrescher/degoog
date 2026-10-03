@@ -52,17 +52,6 @@ router.get("/api/search/stream", async (c) => {
 
   const rawActiveEngines = await selectActiveEngines(type, engines, imageFilter);
 
-  if (rawActiveEngines.length === 0) {
-    return c.json({
-      results: [],
-      query,
-      totalTime: 0,
-      type,
-      engineTimings: [],
-      relatedSearches: [],
-    });
-  }
-
   const start = performance.now();
 
   let closed = false;
@@ -111,6 +100,7 @@ router.get("/api/search/stream", async (c) => {
           let lastPages: number | undefined;
 
           while (attempt <= (autoRetry ? maxRetries : 0)) {
+            if (cancelController.signal.aborted) return;
             const isRetry = attempt > 0;
             const { results, timing, pages } = await searchSingleEngine(
               id,

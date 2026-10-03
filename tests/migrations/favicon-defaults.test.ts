@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import {
@@ -170,13 +170,16 @@ describe("favicon defaults migration 93026", () => {
     expect(readSettings().__schemaVersion).toBe(93026);
   });
 
-  test("an unreadable settings file is left untouched", async () => {
+  test("an unreadable settings file is kept aside and nothing is installed", async () => {
     writeFileSync(settingsFile, "{ not json");
     clearPluginSettingsCache();
     const store = fakeStore();
     await runFaviconDefaultsMigration093026(store.deps);
 
     expect(store.ensures).toBe(0);
-    expect(readFileSync(settingsFile, "utf-8")).toBe("{ not json");
+    const kept = readdirSync(dir).filter((f) => f.startsWith("plugin-settings.json.corrupt-"));
+    expect(kept).toHaveLength(1);
+    expect(readFileSync(join(dir, kept[0]), "utf-8")).toBe("{ not json");
+    rmSync(join(dir, kept[0]));
   });
 });

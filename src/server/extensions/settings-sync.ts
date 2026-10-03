@@ -6,8 +6,14 @@ import {
   type InvalidatePayload,
 } from "../utils/cache/cache-valkey";
 import { logger } from "../utils/logger";
-import { getSettings, type SettingValue } from "../utils/settings/plugin-settings";
+import {
+  getSettings,
+  mergeDefaults,
+  type SettingValue,
+} from "../utils/settings/plugin-settings";
+import type { SettingField } from "../../shared/setting-field";
 import { reconfigureManifestEngines } from "./engines/catalog";
+import { engineFullSchema } from "./engines/engine-settings";
 import { applyFaviconSettings } from "./favicon/registry";
 import { resolveExtension } from "./resolve";
 
@@ -15,15 +21,31 @@ type ExtSettings = Record<string, SettingValue>;
 
 const NS = "settings-sync";
 
+type Configurable = {
+  configure?: (settings: ExtSettings) => void;
+  settingsSchema?: SettingField[];
+};
+
+const _withDefaults = (
+  target: Configurable | null,
+  settings: ExtSettings,
+  schema: SettingField[] | undefined = target?.settingsSchema,
+): void => {
+  target?.configure?.(mergeDefaults(settings, schema ?? []));
+};
+
 const applyExtSettings = (id: string, settings: ExtSettings): void => {
   const resolved = resolveExtension(id);
-  if (!resolved.engine?.pluginManifest) resolved.engine?.configure?.(settings);
-  resolved.command?.configure?.(settings);
-  resolved.slot?.configure?.(settings);
-  resolved.interceptor?.configure?.(settings);
-  resolved.tab?.configure?.(settings);
+  const { engine } = resolved;
+  if (engine && !engine.pluginManifest) {
+    _withDefaults(engine, settings, engineFullSchema(engine));
+  }
+  _withDefaults(resolved.command, settings);
+  _withDefaults(resolved.slot, settings);
+  _withDefaults(resolved.interceptor, settings);
+  _withDefaults(resolved.tab, settings);
   resolved.transport?.configure?.(settings);
-  resolved.autocomplete?.configure?.(settings);
+  _withDefaults(resolved.autocomplete, settings);
   if (resolved.favicon) applyFaviconSettings(id, settings);
 
   if (settings.priority === undefined) return;

@@ -8,7 +8,10 @@ import {
   shortcutsDir,
   faviconDir,
 } from "../../utils/paths";
-import { getPluginSettingsIds } from "../../utils/extension-support/plugin-assets";
+import {
+  getPluginSettingsIds,
+  prunePluginAssets,
+} from "../../utils/extension-support/plugin-assets";
 import { makeExtID } from "../../utils/extension-support/extension-id";
 import { reloadCommands } from "../commands/registry";
 import { reloadSlotPlugins } from "../slots/registry";
@@ -16,7 +19,6 @@ import { reloadInterceptors } from "../interceptors/registry";
 import { reloadSearchResultTabs } from "../search-result-tabs/registry";
 import { reloadSearchBarActions } from "../search-bar/registry";
 import {
-  clearPluginRoutes,
   initPluginRoutes,
 } from "../plugin-routes/registry";
 import { reloadMiddlewareRegistry } from "../middleware/registry";
@@ -44,7 +46,6 @@ interface StoreTypeSpec {
 }
 
 const reloadPluginBundle = async (bust: boolean): Promise<void> => {
-  clearPluginRoutes();
   await reloadSlotPlugins(bust);
   await reloadInterceptors(bust);
   await reloadSearchResultTabs(bust);
@@ -52,6 +53,7 @@ const reloadPluginBundle = async (bust: boolean): Promise<void> => {
   await reloadSearchBarActions(bust);
   await reloadMiddlewareRegistry(bust);
   await initPluginRoutes(bust);
+  prunePluginAssets(pluginsDir());
 };
 
 const pluginSettingsIds = (installedAs: string): string[] => {

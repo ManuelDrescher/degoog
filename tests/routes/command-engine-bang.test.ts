@@ -34,6 +34,7 @@ const ENV_KEYS = [
 const savedEnv = new Map(ENV_KEYS.map((k) => [k, process.env[k]]));
 let tempDir = "";
 let queryCounter = 0;
+let defaultBangOn = true;
 type EngineContext = Parameters<SearchEngine["executeSearch"]>[3];
 
 let seen: { query: string; time: TimeFilter; context?: EngineContext }[] = [];
@@ -115,6 +116,7 @@ beforeAll(async () => {
   mock.module(CATALOG_MOD, () => ({
     ...catalogReal,
     getDefaultEngineConfig: () => ({ [ENGINE_ID]: true }),
+    getDefaultEngineBangConfig: () => ({ [ENGINE_ID]: defaultBangOn }),
     getEngineSearchType: async () => "images",
     getEnginesForCustomType: async () => active,
     getActiveWebEngines: async () => active,
@@ -133,6 +135,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   seen = [];
+  defaultBangOn = true;
   await writeSettings();
 });
 
@@ -196,22 +199,46 @@ describe("GET /api/command engine bang", () => {
     expect(seen[0].context?.imageFilter?.nsfw).toBe(ImgNsfw.ON);
   });
 
-  test("refuses an engine the visitor has turned off", async () => {
-    const res = await bang({ type: "images", [ENGINE_ID]: "false" });
+  test("runs the bang for an engine the visitor keeps out of normal searches", async () => {
+    const res = await bang({ type: "images", [ENGINE_ID]: "false", bangs: ENGINE_ID });
+    expect(res.status).toBe(200);
+    expect(seen).toHaveLength(1);
+  });
+
+  test("refuses a bang the visitor has turned off", async () => {
+    const res = await bang({ type: "images", [ENGINE_ID]: "true", bangs: "" });
     expect(res.status).toBe(403);
     expect(seen).toHaveLength(0);
   });
 
-  test("POST refuses an engine missing from the enabled list", async () => {
-    const res = await router.request(
-      new Request("http://localhost/api/command", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: `dog${++queryCounter} !fake`, engines: [] }),
-      }),
-    );
+  test("falls back to the instance bang default when the visitor sends none", async () => {
+    defaultBangOn = false;
+    const res = await bang({ type: "images" });
     expect(res.status).toBe(403);
     expect(seen).toHaveLength(0);
+  });
+
+  test("POST follows the bang list, not the engine list", async () => {
+    const post = (body: Record<string, unknown>) =>
+      router.request(
+        new Request("http://localhost/api/command", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: `dog${++queryCounter} !fake`, ...body }),
+        }),
+      );
+    expect((await post({ engines: [], bangs: [ENGINE_ID] })).status).toBe(200);
+    expect((await post({ engines: [ENGINE_ID], bangs: [] })).status).toBe(403);
+    expect(seen).toHaveLength(1);
+  });
+
+  test("the commands list hides bangs the visitor has turned off", async () => {
+    const triggers = async (query: string): Promise<string[]> => {
+      const res = await router.request(`http://localhost/api/commands?${query}`);
+      const body = (await res.json()) as { commands: { trigger: string }[] };
+      return body.commands.map((c) => c.trigger);
+    };
+    expect(await triggers("bangs=")).not.toContain("fake");
   });
 
   test("refuses an engine the admin has disabled", async () => {

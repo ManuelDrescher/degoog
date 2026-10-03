@@ -11,6 +11,8 @@ const { engineHost, flushHosts, noteEngineHost, primeEngineHosts } = await impor
   "../../src/server/extensions/engines/engine-hosts"
 );
 
+const { drainServer } = await import("../../src/server/utils/server-lifecycle");
+
 const settle = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
 
 afterAll(async () => {
@@ -71,5 +73,13 @@ describe("engine hosts", () => {
     await flushHosts();
     const onDisk = JSON.parse(await readFile(hostsFile, "utf-8"));
     expect(onDisk["mojeek-engine"]).toBe("www.mojeek.com");
+  });
+
+  test("shutting down writes a host that was still waiting for its debounce", async () => {
+    noteEngineHost("qwant-engine", "https://www.qwant.com/?q=cats");
+    await settle();
+    await drainServer();
+    const onDisk = JSON.parse(await readFile(hostsFile, "utf-8"));
+    expect(onDisk["qwant-engine"]).toBe("www.qwant.com");
   });
 });

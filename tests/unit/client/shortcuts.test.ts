@@ -91,7 +91,13 @@ describe("shortcuts shared model", () => {
       "tab-by-number": { alt: true },
     });
 
-    expect(parseShortcutsMap({ unknown: { key: "x" } })).toBeNull();
+    expect(parseShortcutsMap({ unknown: { key: "x" } })).toEqual({});
+    expect(
+      parseShortcutsMap({
+        "uninstalled-shortcut": { key: "x" },
+        "focus-search": { key: "k" },
+      }),
+    ).toEqual({ "focus-search": { key: "k" } });
     expect(parseShortcutsMap({ "focus-search": { ctrl: true } })).toBeNull();
     expect(parseShortcutsMap({ "focus-search": { key: "x", extra: true } })).toBeNull();
     expect(parseShortcutsMap({ "tab-by-number": { key: "1" } }, actions)).toBeNull();

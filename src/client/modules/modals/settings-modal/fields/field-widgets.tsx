@@ -1,6 +1,6 @@
 import { initFileUpload } from "../../../../utils/file-upload/file-upload";
 import { getBase } from "../../../../utils/net/base-url";
-import { getStoredToken } from "../../../settings/settings";
+import { getStoredToken } from "../../../../utils/settings/settings-token";
 import { authHeaders } from "../../../../utils/net/request";
 
 const t = window.scopedT("core");
@@ -43,12 +43,12 @@ export const initRangeFields = (container: HTMLElement): void => {
     });
 };
 
-const _validateSize = (
-  fieldEl: HTMLElement,
+export const validateFileSize = (
+  el: HTMLElement,
   file: File,
 ): string | null => {
-  const maxKb = Number(fieldEl.dataset.maxKb ?? "0");
-  const minKb = Number(fieldEl.dataset.minKb ?? "0");
+  const maxKb = Number(el.dataset.maxKb ?? "0");
+  const minKb = Number(el.dataset.minKb ?? "0");
   const sizeKb = file.size / 1024;
   if (maxKb > 0 && sizeKb > maxKb) return `≤ ${maxKb} KB`;
   if (minKb > 0 && sizeKb < minKb) return `≥ ${minKb} KB`;
@@ -87,13 +87,15 @@ export const initFileFields = (container: HTMLElement, extId: string): void => {
         status.hidden = text === "";
       };
 
+      let latest = 0;
       const handle = initFileUpload(fieldEl, async (file) => {
+        const attempt = ++latest;
         if (!file) {
           hidden.value = "";
           setStatus("");
           return;
         }
-        const sizeError = _validateSize(fieldEl, file);
+        const sizeError = validateFileSize(fieldEl, file);
         if (sizeError) {
           setStatus(sizeError);
           handle?.reset();
@@ -101,6 +103,7 @@ export const initFileFields = (container: HTMLElement, extId: string): void => {
         }
         setStatus(t("settings-page.modal.field-uploading"));
         const path = await uploadExtensionFile(extId, key, file).catch(() => null);
+        if (attempt !== latest) return;
         if (!path) {
           setStatus(t("settings-page.modal.field-upload-failed"));
           handle?.reset();

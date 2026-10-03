@@ -16,8 +16,8 @@ import {
   buildResultContext,
   buildTabsContext,
   buildToolsContext,
-  resolveLanguages,
 } from "./context";
+import { resolveLanguages } from "../utils/search";
 import {
   addClassById,
   addClassWhereClass,
@@ -29,12 +29,24 @@ import {
   setAttributesById,
   wrapElementById,
 } from "./dom";
-import { fullAppHref, nojsHome, nojsSearchAction, type NojsQuery } from "./links";
+import {
+  fullAppHref,
+  nojsHome,
+  nojsSearchAction,
+  searchParams,
+  type NojsQuery,
+} from "./links";
+import { ResultsForm } from "./results-form";
 import { buildNojsDocument, loadNojsPartial, loadNojsShell } from "./render";
 import { SLOT_CONTAINER_IDS } from "./slots";
 import { listNojsTabs } from "./tabs";
 
 const RESULTS_BODY_CLASS = "nojs nojs-results";
+const RESULTS_FORM_SLOT = "NOJS_RESULTS_SEARCH_BAR";
+const NEW_QUERY_DROPPED_PARAMS = new Set(["q", "page"]);
+
+const _carriedFilters = (query: NojsQuery): [string, string][] =>
+  [...searchParams(query)].filter(([name]) => !NEW_QUERY_DROPPED_PARAMS.has(name));
 
 const _formMethod = async (): Promise<string> => {
   const settings = await getInstanceSettings();
@@ -102,14 +114,21 @@ export const renderNojsResultsHeader = async (
   html = await setAttributesById(html, "results-search-btn", {
     type: "submit",
   });
-  const hidden = query.type
-    ? `<input type="hidden" name="type" value="${escapeAttribute(query.type)}" />`
-    : "";
+  const form = renderHtml(
+    <ResultsForm
+      action={nojsSearchAction(c)}
+      method={await _formMethod()}
+      hidden={_carriedFilters(query)}
+    >
+      {RESULTS_FORM_SLOT}
+    </ResultsForm>,
+  );
+  const at = form.indexOf(RESULTS_FORM_SLOT);
   return await wrapElementById(
     html,
     "results-search-bar",
-    `<form class="nojs-results-form" action="${escapeAttribute(nojsSearchAction(c))}" method="${await _formMethod()}" role="search">`,
-    `${hidden}</form>`,
+    form.slice(0, at),
+    form.slice(at + RESULTS_FORM_SLOT.length),
   );
 };
 

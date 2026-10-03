@@ -200,6 +200,31 @@ describe("render diffing", () => {
     );
     expect(innerHtmlOf(wrapper)).toBe("<i>changed</i>");
   });
+
+  test("changing a raw block leaves the siblings after it in place", () => {
+    const el = host();
+    const tree = (html: string): VNode => (
+      <div>
+        <RawDogIt html={html} />
+        <p>after</p>
+      </div>
+    );
+    into(el, tree("<b>one</b>"));
+    const wrapper = el.childNodes[0] as FakeElement;
+    const after = wrapper.childNodes[1];
+    const moved: unknown[] = [];
+    const original = wrapper.insertBefore.bind(wrapper);
+    wrapper.insertBefore = (node, anchor) => {
+      moved.push(node);
+      return original(node, anchor);
+    };
+
+    into(el, tree("<i>two</i>"));
+
+    expect(innerHtmlOf(wrapper)).toBe("<i>two</i><p>after</p>");
+    expect(wrapper.childNodes[1]).toBe(after);
+    expect(moved).not.toContain(after);
+  });
 });
 
 describe("render alongside direct DOM writes", () => {

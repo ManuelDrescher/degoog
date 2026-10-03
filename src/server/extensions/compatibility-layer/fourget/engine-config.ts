@@ -5,8 +5,6 @@ export const FOURGET_OPT_PREFIX = "fourgetOpt_";
 
 const NSFW_FILTER = "nsfw";
 
-const DATE_MARKERS = ["_DATE", "_SEARCH"];
-
 interface FourGetFilter {
   display?: string;
   option?: Record<string, string> | string;
@@ -21,9 +19,6 @@ const _label = (name: string, filter: FourGetFilter): string =>
 
 const _isSelect = (filter: FourGetFilter): boolean =>
   typeof filter.option === "object" && filter.option !== null;
-
-export const isDriven = (filter: FourGetFilter): boolean =>
-  typeof filter.option === "string" && DATE_MARKERS.includes(filter.option);
 
 export const optionFields = (filters: FourGetFilters): SettingField[] => {
   const seen = new Map<string, SettingField>();

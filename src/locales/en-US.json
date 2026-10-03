@@ -27,8 +27,7 @@
     },
     "appearance": {
       "heading": "Appearance",
-      "desc": "Pick a theme.",
-      "save-defaults": "Save as instance default"
+      "desc": "Pick a theme."
     },
     "theme": {
       "system": "System default",
@@ -323,8 +322,6 @@
       "indexer-enable": "Enable the indexer",
       "indexer-enable-desc": "Stores results on disk.",
       "indexer-enable-aria": "Enable Degoog indexer",
-      "searx-heading": "SearX compatibility layer",
-      "searx-desc": "Run SearXNG engines inside Degoog. No second SearXNG process.",
       "searx-enable": "Enable the SearX compatibility layer",
       "searx-enable-desc": "Lets you install engines from the SearXNG repository on the engines tab.",
       "searx-enable-aria": "Enable SearX compatibility layer",
@@ -333,11 +330,6 @@
       "searx-api-enable-aria": "Serve the SearXNG API shape",
       "saved": "Saved",
       "save-failed-network": "Save failed. Try again.",
-      "shortcuts-heading": "Keyboard shortcuts",
-      "shortcuts-desc": "Turn on keyboard shortcuts. Off hides the Shortcuts section and unbinds everything.",
-      "shortcuts-enable": "Enable keyboard shortcuts",
-      "shortcuts-enable-aria": "Enable keyboard shortcuts",
-      "shortcuts-enable-desc": "Focus search, switch tabs, move through results. Bind them in the Shortcuts section.",
       "infinite-scroll-enable": "Replace pagination with infinite scroll",
       "infinite-scroll-enable-aria": "Replace pagination with infinite scroll",
       "infinite-scroll-enable-desc": "Drops previous/next and loads the next page when you hit the bottom.",
@@ -392,22 +384,15 @@
       "field-fetch-failed": "Could not load options",
       "field-fetch-empty": "No options returned"
     },
-    "confirm": {
-      "title": "Confirm",
-      "cancel": "Cancel",
-      "confirm": "Confirm"
-    },
     "extensions": {
       "configure": "Configure",
       "active": "Active",
       "built-in-theme-name": "Built-in",
       "built-in-theme-desc": "The look Degoog ships with.",
-      "group-plugins": "Plugins",
-      "group-builtin-commands": "Built-in commands",
+      "builtin-badge": "Built-in",
       "group-transports": "Transports",
       "group-builtin-transports": "Built-in transports",
       "group-autocomplete": "Autocomplete providers",
-      "group-builtin-autocomplete": "Built-in providers",
       "group-favicon": "Favicon providers",
       "favicon-order-desc": "Degoog tries each provider from top to bottom and uses the first icon it finds. Drag to reorder.",
       "favicon-degoog-name": "Degoog",
@@ -422,7 +407,6 @@
       "favicon-shape-star": "Star",
       "favicon-shape-flower": "Flower",
       "group-themes": "Themes",
-      "apply-failed": "Failed",
       "save-defaults": "Save as instance defaults",
       "reset-defaults": "Reset to instance defaults",
       "reset-confirm": "This replaces your engine choices on this browser with the instance defaults. Continue?",
@@ -436,6 +420,9 @@
       "status-configured": "Configured",
       "status-needs-config": "Needs configuration",
       "extra-types": "Extra types:",
+      "bang-on-title": "{bang} searches only this engine. Click to turn it off.",
+      "bang-off-title": "{bang} is off. Click to turn it on.",
+      "bang-only": "Off in normal searches, still works with {bang}.",
       "requires-newer-version": "Requires a newer version of Degoog",
       "no-engines": "No engines installed. The {store} tab is where they live.",
       "no-engines-store": "Store",
@@ -586,6 +573,7 @@
       "clear-modal-desc": "This permanently deletes every row in your local index. Type CLEAR to confirm.",
       "clear-confirm": "Clear",
       "clear-cancel": "Cancel",
+      "clear-failed": "Couldn't clear the index",
       "save-error": "Failed to save indexer settings.",
       "disabled": "The indexer is disabled. Enable it under Server settings."
     },
@@ -598,7 +586,7 @@
       "add-repo": "Add repository",
       "add": "Add",
       "placeholder-url": "https://github.com/user/repo.git",
-      "search-placeholder": "Search…",
+      "search-placeholder": "Search Extensions…",
       "filter-type-aria": "Filter by type",
       "filter-subtype-aria": "Filter by sub-type",
       "lightbox-aria": "Screenshot gallery",
@@ -774,12 +762,10 @@
     },
     "restart": {
       "heading": "Restart required",
-      "desc": "Some of the extensions you installed will not load until the server restarts.",
       "modal-intro": "These extensions do nothing until the server restarts:",
       "modal-note": "Restarting stops Degoog for a few seconds. You can restart later from Settings › Server.",
       "later": "Not now",
       "button": "Restart server",
-      "confirm": "This restarts Degoog. In-flight searches get cut off for a few seconds. Continue?",
       "restarting": "Restarting..."
     }
   },
