@@ -187,6 +187,7 @@ export async function initEnginesTab(
       message: t("settings-page.extensions.reset-confirm"),
     });
     if (!confirmed) return;
+    await _toggleWrites;
     await resetDefaults(ENGINE_SYNC_KEYS);
     await initEnginesTab(allExtensions, options);
   };

@@ -573,6 +573,7 @@
       "clear-modal-desc": "This permanently deletes every row in your local index. Type CLEAR to confirm.",
       "clear-confirm": "Clear",
       "clear-cancel": "Cancel",
+      "clear-failed": "Couldn't clear the index",
       "save-error": "Failed to save indexer settings.",
       "disabled": "The indexer is disabled. Enable it under Server settings."
     },

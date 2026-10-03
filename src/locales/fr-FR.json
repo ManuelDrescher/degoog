@@ -495,6 +495,7 @@
       "clear-modal-desc": "Supprime définitivement toutes les lignes de l'index local. Tapez CLEAR pour confirmer.",
       "clear-confirm": "Vider",
       "clear-cancel": "Annuler",
+      "clear-failed": "Impossible de vider l'index",
       "save-error": "Échec de l'enregistrement des paramètres de l'indexeur.",
       "disabled": "L'indexeur est désactivé. Activez-le dans les paramètres Serveur."
     },

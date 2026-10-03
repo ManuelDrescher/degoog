@@ -548,6 +548,7 @@
       "clear-modal-desc": "Elimina definitivamente ogni riga dell'indice locale. Digita CLEAR per confermare.",
       "clear-confirm": "Svuota",
       "clear-cancel": "Annulla",
+      "clear-failed": "Impossibile svuotare l'indice",
       "save-error": "Salvataggio impostazioni indicizzatore non riuscito.",
       "disabled": "L'indicizzatore è disabilitato. Abilitalo nelle impostazioni Server."
     },

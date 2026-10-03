@@ -526,6 +526,7 @@
       "clear-modal-desc": "Dadurch wird jede Zeile in deinem lokalen Index unwiderruflich gelöscht. Gib zur Bestätigung CLEAR ein.",
       "clear-confirm": "Leeren",
       "clear-cancel": "Abbrechen",
+      "clear-failed": "Index konnte nicht geleert werden",
       "save-error": "Indexer-Einstellungen konnten nicht gespeichert werden.",
       "disabled": "Der Indexer ist deaktiviert. Aktiviere ihn unter Server-Einstellungen."
     },

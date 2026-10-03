@@ -24,7 +24,7 @@ export const openClearModal = (onCleared: () => void): void => {
 
   const _fail = (): void => {
     if (!owns()) return;
-    statusEl.textContent = "Failed";
+    statusEl.textContent = tr("clear-failed");
     saveEl.disabled = false;
   };
 
