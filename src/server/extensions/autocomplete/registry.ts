@@ -182,7 +182,7 @@ export async function getSuggestionsFromProviders(query: string): Promise<
     `merged ${merged.length} suggestion(s) for "${query}"`,
   );
 
-  await autocompleteCache.set(cacheKey, merged);
+  if (merged.length > 0) await autocompleteCache.set(cacheKey, merged);
   return signSuggestionThumbnails(merged);
 }
 
@@ -238,4 +238,5 @@ export async function getAutocompleteExtensionMeta(): Promise<ExtensionMeta[]> {
 
 export async function initAutocomplete(bust = false): Promise<void> {
   await (bust ? pluginRegistry.reload() : pluginRegistry.init());
+  if (bust) await autocompleteCache.clear();
 }
