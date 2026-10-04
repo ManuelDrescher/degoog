@@ -54,7 +54,7 @@
       "hide-url-params-aria": "Abfrageparameter in Ergebnis-URLs ausblenden",
       "show-result-dates": "Veröffentlichungsdatum bei Ergebnissen anzeigen",
       "show-result-dates-aria": "Veröffentlichungsdatum bei Ergebnissen anzeigen",
-      "show-result-dates-tooltip": "Zeigt das Datum an, das eine Suchmaschine für ein Ergebnis gemeldet hat, sofern sie eines gemeldet hat. Wenn du dies deaktivierst, wird das Datum komplett ausgeblendet."
+      "show-result-dates-tooltip": "Zeigt das Datum an, das eine Suchmaschine für ein Ergebnis gemeldet hat, sofern sie eines gemeldet hat. Wenn du dies deaktivierst, wird das Datum komplett ausgeblendet.",
       "engine-origins": "Suchmaschinen-Badges in der Ergebnis-Seitenleiste",
       "engine-origins-instance-default": "Instanz-Standardwert",
       "engine-origins-favicon": "Favicons der Suchmaschinen",
@@ -82,7 +82,7 @@
       "desc": " ist aktuell installiert. Die neueste verfügbare Version ist ",
       "check-now-button": "Jetzt prüfen",
       "open-link-button": "Release ansehen",
-      "last-checked": "Zuletzt geprüft"
+      "last-checked": "Zuletzt geprüft",
       "unknown": "Unbekannt",
       "never": "Niemals"      
     },
@@ -338,7 +338,7 @@
       "compat-desc": "Führe Suchmaschinen aus, die für andere Suchmaschinen geschrieben wurden. Beide Schichten sind experimentell.",
       "4get-enable": "4get-Kompatibilitätsschicht",
       "4get-enable-desc": "Führe 4get-Scraper als Suchmaschinen aus. Benötigt PHP 8.1+ auf dem Server. Fügt auf der Seite der Suchmaschinen einen 4get-Button hinzu.",
-      "4get-enable-aria": "4get-Kompatibilitätsschicht ein- oder ausschalten"
+      "4get-enable-aria": "4get-Kompatibilitätsschicht ein- oder ausschalten",
       "engine-origins-label": "Suchmaschinen-Badges",
       "engine-origins-desc": "Das kleine Symbol neben jeder Suchmaschine in der Ergebnis-Seitenleiste. Favicons zeigen die Website an, die die Suchmaschine durchsucht, die Herkunft gibt an, ob die Suchmaschine aus dem Store, von SearX oder von 4get stammt. Besucher können dies in den allgemeinen Einstellungen selbst festlegen.",
       "engine-origins-favicon": "Favicons der Suchmaschinen",
@@ -471,7 +471,7 @@
       "compat-note-native": "Nach der Installation verhalten sie sich wie jede andere Suchmaschine. Bewertung, Safe Search, Bangs, Proxys und Transports greifen alle.",
       "compat-note-upstream": "Die Suchmaschine stammt vom Upstream, nicht von Degoog. Sie kann kaputtgehen, wenn sich die ausgelesene Website ändert.",
       "compat-note-updates": "Dateien werden bei Bedarf heruntergeladen. Ein Update holt den neuesten Code vom Upstream.",
-      "compat-note-needs": "Manche Suchmaschinen benötigen einen API-Schlüssel oder zusätzliche Software auf dem Server. Die Liste zeigt, was jeweils nötig ist."
+      "compat-note-needs": "Manche Suchmaschinen benötigen einen API-Schlüssel oder zusätzliche Software auf dem Server. Die Liste zeigt, was jeweils nötig ist.",
       "docs-button": "Doku",
       "docs-loading": "Wird geladen…",
       "docs-empty": "(Leere README)",
@@ -645,7 +645,7 @@
       "uninstall-message": "Diesen Eintrag ({type}) deinstallieren?",
       "remove-repo-title": "Repository entfernen?",
       "remove-repo-message": "Dieses Repository entfernen? Du musst zuvor alle installierten Elemente deinstallieren.",
-      "failed-load-store": "Store konnte nicht geladen werden."
+      "failed-load-store": "Store konnte nicht geladen werden.",
       "progress-done": "Erledigt",
       "progress-failed": "Fehlgeschlagen",
       "refresh-hint": "Aktualisieren, um die neuesten Daten zu laden"
